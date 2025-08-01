@@ -1,0 +1,11 @@
+/* global.css */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Set Figtree as the default font for all text */
+@layer base {
+    * {
+        font-family: 'Figtree_400Regular';
+    }
+}
