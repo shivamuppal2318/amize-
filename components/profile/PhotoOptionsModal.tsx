@@ -62,9 +62,11 @@ export const PhotoOptionsModal: React.FC<PhotoOptionsModalProps> = ({
                     style={{
                         flexDirection: 'row',
                         alignItems: 'center',
-                        backgroundColor: 'rgba(26, 26, 46, 0.8)',
+                        // backgroundColor: 'rgba(26, 26, 46, 0.8)',
+                        backgroundColor: '#1A4063',                      
                         borderWidth: 1,
-                        borderColor: 'rgba(75,85,99,0.2)',
+                        // borderColor: 'rgba(75,85,99,0.2)',
+                        borderColor: '#16344F',
                         borderRadius: 16,
                         padding: 20,
                     }}
@@ -76,7 +78,7 @@ export const PhotoOptionsModal: React.FC<PhotoOptionsModalProps> = ({
                         padding: 12,
                         marginRight: 16,
                     }}>
-                        <Camera size={24} color="#FF5A5F" />
+                        <Camera size={24} color="#eee" />
                     </View>
                     <View style={{ flex: 1 }}>
                         <Text style={{
@@ -104,9 +106,11 @@ export const PhotoOptionsModal: React.FC<PhotoOptionsModalProps> = ({
                     style={{
                         flexDirection: 'row',
                         alignItems: 'center',
-                        backgroundColor: 'rgba(26, 26, 46, 0.8)',
+                        // backgroundColor: 'rgba(26, 26, 46, 0.8)',
+                        backgroundColor: '#1A4063',
                         borderWidth: 1,
-                        borderColor: 'rgba(75,85,99,0.2)',
+                        // borderColor: 'rgba(75,85,99,0.2)',
+                        borderColor: '#16344F',
                         borderRadius: 16,
                         padding: 20,
                     }}
@@ -118,7 +122,7 @@ export const PhotoOptionsModal: React.FC<PhotoOptionsModalProps> = ({
                         padding: 12,
                         marginRight: 16,
                     }}>
-                        <Image size={24} color="#FF5A5F" />
+                        <Image size={24} color="#eee" />
                     </View>
                     <View style={{ flex: 1 }}>
                         <Text style={{

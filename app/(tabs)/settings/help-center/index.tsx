@@ -4,6 +4,7 @@ import { router } from 'expo-router';
 import { Search, ArrowLeft, ChevronDown } from 'lucide-react-native';
 import { CustomTabNavigation } from '@/components/settings/CustomTabNavigation';
 import { HELP_CATEGORIES, FAQ_QUESTIONS } from '@/lib/settings/constants';
+import { LinearGradient } from 'expo-linear-gradient';
 
 const { width } = Dimensions.get('window');
 
@@ -45,6 +46,12 @@ export default function HelpCenterScreen() {
     return (
         <SafeAreaView style={styles.container}>
             {/* Custom header */}
+            <LinearGradient
+                colors={['#1E4A72', '#000000']}  
+                start={{ x: 0.5, y: 0 }}
+                end={{ x: 0.5, y: 1 }}
+                style={{ flex: 1 }}
+            >
             <View style={styles.header}>
                 <TouchableOpacity
                     style={styles.backButton}
@@ -149,6 +156,7 @@ export default function HelpCenterScreen() {
                     </View>
                 </View>
             </ScrollView>
+            </LinearGradient>
         </SafeAreaView>
     );
 }
@@ -156,7 +164,7 @@ export default function HelpCenterScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#1a1a2e',
+        // backgroundColor: '#1a1a2e',
     },
     header: {
         flexDirection: 'row',

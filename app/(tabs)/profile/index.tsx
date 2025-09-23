@@ -106,7 +106,6 @@ export default function ProfileIndexPage() {
                         },
                     ]}
                 >
-                    {/* Logo Section */}
                     <View style={styles.logoContainer}>
                         <View style={styles.logoCircle}>
                             <Text style={styles.logoText}>A</Text>
@@ -114,9 +113,7 @@ export default function ProfileIndexPage() {
                     </View>
 
                     <View style={styles.iconContainer}>
-                        {/* SVG for the circle animation */}
                         <Svg width="100" height="100" style={{ position: 'absolute' }}>
-                            {/* Static background circle */}
                             <Circle
                                 cx="50"
                                 cy="50"
@@ -126,7 +123,6 @@ export default function ProfileIndexPage() {
                                 opacity="0.3"
                                 fill="none"
                             />
-                            {/* Animated dashed circle with alternating color */}
                             <AnimatedCircle
                                 cx="50"
                                 cy="50"

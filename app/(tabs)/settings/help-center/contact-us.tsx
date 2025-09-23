@@ -12,6 +12,7 @@ import {
 } from 'lucide-react-native';
 import { CustomTabNavigation } from '@/components/settings/CustomTabNavigation';
 import { CONTACT_METHODS } from '@/lib/settings/constants';
+import { LinearGradient } from 'expo-linear-gradient';
 
 export default function ContactUsScreen() {
     const [activeTab, setActiveTab] = useState('contact');
@@ -59,6 +60,12 @@ export default function ContactUsScreen() {
     return (
         <SafeAreaView style={styles.container}>
             {/* Custom header */}
+            <LinearGradient
+                colors={['#1E4A72', '#000000']}  
+                start={{ x: 0.5, y: 0 }}
+                end={{ x: 0.5, y: 1 }}
+                style={{ flex: 1 }}
+            >
             <View style={styles.header}>
                 <TouchableOpacity
                     style={styles.backButton}
@@ -99,6 +106,7 @@ export default function ContactUsScreen() {
                     ))}
                 </View>
             </ScrollView>
+            </LinearGradient>
         </SafeAreaView>
     );
 }

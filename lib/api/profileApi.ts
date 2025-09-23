@@ -1,11 +1,17 @@
 import apiClient, { uploadClient } from './client';
 import { User } from './types';
 
+export interface BioObject {
+    name: string;
+    category: string;
+    email: string;
+  }
+
 export interface ProfileUpdateData {
     firstName?: string;
     lastName?: string;
     username?: string;
-    bio?: string;
+    bio?: string | BioObject;
     gender?: string;
     dateOfBirth?: string;
     instagramHandle?: string;

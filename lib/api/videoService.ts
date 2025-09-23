@@ -52,6 +52,7 @@ const VideoService = {
         if (cursor) params.cursor = cursor;
 
         const response = await apiClient.get<ApiCursorPaginatedResponse<ApiVideo>>('/videos/feed/for-you', { params });
+        console.log("For You feed response:", response.data);
         return response.data;
     },
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import {View, Text, SafeAreaView, TouchableOpacity, Image, Alert, ScrollView} from 'react-native';
+import {View, Text,  TouchableOpacity, Image, Alert, ScrollView, StatusBar} from 'react-native';
 import { router } from 'expo-router';
 import { ChevronLeft, Mail, Lock } from 'lucide-react-native';
 import { Button } from '@/components/ui/Button';
@@ -15,6 +15,8 @@ import GoogleIcon from '@/assets/images/figma/google.png';
 import AppleIcon from '@/assets/images/figma/apple.png';
 // @ts-ignore
 import AmizeLogo from '@/assets/images/amize.png';
+import { LinearGradient } from 'expo-linear-gradient';
+import { SafeAreaView } from 'react-native-safe-area-context';
 const AMIZE_LOGO = Image.resolveAssetSource(AmizeLogo).uri;
 
 
@@ -69,6 +71,7 @@ export default function SignInScreen() {
                 if (result.success) {
                     setLoginSuccess(true);
                     console.log("SignIn: Login successful, setting redirect flag");
+                    router.replace('/(tabs)');
                 } else {
                     Alert.alert('Login Failed', result.message || 'Please check your credentials and try again.');
                 }
@@ -88,16 +91,25 @@ export default function SignInScreen() {
     };
 
     return (
-        <SafeAreaView style={{ flex: 1, backgroundColor: '#1a1a2e' }}>
-            <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
-                <View style={{ flex: 1, paddingHorizontal: 24 }}>
-                    {/* Back Button */}
-                    <TouchableOpacity
-                        style={{ padding: 8, marginLeft: -8, marginTop: 4, alignSelf: 'flex-start' }}
+        <SafeAreaView style={{ flex: 1, 
+        // backgroundColor: '#1a1a2e'
+         }}>
+            <StatusBar barStyle="light-content" backgroundColor={"#1E4A72"} />
+             <LinearGradient
+                colors={['#1E4A72', '#000000']}  
+                start={{ x: 0.5, y: 0 }}
+                end={{ x: 0.5, y: 1 }}
+                style={{ flex: 1 }}
+            >
+                    {/* <TouchableOpacity
+                        style={{ position:"absolute",padding: 8, marginLeft: 8, marginTop: 10, alignSelf: 'flex-start' }}
                         onPress={() => router.back()}
                     >
                         <ChevronLeft size={24} color="white" />
-                    </TouchableOpacity>
+                    </TouchableOpacity> */}
+            <ScrollView contentContainerStyle={{ flexGrow: 1, top:30 }}>
+                <View style={{ flex: 1, paddingHorizontal: 24 }}>
+                    {/* Back Button */}
 
                     {/* Content Container */}
                     <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: 40 }}>
@@ -315,6 +327,7 @@ export default function SignInScreen() {
                     </View>
                 </View>
             </ScrollView>
+            </LinearGradient>
         </SafeAreaView>
     );
 }

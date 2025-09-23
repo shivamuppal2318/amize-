@@ -21,6 +21,7 @@ const APPLE_ICON = Image.resolveAssetSource(AppleIcon).uri;
 
 // @ts-ignore
 import AmizeLogo from '@/assets/images/amize.png';
+import { LinearGradient } from 'expo-linear-gradient';
 const AMIZE_LOGO = Image.resolveAssetSource(AmizeLogo).uri;
 
 export default function SignUpScreen() {
@@ -99,7 +100,8 @@ export default function SignUpScreen() {
 
                         // Navigate to account setup
                         console.log('SignUp: Navigating to account setup');
-                        router.replace('/account-setup/interests');
+                        // router.replace('/account-setup/interests');
+                        router.replace('/account-setup/birthday');
                     } catch (navError) {
                         console.error('Navigation error:', navError);
                         Alert.alert('Error', 'Failed to navigate to account setup');
@@ -149,16 +151,24 @@ export default function SignUpScreen() {
     }
 
     return (
-        <SafeAreaView style={{ flex: 1, backgroundColor: '#1a1a2e' }}>
-            <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
-                <View style={{ flex: 1, paddingHorizontal: 24 }}>
-                    {/* Back Button */}
+        <SafeAreaView style={{ flex: 1, 
+        // backgroundColor: '#1a1a2e' 
+        }}>
+             <LinearGradient
+                colors={['#1E4A72', '#000000']}  
+                start={{ x: 0.5, y: 0 }}
+                end={{ x: 0.5, y: 1 }}
+                style={{ flex: 1 }}
+            >
                     <TouchableOpacity
-                        style={{ padding: 8, marginLeft: -8, marginTop: 16, alignSelf: 'flex-start' }}
+                        style={{ padding: 8, marginLeft: 8, marginTop: 0, alignSelf: 'flex-start' }}
                         onPress={() => router.back()}
                     >
                         <ChevronLeft size={24} color="white" />
                     </TouchableOpacity>
+            <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
+                <View style={{ flex: 1, paddingHorizontal: 24 }}>
+                    {/* Back Button */}
 
                     {/* Content Container */}
                     <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: 40 }}>
@@ -449,6 +459,7 @@ export default function SignUpScreen() {
                     </View>
                 </View>
             </ScrollView>
+            </LinearGradient>
         </SafeAreaView>
     );
 }

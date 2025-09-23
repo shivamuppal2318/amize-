@@ -10,24 +10,35 @@ import { useAuth } from '@/hooks/useAuth';
 import { useRegistration } from '@/context/RegistrationContext';
 
 export default function ProfileScreen() {
-    const { updateUser, user } = useAuth();
+    const { register,updateUser, user } = useAuth();
 
     const [fullName, setFullName] = useState(user?.fullName || '');
     const [email, setEmail] = useState(user?.email || '');
     const [phoneNumber, setPhoneNumber] = useState(user?.phoneNumber || '');
     const [address, setAddress] = useState('');
     const [profileImage, setProfileImage] = useState<string | null>(null);
-    const { updateRegistrationData } = useRegistration();
+    const { updateRegistrationData,getRegistrationRequest } = useRegistration();
+ 
 
-    const handleContinue = () => {
-        updateRegistrationData({
-            firstName: fullName.split(' ')[0] || '',
-            lastName: fullName.split(' ').slice(1).join(' ') || '',
-            bio: 'test bio', // Add a bio field if needed
-            profilePhotoUrl: profileImage || 'https://test.com/test.png' // Add profile photo logic if needed
-        });
-        router.push('/account-setup/pin');
-    };
+
+    const handleContinue = async () => {
+        const updatedData = {
+          ...getRegistrationRequest(),
+          firstName: fullName.split(" ")[0] || "",
+          lastName: fullName.split(" ")[1] || "",
+        };
+      
+        console.log("Updated registration data with full name:", fullName);
+        console.log("Data:-----------", updatedData);
+      
+        const result = await register(updatedData);
+        console.log("SuccessScreen: Registration API response:", result);
+      
+        router.replace({
+            pathname: "/account-setup/verify",
+            params: { updatedData: JSON.stringify(updatedData) },
+          });
+      };
 
     const handleSkip = () => {
         router.push('/account-setup/pin');

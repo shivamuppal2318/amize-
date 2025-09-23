@@ -7,6 +7,7 @@ import TabSelector from './TabSelector';
 import ConversationItem from './ConversationItem';
 import EmptyState from './EmptyState';
 import { ANIMATION, COLORS, UI } from './constants';
+import { LinearGradient } from 'expo-linear-gradient';
 
 interface ConversationsListProps {
     conversations: Conversation[];
@@ -116,6 +117,12 @@ const ConversationsList: React.FC<ConversationsListProps> = ({
 
     return (
         <View style={styles.container}>
+             <LinearGradient
+                colors={['#1E4A72', '#000000']}  
+                start={{ x: 0.5, y: 0 }}
+                end={{ x: 0.5, y: 1 }}
+                style={{ flex: 1 }}
+            >
             <MessagesHeader isConnected={isConnected} onRetry={onRetry} />
             <SearchBar searchText={searchText} setSearchText={setSearchText} />
             {/*<TabSelector activeTab={activeTab} setActiveTab={setActiveTab} />*/}
@@ -148,6 +155,7 @@ const ConversationsList: React.FC<ConversationsListProps> = ({
                 })}
                 removeClippedSubviews={true}
             />
+            </LinearGradient>
         </View>
     );
 };

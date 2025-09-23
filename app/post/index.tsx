@@ -32,6 +32,7 @@ import {
 import { useCameraPermissions } from '@/hooks/useCameraPermissions';
 import { usePostingStore } from '@/stores/postingStore';
 import { useToast } from '@/hooks/useToast';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const { width, height } = Dimensions.get('window');
 
@@ -52,7 +53,7 @@ export default function CameraScreen() {
     // Camera states
     const [cameraType, setCameraType] = useState('back');
     const [flashMode, setFlashMode] = useState('off');
-    const [mode, setMode] = useState('photo'); // 'photo' or 'video'
+    const [mode, setMode] = useState('photo'); 
     const [isRecording, setIsRecording] = useState(false);
     const [recordingTime, setRecordingTime] = useState(0);
     const [cameraReady, setCameraReady] = useState(false);
@@ -299,6 +300,7 @@ export default function CameraScreen() {
 
     // Main camera screen
     return (
+        <SafeAreaView style={{flex : 1}}>
         <View style={styles.container}>
             <StatusBar barStyle="light-content" />
             <Stack.Screen options={{ headerShown: false }} />
@@ -454,6 +456,7 @@ export default function CameraScreen() {
                 )}
             </View>
         </View>
+        </SafeAreaView>
     );
 }
 
@@ -469,7 +472,7 @@ const styles = StyleSheet.create({
     },
     cameraControlsContainer: {
         flex: 1,
-        paddingTop: Platform.OS === 'ios' ? 50 : 20,
+        paddingTop: Platform.OS === 'ios' ? 50 : 0,
     },
     text: {
         color: 'white',

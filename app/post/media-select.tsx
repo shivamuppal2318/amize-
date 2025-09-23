@@ -85,35 +85,36 @@ export default function MediaSelectScreen() {
     // Load gallery items from the device
     const loadGalleryItems = useCallback(async (refresh = false) => {
         if (loading || (!hasNextPage && !refresh)) return;
-
+    
         try {
-            setLoading(true);
+            setLoading(false);
+    
             const options: MediaLibrary.AssetsOptions = {
                 mediaType: [MediaLibrary.MediaType.photo, MediaLibrary.MediaType.video],
                 sortBy: [MediaLibrary.SortBy.creationTime],
                 first: 20,
             };
-
+    
             if (!refresh && endCursor) {
                 options.after = endCursor;
             }
-
+    
             const result = await MediaLibrary.getAssetsAsync(options);
-
-            // Process each asset to get a usable URI
+    
             const newAssetURIs = new Map<string, string>();
-
-            // On iOS, we need to ensure we have usable URIs
+    
             if (Platform.OS === 'ios') {
                 for (const asset of result.assets) {
                     try {
                         const assetInfo = await MediaLibrary.getAssetInfoAsync(asset.id);
-                        if (assetInfo && assetInfo.localUri) {
+                        if (assetInfo?.localUri) {
                             newAssetURIs.set(asset.id, assetInfo.localUri);
+                        } else {
+                            newAssetURIs.set(asset.id, asset.uri ?? '');
                         }
                     } catch (error) {
                         console.error(`Error getting asset info for ${asset.id}:`, error);
-                        newAssetURIs.set(asset.id, '');
+                        newAssetURIs.set(asset.id, asset.uri ?? '');
                     }
                 }
             } else {
@@ -121,25 +122,28 @@ export default function MediaSelectScreen() {
                     newAssetURIs.set(asset.id, asset.uri);
                 }
             }
-
-            // Update URIs map
+    
             setGalleryItemURIs(prev => {
+                let changed = false;
                 const updated = new Map(prev);
                 newAssetURIs.forEach((value, key) => {
-                    updated.set(key, value);
+                    if (!updated.has(key)) {
+                        updated.set(key, value);
+                        changed = true;
+                    }
                 });
-                return updated;
+                return changed ? updated : prev;
             });
-
+    
             if (refresh) {
                 setGalleryItems(result.assets);
             } else {
                 setGalleryItems(prev => [...prev, ...result.assets]);
             }
-
+    
             setEndCursor(result.endCursor);
             setHasNextPage(result.hasNextPage);
-
+    
             console.log(`Loaded ${result.assets.length} gallery items`);
         } catch (error) {
             console.error('Error loading gallery items:', error);
@@ -147,7 +151,7 @@ export default function MediaSelectScreen() {
         } finally {
             setLoading(false);
         }
-    }, [loading, hasNextPage, endCursor, toast]);
+    }, [loading, hasNextPage, endCursor, toast, setGalleryItems, setGalleryItemURIs, setHasNextPage, setEndCursor]);
 
     // Check for permissions on mount
     useEffect(() => {

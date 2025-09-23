@@ -53,12 +53,12 @@ export function usePostUpload({
             const filesToUpload = mediaItems.map((media, index) => {
                 const sanitizedUri = sanitizeMediaUri(media.uri);
                 return {
-                    uri: sanitizedUri,
-                    name: sanitizedUri.split('/').pop() || `media_${index}.${media.type === 'photo' ? 'jpg' : 'mp4'}`,
-                    type: media.type === 'photo' ? 'image/jpeg' : 'video/mp4',
-                    uploadType: media.type === 'photo' ? 'THUMBNAIL' : 'VIDEO' as 'THUMBNAIL' | 'VIDEO',
+                  uri: sanitizedUri,
+                  name: sanitizedUri.split('/').pop() || `media_${index}.${media.type === 'photo' ? 'jpg' : 'mp4'}`,
+                  type: media.type === 'photo' ? 'image/jpeg' : 'video/mp4',
+                  uploadType: (media.type === 'photo' ? 'THUMBNAIL' : 'VIDEO') as 'THUMBNAIL' | 'VIDEO',
                 };
-            });
+              });
 
             // Upload all media files
             console.log("Starting file upload with:", filesToUpload);
@@ -113,9 +113,10 @@ export function usePostUpload({
                         description: draftPost.location || undefined,
                         isPublic: draftPost.visibility === 'public'
                     };
-
                     const uploadIds = uploadResults.map(result => result.upload.id);
-                    await createMultiplePosts(uploadIds, postData);
+                    console.log("createMultiplePosts Before:", uploadIds, postData);
+                   const creteMultiPost__RESULT = await createMultiplePosts(uploadIds, postData);
+                    console.log("createMultiplePosts result:", creteMultiPost__RESULT);
 
                     toast.show('Success', `${uploadResults.length} posts created successfully!`);
                 }

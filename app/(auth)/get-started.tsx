@@ -12,6 +12,7 @@ import FacebookIcon from '@/assets/images/figma/facebook.png';
 import GoogleIcon from '@/assets/images/figma/google.png';
 // @ts-ignore
 import AppleIcon from '@/assets/images/figma/apple.png';
+import { LinearGradient } from 'expo-linear-gradient';
 
 const DEFAULT_IMAGE = Image.resolveAssetSource(DefaultImage).uri;
 const FACEBOOK_ICON = Image.resolveAssetSource(FacebookIcon).uri;
@@ -21,6 +22,7 @@ const APPLE_ICON = Image.resolveAssetSource(AppleIcon).uri;
 export default function GetStartedScreen() {
     const handleContinueWithEmail = () => {
         router.push('/(auth)/sign-up');
+        // router.push('/account-setup/verify');
     };
 
     const handleSignIn = () => {
@@ -43,16 +45,22 @@ export default function GetStartedScreen() {
     };
 
     return (
-        <SafeAreaView style={{ flex: 1, backgroundColor: '#1a1a2e' }}>
+        <SafeAreaView style={{ flex: 1,  }}>
+            <LinearGradient
+                            colors={['#1E4A72', '#000000']}  
+                            start={{ x: 0.5, y: 0 }}
+                            end={{ x: 0.5, y: 1 }}
+                            style={{ flex: 1 }}
+                        >
             <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
                 <View style={{ flex: 1, paddingHorizontal: 24 }}>
                     {/* Back Button */}
-                    <TouchableOpacity
+                    {/* <TouchableOpacity
                         style={{ padding: 8, marginLeft: -8, marginTop: 16, alignSelf: 'flex-start' }}
                         onPress={() => router.back()}
                     >
                         <ChevronLeft size={24} color="white" />
-                    </TouchableOpacity>
+                    </TouchableOpacity> */}
 
                     {/* Content Container */}
                     <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: 40 }}>
@@ -238,6 +246,7 @@ export default function GetStartedScreen() {
                     </View>
                 </View>
             </ScrollView>
+            </LinearGradient>
         </SafeAreaView>
     );
 }

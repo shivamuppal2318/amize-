@@ -39,6 +39,12 @@ export interface Interest {
     name: string;
 }
 
+interface BioObject {
+    name: string;
+    category: string;
+    email: string;
+  }
+
 export interface User {
     id: string;
     username: string;
@@ -46,7 +52,7 @@ export interface User {
     firstName?: string;
     lastName?: string;
     fullName?: string;
-    bio?: string;
+    bio?: string | BioObject | null;
     profilePhotoUrl?: string;
     phoneNumber?: string;
     address?: string;

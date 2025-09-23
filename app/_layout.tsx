@@ -55,97 +55,80 @@ function RootLayoutNavigation() {
     useSocketInitialization();
 
     useEffect(() => {
-        // Only proceed if not in loading state
-        if (loading) {
-            return;
+        if (loading) return;
+      
+        // ✅ protect verify route
+        if (segments.join('/').includes('account-setup/verify')) {
+          return;
         }
-
-        // Check what section we're currently in
+      
         const inAuthFlow = segments[0] === '(auth)';
         const inOnboardingFlow = segments[0] === 'onboarding';
         const inAccountSetupFlow = segments[0] === 'account-setup';
         const inTabsFlow = segments[0] === '(tabs)';
         const inPostFlow = segments[0] === 'post';
         const inLiveFlow = segments[0] === 'live';
-
-        // Don't redirect if in post or live flows - allow these screens to display
         const inSupportedFlows = inTabsFlow || inPostFlow || inLiveFlow;
-
+      
         console.log('[Layout] Navigation check:', {
-            isAuthenticated,
-            hasCompletedOnboarding,
-            isInSignupFlow,
-            currentSegment: segments[0],
-            inAuthFlow,
-            inOnboardingFlow,
-            inAccountSetupFlow,
-            inSupportedFlows
+          isAuthenticated,
+          hasCompletedOnboarding,
+          isInSignupFlow,
+          currentSegment: segments[0],
+          inAuthFlow,
+          inOnboardingFlow,
+          inAccountSetupFlow,
+          inSupportedFlows
         });
-
-        // RULE 0: If in signup flow and not in account setup, go there immediately
-        if (isInSignupFlow && !inAccountSetupFlow) {
-            // FIXED: Add a short delay to ensure all state changes are propagated
-            setTimeout(() => {
-                router.replace('/account-setup/interests');
-            }, 300);
-            return;
-        }
-
-        // RULE 1: Account setup has highest priority for normal flow - never interrupt it
-        if (inAccountSetupFlow) {
-            return;
-        }
-
-        // RULE 2: Handle onboarding flow - show onboarding for first-time users
+      
+        // RULE 0
+        if (isInSignupFlow && !inAccountSetupFlow) return;
+      
+        // RULE 1
+        if (inAccountSetupFlow) return;
+      
+        // RULE 2
         if (!hasCompletedOnboarding) {
-            if (!inOnboardingFlow) {
-                router.replace('/onboarding');
-            }
-            return;
+          if (!inOnboardingFlow) router.replace('/onboarding');
+          return;
         }
-
-        // RULE 3: UPDATED - Allow public access to main app
-        // Users can browse videos without authentication
+      
+        // RULE 3
         if (!isAuthenticated) {
-            // Only redirect to auth if they're trying to access restricted areas
-            if (inAuthFlow) {
-                // They're already in auth flow, let them stay
-                return;
-            }
-
-            // If they're in a supported flow (tabs, post, live), let them browse publicly
-            if (inSupportedFlows) {
-                return;
-            }
-
-            // If they're not in any specific flow, redirect to main tabs (public browsing)
-            if (!inOnboardingFlow && !inAccountSetupFlow) {
-                router.replace('/(tabs)');
-                return;
-            }
+          if (inAuthFlow) return;
+          if (inSupportedFlows) return;
+          if (!inOnboardingFlow && !inAccountSetupFlow) {
+            router.replace('/(tabs)');
+            return;
+          }
         }
-
-        // RULE 4: Authenticated users should not be in auth flow unless in signup
+      
+        // RULE 4
         if (isAuthenticated && inAuthFlow && !isInSignupFlow) {
-            router.replace('/(tabs)');
-            return;
+          router.replace('/(tabs)');
+          return;
         }
-
-        // RULE 5: Authenticated users with completed onboarding should be in tabs (if not in post/live flows)
+      
+        // RULE 5
         if (isAuthenticated && hasCompletedOnboarding && !inSupportedFlows && !isInSignupFlow) {
-            router.replace('/(tabs)');
-            return;
+          router.replace('/(tabs)');
+          return;
         }
-
-        // RULE 6: Redirect unverified users to verification page
-        if (isAuthenticated && hasCompletedOnboarding && !isInSignupFlow && user && !user.verified &&
-            !segments.join('/').includes('account-setup/verify')) {
-            router.replace('/account-setup/verify');
-            return;
+      
+        // RULE 6
+        if (
+          isAuthenticated &&
+          hasCompletedOnboarding &&
+          !isInSignupFlow &&
+          user &&
+          !user.verified &&
+          !segments.join('/').includes('account-setup/verify')
+        ) {
+          router.navigate('/account-setup/verify');
+          return;
         }
-
-    }, [loading, isAuthenticated, hasCompletedOnboarding, isInSignupFlow, router, segments, user]);
-
+      }, [loading, isAuthenticated, hasCompletedOnboarding, isInSignupFlow, router, segments, user]);
+      
     // Show loading indicator while checking auth state
     if (loading) {
         return (

@@ -28,6 +28,7 @@ import {
     SlideshowTransitionPicker,
     UploadProgress
 } from '@/components/posts/upload';
+import { LinearGradient } from 'expo-linear-gradient';
 
 export default function EditPostScreen() {
     const router = useRouter();
@@ -130,102 +131,109 @@ export default function EditPostScreen() {
 
     return (
         <SafeAreaView style={styles.container}>
-            <Stack.Screen options={{ headerShown: false }} />
-
-            {/* Header */}
-            <HeaderBar
-                title="New Post"
-                onBackPress={handleBack}
-                rightElement={
-                    <TouchableOpacity onPress={submitPost} disabled={isUploading || isSubmitting}>
-                        <Text style={[
-                            styles.postButton,
-                            (isUploading || isSubmitting) && styles.disabledText
-                        ]}>
-                            Post
-                        </Text>
-                    </TouchableOpacity>
-                }
-            />
-
-            <KeyboardAvoidingView
+            <LinearGradient
+                colors={['#1E4A72', '#000000']}  
+                start={{ x: 0.5, y: 0 }}
+                end={{ x: 0.5, y: 1 }}
                 style={{ flex: 1 }}
-                behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-                keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
             >
-                <ScrollView style={styles.scrollView}>
-                    {/* Media Preview */}
-                    <MediaPreview mediaItems={mediaItems} />
+                <Stack.Screen options={{ headerShown: false }} />
 
-                    {/* Slideshow Options (for multiple photos) */}
-                    <SlideshowOptions
-                        mediaItems={mediaItems}
-                        createAsSlideshow={createAsSlideshow}
-                        slideDuration={slideDuration}
-                        transition={transition}
-                        onToggleSlideshow={setCreateAsSlideshow}
-                        onDurationChange={setSlideDuration}
-                        onTransitionPress={() => setShowSlideshowOptions(true)}
-                    />
-
-                    {/* Caption Input */}
-                    <CaptionInput
-                        value={draftPost.caption}
-                        onChangeText={updateCaption}
-                    />
-
-                    {/* Post Settings */}
-                    <PostSettings
-                        draftPost={draftPost}
-                        locationText={locationText}
-                        onLocationUpdate={handleLocationUpdate}
-                        onVisibilityPress={() => setShowVisibilityOptions(true)}
-                        onToggleComments={toggleComments}
-                        onToggleDuets={toggleDuets}
-                        onToggleStitch={toggleStitch}
-                        onHashtagPress={handleHashtagPress}
-                        onMentionPress={handleMentionPress}
-                    />
-
-                    {/* Share to social platforms */}
-                    <SocialSharing
-                        crossPostSettings={draftPost.crossPost}
-                        onTogglePlatform={toggleCrossPost}
-                    />
-                </ScrollView>
-            </KeyboardAvoidingView>
-
-            {/* Bottom action button */}
-            <View style={styles.bottomBar}>
-                <ActionButton
-                    label={isSubmitting ? "Uploading..." : createAsSlideshow ? "Create Slideshow" : "Post Now"}
-                    onPress={submitPost}
-                    disabled={isUploading || isSubmitting || mediaItems.length === 0}
-                    loading={isSubmitting}
-                    fullWidth
+                {/* Header */}
+                <HeaderBar
+                    title="New Post"
+                    onBackPress={handleBack}
+                    rightElement={
+                        <TouchableOpacity onPress={submitPost} disabled={isUploading || isSubmitting}>
+                            <Text style={[
+                                styles.postButton,
+                                (isUploading || isSubmitting) && styles.disabledText
+                            ]}>
+                                Post
+                            </Text>
+                        </TouchableOpacity>
+                    }
                 />
-            </View>
 
-            {/* Modals */}
-            <VisibilityPicker
-                visible={showVisibilityOptions}
-                currentVisibility={draftPost.visibility}
-                onClose={() => setShowVisibilityOptions(false)}
-                onSelect={(visibility: string) => updateVisibility(visibility as "public" | "followers" | "private")}
-            />
+                <KeyboardAvoidingView
+                    style={{ flex: 1 }}
+                    behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                    keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
+                >
+                    <ScrollView style={styles.scrollView}>
+                        {/* Media Preview */}
+                        <MediaPreview mediaItems={mediaItems} />
 
-            <SlideshowTransitionPicker
-                visible={showSlideshowOptions}
-                currentTransition={transition}
-                onClose={() => setShowSlideshowOptions(false)}
-                onSelect={setTransition}
-            />
+                        {/* Slideshow Options (for multiple photos) */}
+                        <SlideshowOptions
+                            mediaItems={mediaItems}
+                            createAsSlideshow={createAsSlideshow}
+                            slideDuration={slideDuration}
+                            transition={transition}
+                            onToggleSlideshow={setCreateAsSlideshow}
+                            onDurationChange={setSlideDuration}
+                            onTransitionPress={() => setShowSlideshowOptions(true)}
+                        />
 
-            <UploadProgress
-                visible={isUploading}
-                progress={uploadProgress}
-                status={uploadProgress < 100 ? 'uploading' : 'processing'}
-            />
+                        {/* Caption Input */}
+                        <CaptionInput
+                            value={draftPost.caption}
+                            onChangeText={updateCaption}
+                        />
+
+                        {/* Post Settings */}
+                        <PostSettings
+                            draftPost={draftPost}
+                            locationText={locationText}
+                            onLocationUpdate={handleLocationUpdate}
+                            onVisibilityPress={() => setShowVisibilityOptions(true)}
+                            onToggleComments={toggleComments}
+                            onToggleDuets={toggleDuets}
+                            onToggleStitch={toggleStitch}
+                            onHashtagPress={handleHashtagPress}
+                            onMentionPress={handleMentionPress}
+                        />
+
+                        {/* Share to social platforms */}
+                        <SocialSharing
+                            crossPostSettings={draftPost.crossPost}
+                            onTogglePlatform={toggleCrossPost}
+                        />
+                    </ScrollView>
+                </KeyboardAvoidingView>
+
+                {/* Bottom action button */}
+                <View style={styles.bottomBar}>
+                    <ActionButton
+                        label={isSubmitting ? "Uploading..." : createAsSlideshow ? "Create Slideshow" : "Post Now"}
+                        onPress={submitPost}
+                        disabled={isUploading || isSubmitting || mediaItems.length === 0}
+                        loading={isSubmitting}
+                        fullWidth
+                    />
+                </View>
+
+                {/* Modals */}
+                <VisibilityPicker
+                    visible={showVisibilityOptions}
+                    currentVisibility={draftPost.visibility}
+                    onClose={() => setShowVisibilityOptions(false)}
+                    onSelect={(visibility: string) => updateVisibility(visibility as "public" | "followers" | "private")}
+                />
+
+                <SlideshowTransitionPicker
+                    visible={showSlideshowOptions}
+                    currentTransition={transition}
+                    onClose={() => setShowSlideshowOptions(false)}
+                    onSelect={setTransition}
+                />
+
+                <UploadProgress
+                    visible={isUploading}
+                    progress={uploadProgress}
+                    status={uploadProgress < 100 ? 'uploading' : 'processing'}
+                />
+            </LinearGradient>
         </SafeAreaView>
     );
 }
@@ -233,7 +241,7 @@ export default function EditPostScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#1a1a2e',
+        // backgroundColor: '#1a1a2e',
     },
     scrollView: {
         flex: 1,
@@ -247,6 +255,7 @@ const styles = StyleSheet.create({
         opacity: 0.5,
     },
     bottomBar: {
+        marginBottom:24,
         padding: 16,
         borderTopWidth: 1,
         borderTopColor: '#333',

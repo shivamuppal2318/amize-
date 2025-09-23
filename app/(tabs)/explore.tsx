@@ -26,6 +26,7 @@ import useExplore from '@/hooks/useExplore';
 import { useSearchHistory, SearchHistory, SearchSuggestions } from '@/components/explore/SearchHistory';
 import AdvancedFilters, { FilterOptions } from '@/components/explore/AdvancedFilters';
 import MasonryGrid from '@/components/explore/MasonryGrid';
+import { LinearGradient } from 'expo-linear-gradient';
 
 const { width } = Dimensions.get('window');
 
@@ -392,94 +393,101 @@ const ExploreScreen = () => {
 
     return (
         <KeyboardAvoidingView
-            style={[styles.container, { paddingTop: insets.top }]}
+            style={[styles.container, { paddingTop: 50,  }]}
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             keyboardVerticalOffset={-insets.bottom}
         >
+            <LinearGradient
+                colors={['#1E4A72', '#000000']}  
+                start={{ x: 0.5, y: 0 }}
+                end={{ x: 0.5, y: 1 }}
+                style={{ flex: 1 }}
+            >
             {/* Header */}
-            <View style={styles.header}>
-                <View style={styles.searchContainer}>
-                    <View style={styles.searchInputContainer}>
-                        <Search size={20} color="#999" style={styles.searchIcon} />
-                        <TextInput
-                            ref={searchInputRef}
-                            style={styles.searchInput}
-                            placeholder="Search for videos, users, sounds..."
-                            placeholderTextColor="#999"
-                            value={searchQuery}
-                            onChangeText={handleSearchInputChange}
-                            onFocus={handleSearchFocus}
-                            onBlur={handleSearchBlur}
-                            returnKeyType="search"
-                            onSubmitEditing={handleSearchSubmit}
-                        />
-                        {searchQuery.length > 0 && (
-                            <TouchableOpacity onPress={handleClearSearch} style={styles.clearButton}>
-                                <X size={16} color="#999" />
-                            </TouchableOpacity>
-                        )}
-                    </View>
-                    <TouchableOpacity style={styles.filterButton} onPress={() => setShowFilters(true)}>
-                        <Filter size={20} color="#FF5A5F" />
-                    </TouchableOpacity>
-                </View>
-
-                {/* Search state indicator */}
-                {isSearchActive && (
-                    <View style={styles.searchIndicator}>
-                        <Text style={styles.searchIndicatorText}>
-                            Searching for "{searchQuery}"
-                        </Text>
-                        <TouchableOpacity onPress={handleClearSearch}>
-                            <Text style={styles.clearSearchText}>Clear</Text>
+                <View style={styles.header}>
+                    <View style={styles.searchContainer}>
+                        <View style={styles.searchInputContainer}>
+                            <Search size={20} color="#999" style={styles.searchIcon} />
+                            <TextInput
+                                ref={searchInputRef}
+                                style={styles.searchInput}
+                                placeholder="Search for videos, users, sounds..."
+                                placeholderTextColor="#999"
+                                value={searchQuery}
+                                onChangeText={handleSearchInputChange}
+                                onFocus={handleSearchFocus}
+                                onBlur={handleSearchBlur}
+                                returnKeyType="search"
+                                onSubmitEditing={handleSearchSubmit}
+                            />
+                            {searchQuery.length > 0 && (
+                                <TouchableOpacity onPress={handleClearSearch} style={styles.clearButton}>
+                                    <X size={16} color="#999" />
+                                </TouchableOpacity>
+                            )}
+                        </View>
+                        <TouchableOpacity style={styles.filterButton} onPress={() => setShowFilters(true)}>
+                            <Filter size={20} color="#FF5A5F" />
                         </TouchableOpacity>
                     </View>
-                )}
-            </View>
 
-            {/* Search suggestions dropdown - with auto-hide */}
-            {renderSearchSuggestions}
+                    {/* Search state indicator */}
+                    {isSearchActive && (
+                        <View style={styles.searchIndicator}>
+                            <Text style={styles.searchIndicatorText}>
+                                Searching for "{searchQuery}"
+                            </Text>
+                            <TouchableOpacity onPress={handleClearSearch}>
+                                <Text style={styles.clearSearchText}>Clear</Text>
+                            </TouchableOpacity>
+                        </View>
+                    )}
+                </View>
 
-            {/* Main content */}
-            <View style={styles.content}>
-                {renderContent}
-            </View>
+                {/* Search suggestions dropdown - with auto-hide */}
+                {renderSearchSuggestions}
 
-            {/* Search History Modal - More compact */}
-            <Modal
-                visible={showSearchHistory}
-                animationType="fade"
-                transparent
-                onRequestClose={() => setShowSearchHistory(false)}
-            >
-                <TouchableOpacity
-                    style={styles.searchHistoryOverlay}
-                    activeOpacity={1}
-                    onPress={() => setShowSearchHistory(false)}
+                {/* Main content */}
+                <View style={styles.content}>
+                    {renderContent}
+                </View>
+
+                {/* Search History Modal - More compact */}
+                <Modal
+                    visible={showSearchHistory}
+                    animationType="fade"
+                    transparent
+                    onRequestClose={() => setShowSearchHistory(false)}
                 >
-                    <View style={[styles.searchHistoryModal, { top: insets.top + 70 }]}>
-                        <SearchHistory
-                            onSearchSelect={(query) => {
-                                handleSearchWithHistory(query, false);
-                            }}
-                            maxItems={5}  // Only show 5 recent searches
-                            showTrending={true}
-                            showClearOption={true}
-                            compact={true}  // Use compact mode
-                        />
-                    </View>
-                </TouchableOpacity>
-            </Modal>
+                    <TouchableOpacity
+                        style={styles.searchHistoryOverlay}
+                        activeOpacity={1}
+                        onPress={() => setShowSearchHistory(false)}
+                    >
+                        <View style={[styles.searchHistoryModal, { top: insets.top + 70 }]}>
+                            <SearchHistory
+                                onSearchSelect={(query) => {
+                                    handleSearchWithHistory(query, false);
+                                }}
+                                maxItems={5}  // Only show 5 recent searches
+                                showTrending={true}
+                                showClearOption={true}
+                                compact={true}  // Use compact mode
+                            />
+                        </View>
+                    </TouchableOpacity>
+                </Modal>
 
-            {/* Advanced Filters Modal */}
-            <AdvancedFilters
-                visible={showFilters}
-                onClose={() => setShowFilters(false)}
-                filters={filters}
-                onApplyFilters={handleApplyFilters}
-                categories={categories}
-                isAuthenticated={isAuthenticated}
-            />
+                {/* Advanced Filters Modal */}
+                <AdvancedFilters
+                    visible={showFilters}
+                    onClose={() => setShowFilters(false)}
+                    filters={filters}
+                    onApplyFilters={handleApplyFilters}
+                    categories={categories}
+                    isAuthenticated={isAuthenticated}
+                />
+            </LinearGradient>
         </KeyboardAvoidingView>
     );
 };
@@ -487,7 +495,8 @@ const ExploreScreen = () => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#1a1a2e',
+        // backgroundColor: '#1a1a2e',
+        backgroundColor: '#1E4A72',
     },
     header: {
         paddingHorizontal: 20,

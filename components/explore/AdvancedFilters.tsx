@@ -8,6 +8,7 @@ import {
     StyleSheet,
     Dimensions,
     Switch,
+    StatusBar,
 } from 'react-native';
 import {
     X,
@@ -24,6 +25,7 @@ import {
     RotateCcw,
 } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 
 const { width } = Dimensions.get('window');
 
@@ -248,166 +250,186 @@ const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
             presentationStyle="pageSheet"
             onRequestClose={handleClose}
         >
-            <View style={[styles.container, { paddingTop: insets.top }]}>
-                {/* Header */}
-                <View style={styles.header}>
-                    <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
-                        <X size={24} color="#333" />
-                    </TouchableOpacity>
-                    <Text style={styles.headerTitle}>Advanced Filters</Text>
-                    <TouchableOpacity onPress={handleReset} style={styles.resetButton}>
-                        <RotateCcw size={20} color="#FF5A5F" />
-                        <Text style={styles.resetButtonText}>Reset</Text>
-                    </TouchableOpacity>
-                </View>
+            <StatusBar barStyle="light-content" backgroundColor={"#1E4A72"} />
+            <LinearGradient
+                colors={['#1E4A72', '#000000']}  
+                start={{ x: 0.5, y: 0 }}
+                end={{ x: 0.5, y: 1 }}
+                style={{ flex: 1 }}
+            >
+                <View style={[styles.container, { paddingTop: insets.top }]}>
+                    {/* Header */}
+                    <View style={styles.header}>
+                        <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
+                            <X size={24} 
+                            // color="#333" 
+                            color={"#fff"}
+                            />
+                        </TouchableOpacity>
+                        <Text style={styles.headerTitle}>Advanced Filters</Text>
+                        <TouchableOpacity onPress={handleReset} style={styles.resetButton}>
+                            <RotateCcw size={20} color="#FF5A5F" />
+                            <Text style={styles.resetButtonText}>Reset</Text>
+                        </TouchableOpacity>
+                    </View>
 
-                <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-                    {/* Content Type */}
-                    {renderSection(
-                        'Content Type',
-                        renderOptionGroup(
-                            contentTypes,
-                            tempFilters.contentType,
-                            (value) => updateFilter('contentType', value)
-                        )
-                    )}
+                    <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+                        {/* Content Type */}
+                        {renderSection(
+                            'Content Type',
+                            renderOptionGroup(
+                                contentTypes,
+                                tempFilters.contentType,
+                                (value) => updateFilter('contentType', value)
+                            )
+                        )}
 
-                    {/* Sort By */}
-                    {renderSection(
-                        'Sort By',
-                        renderOptionGroup(
-                            sortOptions,
-                            tempFilters.sortBy,
-                            (value) => updateFilter('sortBy', value)
-                        )
-                    )}
+                        {/* Sort By */}
+                        {renderSection(
+                            'Sort By',
+                            renderOptionGroup(
+                                sortOptions,
+                                tempFilters.sortBy,
+                                (value) => updateFilter('sortBy', value)
+                            )
+                        )}
 
-                    {/* Time Range */}
-                    {renderSection(
-                        'Time Range',
-                        renderOptionGroup(
-                            timeRanges,
-                            tempFilters.timeRange,
-                            (value) => updateFilter('timeRange', value)
-                        )
-                    )}
+                        {/* Time Range */}
+                        {renderSection(
+                            'Time Range',
+                            renderOptionGroup(
+                                timeRanges,
+                                tempFilters.timeRange,
+                                (value) => updateFilter('timeRange', value)
+                            )
+                        )}
 
-                    {/* Categories */}
-                    {categories.length > 0 && renderSection(
-                        'Categories',
-                        renderCategories()
-                    )}
+                        {/* Categories */}
+                        {categories.length > 0 && renderSection(
+                            'Categories',
+                            renderCategories()
+                        )}
 
-                    {/* Video-specific filters */}
-                    {(tempFilters.contentType === 'all' || tempFilters.contentType === 'videos') && (
-                        <>
-                            {renderSection(
-                                'Video Duration',
-                                renderOptionGroup(
-                                    durations,
-                                    tempFilters.duration,
-                                    (value) => updateFilter('duration', value)
-                                )
-                            )}
+                        {/* Video-specific filters */}
+                        {(tempFilters.contentType === 'all' || tempFilters.contentType === 'videos') && (
+                            <>
+                                {renderSection(
+                                    'Video Duration',
+                                    renderOptionGroup(
+                                        durations,
+                                        tempFilters.duration,
+                                        (value) => updateFilter('duration', value)
+                                    )
+                                )}
 
-                            {renderSection(
-                                'Minimum Views',
-                                renderOptionGroup(
-                                    viewsThresholds,
-                                    tempFilters.minViews,
-                                    (value) => updateFilter('minViews', value)
-                                )
-                            )}
+                                {renderSection(
+                                    'Minimum Views',
+                                    renderOptionGroup(
+                                        viewsThresholds,
+                                        tempFilters.minViews,
+                                        (value) => updateFilter('minViews', value)
+                                    )
+                                )}
 
-                            {renderSection(
-                                'Minimum Likes',
-                                renderOptionGroup(
-                                    likesThresholds,
-                                    tempFilters.minLikes,
-                                    (value) => updateFilter('minLikes', value)
-                                )
-                            )}
-                        </>
-                    )}
+                                {renderSection(
+                                    'Minimum Likes',
+                                    renderOptionGroup(
+                                        likesThresholds,
+                                        tempFilters.minLikes,
+                                        (value) => updateFilter('minLikes', value)
+                                    )
+                                )}
+                            </>
+                        )}
 
-                    {/* User-specific filters */}
-                    {(tempFilters.contentType === 'all' || tempFilters.contentType === 'users') && (
-                        <>
-                            {renderSection(
-                                'Verification Status',
-                                renderOptionGroup(
-                                    verificationOptions,
-                                    tempFilters.verified,
-                                    (value) => updateFilter('verified', value)
-                                )
-                            )}
+                        {/* User-specific filters */}
+                        {(tempFilters.contentType === 'all' || tempFilters.contentType === 'users') && (
+                            <>
+                                {renderSection(
+                                    'Verification Status',
+                                    renderOptionGroup(
+                                        verificationOptions,
+                                        tempFilters.verified,
+                                        (value) => updateFilter('verified', value)
+                                    )
+                                )}
 
-                            {renderSection(
-                                'Minimum Followers',
-                                renderOptionGroup(
-                                    followersThresholds,
-                                    tempFilters.minFollowers,
-                                    (value) => updateFilter('minFollowers', value)
-                                )
-                            )}
-                        </>
-                    )}
+                                {renderSection(
+                                    'Minimum Followers',
+                                    renderOptionGroup(
+                                        followersThresholds,
+                                        tempFilters.minFollowers,
+                                        (value) => updateFilter('minFollowers', value)
+                                    )
+                                )}
+                            </>
+                        )}
 
-                    {/* Sound-specific filters */}
-                    {(tempFilters.contentType === 'all' || tempFilters.contentType === 'sounds') && (
-                        <View style={styles.section}>
-                            <Text style={styles.sectionTitle}>Sound Options</Text>
-                            <View style={styles.switchOption}>
-                                <View style={styles.switchOptionLeft}>
-                                    <Music size={16} color="#1DB954" />
-                                    <Text style={styles.switchOptionText}>Original Sounds Only</Text>
+                        {/* Sound-specific filters */}
+                        {(tempFilters.contentType === 'all' || tempFilters.contentType === 'sounds') && (
+                            <View style={styles.section}>
+                                <Text style={styles.sectionTitle}>Sound Options</Text>
+                                <View style={styles.switchOption}>
+                                    <View style={styles.switchOptionLeft}>
+                                        <Music size={16} color="#1DB954" />
+                                        <Text style={styles.switchOptionText}>Original Sounds Only</Text>
+                                    </View>
+                                    <Switch
+                                        value={tempFilters.originalSounds}
+                                        onValueChange={(value) => updateFilter('originalSounds', value)}
+                                        trackColor={{ false: '#767577', true: '#FF5A5F' }}
+                                        thumbColor={tempFilters.originalSounds ? '#fff' : '#f4f3f4'}
+                                    />
                                 </View>
-                                <Switch
-                                    value={tempFilters.originalSounds}
-                                    onValueChange={(value) => updateFilter('originalSounds', value)}
-                                    trackColor={{ false: '#767577', true: '#FF5A5F' }}
-                                    thumbColor={tempFilters.originalSounds ? '#fff' : '#f4f3f4'}
-                                />
                             </View>
-                        </View>
-                    )}
+                        )}
 
-                    {/* Privacy options for authenticated users */}
-                    {isAuthenticated && (
-                        <View style={styles.section}>
-                            <Text style={styles.sectionTitle}>Privacy</Text>
-                            <View style={styles.switchOption}>
-                                <View style={styles.switchOptionLeft}>
-                                    <Eye size={16} color="#666" />
-                                    <Text style={styles.switchOptionText}>Include Private Content</Text>
-                                    <Text style={styles.switchOptionSubtext}>
-                                        From creators you follow
-                                    </Text>
+                        {/* Privacy options for authenticated users */}
+                        {isAuthenticated && (
+                            <View style={styles.section}>
+                                <Text style={styles.sectionTitle}>Privacy</Text>
+                                <View style={styles.switchOption}>
+                                    <View style={styles.switchOptionLeft}>
+                                        <Eye size={16} color="#666" />
+                                        <View>
+                                            <Text style={styles.switchOptionText}>Include Private Content</Text>
+                                            <Text style={styles.switchOptionSubtext}>
+                                                From creators you follow
+                                            </Text>
+                                        </View>
+                                    </View>
+                                    <Switch
+                                        value={tempFilters.includePrivate}
+                                        onValueChange={(value) => updateFilter('includePrivate', value)}
+                                        trackColor={{ false: '#767577', true: '#FF5A5F' }}
+                                        thumbColor={tempFilters.includePrivate ? '#fff' : '#f4f3f4'}
+                                    />
                                 </View>
-                                <Switch
-                                    value={tempFilters.includePrivate}
-                                    onValueChange={(value) => updateFilter('includePrivate', value)}
-                                    trackColor={{ false: '#767577', true: '#FF5A5F' }}
-                                    thumbColor={tempFilters.includePrivate ? '#fff' : '#f4f3f4'}
-                                />
                             </View>
-                        </View>
-                    )}
+                        )}
 
-                    {/* Bottom spacing */}
-                    <View style={{ height: 100 }} />
-                </ScrollView>
+                        {/* Bottom spacing */}
+                        <View style={{ height: 100 }} />
+                    </ScrollView>
 
-                {/* Footer */}
-                <View style={styles.footer}>
-                    <TouchableOpacity
-                        style={styles.applyButton}
-                        onPress={handleApply}
-                    >
-                        <Text style={styles.applyButtonText}>Apply Filters</Text>
-                    </TouchableOpacity>
+                    {/* Footer */}
+                    <View style={styles.footer}>
+                        {/* <LinearGradient
+                    colors={['#1E4A72', '#000000']}
+                    start={{ x: 0, y: 0.5 }}   // left center
+                    end={{ x: 1, y: 0.5 }}     // right center
+                    style={{ flex: 1 }}
+                  > */}
+                        <TouchableOpacity
+                            style={styles.applyButton}
+                            onPress={handleApply}
+                        >
+                            <Text style={styles.applyButtonText}>Apply Filters</Text>
+                        </TouchableOpacity>
+                            {/* </LinearGradient> */}
+                    </View>
                 </View>
-            </View>
+            </LinearGradient>
         </Modal>
     );
 };
@@ -415,16 +437,19 @@ const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#1a1a2e',
+        // backgroundColor: '#1a1a2e',
     },
     header: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
         paddingHorizontal: 20,
-        paddingVertical: 16,
+        // paddingVertical: 16,
+        paddingBottom:16,
         borderBottomWidth: 1,
         borderBottomColor: 'rgba(255, 255, 255, 0.1)',
+        // backgroundColor:"#1E4A72",
+        marginTop:10
     },
     closeButton: {
         padding: 4,
@@ -544,7 +569,7 @@ const styles = StyleSheet.create({
         color: '#999',
         fontSize: 12,
         fontFamily: 'Figtree',
-        marginLeft: 4,
+        // marginLeft: 4,
     },
     footer: {
         paddingHorizontal: 20,

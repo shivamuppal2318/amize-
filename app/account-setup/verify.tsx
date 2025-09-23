@@ -11,10 +11,29 @@ import { useRegistration } from '@/context/RegistrationContext';
 import AmizeLogo from '@/assets/images/amize.png';
 const AMIZE_LOGO = Image.resolveAssetSource(AmizeLogo).uri;
 
+type RegistrationData = {
+    firstName: string;
+    lastName: string;
+    username: string;
+    email: string;
+    password: string;
+    confirmPassword: string;
+    bio?: string;
+    gender?: string;
+    dateOfBirth?: string;
+    interests?: string[];
+    profilePhotoUrl?: string;
+    deviceId?: string;
+    deviceInfo?: any;
+  };
+
 export default function VerifyScreen() {
-    const { email } = useLocalSearchParams<{ email: string }>();
+    const { updatedData } = useLocalSearchParams<{ updatedData?: string }>();
+    const parsed_User_Data = updatedData ? (JSON.parse(updatedData) as RegistrationData) : null;
+
+
     const { verifyCode, resendVerificationCode, user } = useAuth();
-    const { registrationData, updateRegistrationData } = useRegistration();
+    const { registrationData, updateRegistrationData,getRegistrationRequest } = useRegistration();
 
     const [code, setCode] = useState<string>('');
     const [verifying, setVerifying] = useState<boolean>(false);
@@ -23,7 +42,9 @@ export default function VerifyScreen() {
     const [inputValues, setInputValues] = useState<string[]>(['', '', '', '', '', '']);
     const inputRefs = useRef<(TextInput | null)[]>([]);
 
-    const userEmail = email || registrationData.email || user?.email;
+    const userEmail = parsed_User_Data?.email || registrationData.email || user?.email;
+    // const userEmail = "abhisheks@pearlorganisation.com";
+    // const userEmail = "pranjal@pearlorganisation.com";
 
     // Set up resend timer
     useEffect(() => {
@@ -86,10 +107,14 @@ export default function VerifyScreen() {
             return;
         }
 
-        setVerifying(true);
+        // setVerifying(true);
 
         try {
+            console.log('Verifying code for email:', userEmail, 'Code:', code);
+            
             const result = await verifyCode(userEmail ? userEmail : '', code);
+            console.log('Verification result:', result);
+            
 
             if (result.success) {
                 // Navigate to main app after successful verification
@@ -97,15 +122,15 @@ export default function VerifyScreen() {
             } else {
                 Alert.alert('Verification Failed', result.message || 'Invalid verification code. Please try again.');
                 // Clear inputs on failed verification
-                setInputValues(['', '', '', '', '', '']);
-                setCode('');
-                inputRefs.current[0]?.focus();
+                // setInputValues(['', '', '', '', '', '']);
+                // setCode('');
+                // inputRefs.current[0]?.focus();
             }
         } catch (error) {
             Alert.alert('Error', 'An unexpected error occurred. Please try again.');
             console.log('Verification error:', error);
         } finally {
-            setVerifying(false);
+            // setVerifying(false);
         }
     };
 
@@ -161,7 +186,7 @@ export default function VerifyScreen() {
                         <View style={styles.header}>
                             <TouchableOpacity
                                 style={styles.backButton}
-                                onPress={() => router.back()}
+                                onPress={() => router.replace("/(auth)/get-started")}
                             >
                                 <ChevronLeft size={24} color="white" />
                             </TouchableOpacity>

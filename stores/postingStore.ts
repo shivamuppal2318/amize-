@@ -64,6 +64,7 @@ interface PostingState {
 
 // Default draft post settings
 const DEFAULT_POST: Post = {
+    soundId: undefined,
     caption: '',
     visibility: 'public',
     allowComments: true,

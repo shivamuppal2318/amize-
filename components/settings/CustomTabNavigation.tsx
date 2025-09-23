@@ -61,7 +61,7 @@ export function CustomTabNavigation({ tabs, activeTab, onTabChange }: CustomTabN
 const styles = StyleSheet.create({
     container: {
         width: '100%',
-        backgroundColor: '#1a1a2e',
+        // backgroundColor: '#1a1a2e',
     },
     tabsContainer: {
         flexDirection: 'row',

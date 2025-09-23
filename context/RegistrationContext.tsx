@@ -96,13 +96,13 @@ export const RegistrationProvider: React.FC<{children: React.ReactNode}> = ({ ch
             confirmPassword: registrationData.confirmPassword || '',
             firstName: registrationData.firstName || '',
             lastName: registrationData.lastName || '',
-            bio: registrationData.bio || '',
-            gender: registrationData.gender || '',
+            // bio: registrationData.bio || '',
+            // gender: registrationData.gender || '',
             dateOfBirth: registrationData.dateOfBirth || '',
-            interests: registrationData.interests || [],
-            profilePhotoUrl: registrationData.profilePhotoUrl || '',
-            deviceId: '', // This will be added later by the auth service
-            deviceInfo: undefined, // This will be added later by the auth service
+            // interests: registrationData.interests || [],
+            // profilePhotoUrl: registrationData.profilePhotoUrl || '',
+            // deviceId: '', // This will be added later by the auth service
+            // deviceInfo: undefined, // This will be added later by the auth service
         };
     };
 

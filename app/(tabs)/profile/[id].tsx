@@ -11,10 +11,12 @@ import {
     Dimensions,
     Animated,
     Easing,
+    SafeAreaView,
 } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { useAuth } from '@/hooks/useAuth';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import * as SecureStore from 'expo-secure-store';
+// import { SafeAreaView } from 'react-native-safe-area-context';
 import {
     Lock,
     AlertTriangle,
@@ -41,17 +43,24 @@ import {
 } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import apiClient from '@/lib/api/client';
+import { getTokens } from '@/lib/auth/tokens';
 
 const { width } = Dimensions.get('window');
 const ITEM_WIDTH = (width - 18) / 3;
 
 type TabType = 'videos' | 'likes' | 'saved' | 'private';
 
+interface BioObject {
+    name: string;
+    category: string;
+    email: string;
+  }
+
 interface User {
     id: string;
     username: string;
     fullName?: string;
-    bio?: string;
+    bio?: string | BioObject;
     profilePhotoUrl?: string;
     creatorVerified: boolean;
     creatorCategory?: string;
@@ -117,9 +126,10 @@ export default function ProfilePage() {
             setError(null);
 
             const response = await apiClient.get(`/users/${id}`);
-
+            
             if (response.data.success) {
-                setUser(response.data.user);
+                console.log("profile data:::::::::",response?.data?.user);
+                setUser(response.data?.user);
                 setIsOwnProfile(response.data.isOwnProfile);
                 setIsFollowing(response.data.isFollowing);
             } else {
@@ -144,12 +154,12 @@ export default function ProfilePage() {
                 case 'likes':
                     await fetchUserLikes();
                     break;
-                case 'saved':
-                    await fetchSavedVideos();
-                    break;
-                case 'private':
-                    await fetchPrivateVideos();
-                    break;
+                // case 'saved':
+                //     await fetchSavedVideos();
+                //     break;
+                // case 'private':
+                //     await fetchPrivateVideos();
+                //     break;
             }
         } catch (err) {
             console.error(`Error fetching ${tab}:`, err);
@@ -159,7 +169,8 @@ export default function ProfilePage() {
     }, [id]);
 
     const animateTabChange = useCallback(() => {
-        const tabIndex = ['videos', 'likes', 'saved', 'private'].indexOf(activeTab);
+        const tabIndex = ['videos', 'likes'].indexOf(activeTab);
+        // const tabIndex = ['videos', 'likes', 'saved', 'private'].indexOf(activeTab);
         const visibleTabs = isOwnProfile ? 4 : 2;
         const indicatorPosition = (width / visibleTabs) * tabIndex;
 
@@ -242,8 +253,22 @@ export default function ProfilePage() {
     }, [id]);
 
     const fetchUserLikes = useCallback(async () => {
-        setLikes([]);
-    }, []);
+            try {
+                const token = await getTokens()
+                console.log(token);
+                const response = await apiClient.get(`/users/${id}/like`, {
+                    headers: {
+                        Authorization: `Bearer ${token?.accessToken}`,
+                    },
+                });
+                
+                if (response.data.success) {
+                    setLikes(response.data.videos);
+                }
+            } catch (err) {
+                console.error('Error fetching videos:', err);
+            }
+    }, [activeTab]);
 
     const fetchSavedVideos = useCallback(async () => {
         setSavedVideos([]);
@@ -274,8 +299,8 @@ export default function ProfilePage() {
                 _count: {
                     ...user._count,
                     followers: newFollowState
-                        ? user._count.followers + 1
-                        : Math.max(0, user._count.followers - 1),
+                        ? user?._count?.followers + 1
+                        : Math.max(0, user?._count?.followers - 1),
                 },
             });
         }
@@ -320,12 +345,12 @@ export default function ProfilePage() {
 
     const formatNumber = (num: number) => {
         if (num >= 1000000) {
-            return (num / 1000000).toFixed(1) + 'M';
+            return (num / 1000000)?.toFixed(1) + 'M';
         }
         if (num >= 1000) {
-            return (num / 1000).toFixed(1) + 'K';
+            return (num / 1000)?.toFixed(1) + 'K';
         }
-        return num.toString();
+        return num?.toString();
     };
 
     const formatDuration = (seconds: number) => {
@@ -349,10 +374,10 @@ export default function ProfilePage() {
                 return videos;
             case 'likes':
                 return likes;
-            case 'saved':
-                return savedVideos;
-            case 'private':
-                return privateVideos;
+            // case 'saved':
+            //     return savedVideos;
+            // case 'private':
+            //     return privateVideos;
             default:
                 return [];
         }
@@ -439,6 +464,12 @@ export default function ProfilePage() {
                     activeOpacity={0.9}
                     style={styles.videoTouchable}
                 >
+                    <LinearGradient
+                    colors={['#1E4A72', '#000000']}  
+                    start={{ x: 0.5, y: 0 }}
+                    end={{ x: 0.5, y: 1 }}
+                    style={{ flex: 1 }}
+                >
                     <Image
                         source={{ uri: item.thumbnailUrl || 'https://via.placeholder.com/300x400' }}
                         style={styles.videoThumbnail}
@@ -455,7 +486,7 @@ export default function ProfilePage() {
                             <View style={styles.videoStat}>
                                 <Eye size={12} color="white" />
                                 <Text style={styles.videoStatText}>
-                                    {formatNumber(item._count.views)}
+                                    {formatNumber(item._count?.views)}
                                 </Text>
                             </View>
                         </View>
@@ -468,12 +499,16 @@ export default function ProfilePage() {
                     </View>
 
                     <View style={styles.playButtonOverlay}>
-                        <LinearGradient
+                        {/* <LinearGradient
                             colors={['#FF5A5F', '#FF5A5F']}
                             style={styles.playButton}
-                        >
+                        > */}
+                        <View style={[styles.playButton, {
+                            backgroundColor:"#1E4A72"
+                        }]}>
                             <Play size={16} color="white" fill="white" />
-                        </LinearGradient>
+                        </View>
+                        {/* </LinearGradient> */}
 
                         <Animated.View
                             style={[
@@ -494,6 +529,7 @@ export default function ProfilePage() {
                     <View style={styles.navigationHint}>
                         <Text style={styles.navigationHintText}>Tap to watch</Text>
                     </View>
+            </LinearGradient>
                 </TouchableOpacity>
             </Animated.View>
         );
@@ -505,9 +541,9 @@ export default function ProfilePage() {
 
     const renderTabButton = (tab: TabType, icon: React.ReactNode, label: string) => {
         const isActive = activeTab === tab;
-        const isVisible = (tab !== 'private' && tab !== 'saved') || isOwnProfile;
+        // const isVisible = (tab !== 'private' && tab !== 'saved') || isOwnProfile;
 
-        if (!isVisible) return null;
+        // if (!isVisible) return null;
 
         return (
             <TouchableOpacity
@@ -542,29 +578,29 @@ export default function ProfilePage() {
 
         switch (activeTab) {
             case 'videos':
-                message = isOwnProfile ? 'Share your first video' : `No videos yet`;
+                message = isOwnProfile ? 'Share your first Post' : `No Posts yet`;
                 description = isOwnProfile
                     ? 'Start creating and sharing your amazing content with the world'
-                    : `${user?.username} hasn't posted any videos yet. Check back later!`;
+                    : `${user?.username} hasn't posted any posts yet. Check back later!`;
                 icon = <Video size={64} color="#6B7280" />;
                 break;
             case 'likes':
-                message = 'No liked videos';
+                message = 'No liked posts';
                 description = isOwnProfile
                     ? 'Videos you like will appear here'
                     : `${user?.username}'s liked videos will appear here`;
                 icon = <Heart size={64} color="#6B7280" />;
                 break;
-            case 'saved':
-                message = 'No saved videos';
-                description = 'Videos you save will appear here';
-                icon = <BookmarkPlus size={64} color="#6B7280" />;
-                break;
-            case 'private':
-                message = 'No private videos';
-                description = 'Your private videos will appear here';
-                icon = <Lock size={64} color="#6B7280" />;
-                break;
+            // case 'saved':
+            //     message = 'No saved videos';
+            //     description = 'Videos you save will appear here';
+            //     icon = <BookmarkPlus size={64} color="#6B7280" />;
+            //     break;
+            // case 'private':
+            //     message = 'No private videos';
+            //     description = 'Your private videos will appear here';
+            //     icon = <Lock size={64} color="#6B7280" />;
+            //     break;
         }
 
         return (
@@ -582,7 +618,7 @@ export default function ProfilePage() {
                             style={styles.createVideoGradient}
                         >
                             <Play size={20} color="white" />
-                            <Text style={styles.createVideoText}>Create Video</Text>
+                            <Text style={styles.createVideoText}>Create Post</Text>
                         </LinearGradient>
                     </TouchableOpacity>
                 )}
@@ -603,12 +639,19 @@ export default function ProfilePage() {
     if (loading) {
         return (
             <SafeAreaView style={styles.loadingContainer}>
-                <View style={styles.loadingContent}>
-                    <Animated.View style={[styles.loadingSpinner, { transform: [{ scale: scaleAnim }] }]}>
-                        <ActivityIndicator size="large" color="#FF5A5F" />
-                    </Animated.View>
-                    <Text style={styles.loadingText}>Loading profile...</Text>
-                </View>
+                 <LinearGradient
+                    colors={['#1E4A72', '#000000']}  
+                    start={{ x: 0.5, y: 0 }}
+                    end={{ x: 0.5, y: 1 }}
+                    style={{ flex: 1 }}
+                >
+                    <View style={styles.loadingContent}>
+                        <Animated.View style={[styles.loadingSpinner, { transform: [{ scale: scaleAnim }] }]}>
+                            <ActivityIndicator size="large" color="#FF5A5F" />
+                        </Animated.View>
+                        <Text style={styles.loadingText}>Loading profile...</Text>
+                    </View>
+                </LinearGradient>
             </SafeAreaView>
         );
     }
@@ -640,236 +683,235 @@ export default function ProfilePage() {
 
     return (
         <SafeAreaView style={styles.container}>
-            {/* Custom Header */}
-            <View style={styles.header}>
-                <TouchableOpacity onPress={handleBack} style={styles.headerButton}>
-                    <ChevronLeft size={24} color="white" />
-                </TouchableOpacity>
-
-                <Animated.Text
-                    style={[
-                        styles.headerTitle,
-                        {
-                            opacity: fadeAnim,
-                            transform: [{ translateY: slideAnim }]
-                        }
-                    ]}
-                >
-                    @{user.username}
-                </Animated.Text>
-
-                {!isOwnProfile ? (
-                    <TouchableOpacity onPress={handleMoreOptions} style={styles.headerButton}>
-                        <MoreHorizontal size={24} color="white" />
+            <LinearGradient
+                colors={['#1E4A72', '#000000']}  
+                start={{ x: 0.5, y: 0 }}
+                end={{ x: 0.5, y: 1 }}
+                style={{ flex: 1 }}
+            >
+                
+                <View style={styles.header}>
+                    <TouchableOpacity onPress={handleBack} style={styles.headerButton}>
+                        <ChevronLeft size={24} color="white" />
                     </TouchableOpacity>
-                ) : (
-                    <TouchableOpacity onPress={handleEditProfile} style={styles.headerButton}>
-                        <Settings size={24} color="white" />
-                    </TouchableOpacity>
-                )}
-            </View>
 
-            <FlatList
-                data={activeData}
-                renderItem={renderVideoItem}
-                keyExtractor={(item, index) => `${item.id}-${index}`}
-                numColumns={3}
-                contentContainerStyle={styles.contentContainer}
-                refreshControl={
-                    <RefreshControl
-                        refreshing={refreshing}
-                        onRefresh={handleRefresh}
-                        tintColor="#FF5A5F"
-                        colors={['#FF5A5F']}
-                    />
-                }
-                ListHeaderComponent={
-                    <Animated.View
+                    <Animated.Text
                         style={[
-                            styles.profileContainer,
+                            styles.headerTitle,
                             {
                                 opacity: fadeAnim,
-                                transform: [
-                                    { translateY: slideAnim },
-                                    { scale: scaleAnim }
-                                ]
+                                transform: [{ translateY: slideAnim }]
                             }
                         ]}
                     >
-                        {/* Profile Section */}
-                        <View style={styles.profileSection}>
-                            {/* Profile Image with Animation */}
-                            <Animated.View
-                                style={[
-                                    styles.profileImageContainer,
-                                    { transform: [{ scale: profileImageScale }] }
-                                ]}
-                            >
-                                <Image
-                                    source={{
-                                        uri: user.profilePhotoUrl || 'https://via.placeholder.com/150'
-                                    }}
-                                    style={styles.profileImage}
-                                />
-                                {user.creatorVerified && (
-                                    <View style={styles.verifiedBadge}>
-                                        <CheckCircle size={20} color="white" fill="#FF5A5F" />
-                                    </View>
-                                )}
-                            </Animated.View>
+                        @{user.username}
+                    </Animated.Text>
 
-                            {/* User Info */}
-                            <View style={styles.userInfo}>
-                                <Text style={styles.displayName}>
-                                    {user.fullName || `@${user.username}`}
-                                </Text>
+                    {!isOwnProfile ? (
+                        <TouchableOpacity onPress={handleMoreOptions} style={styles.headerButton}>
+                            <MoreHorizontal size={24} color="white" />
+                        </TouchableOpacity>
+                    ) : (   
+                        <TouchableOpacity onPress={handleEditProfile} style={styles.headerButton}>
+                            <Settings size={24} color="white" />
+                        </TouchableOpacity>
+                    )}
+                </View>
 
-                                <View style={styles.usernameRow}>
-                                    <Text style={styles.username}>@{user.username}</Text>
-                                    {user.creatorCategory && (
-                                        <View style={styles.categoryBadge}>
-                                            <Star size={12} color="#FF5A5F" fill="#FF5A5F" />
-                                            <Text style={styles.categoryText}>{user.creatorCategory}</Text>
-                                        </View>
-                                    )}
-                                </View>
-
-                                {user.bio && (
-                                    <Text style={styles.bio}>{user.bio}</Text>
-                                )}
-
-                                {/* Additional Info */}
-                                <View style={styles.additionalInfo}>
-                                    {user.location && (
-                                        <View style={styles.infoItem}>
-                                            <MapPin size={14} color="#9CA3AF" />
-                                            <Text style={styles.infoText}>{user.location}</Text>
-                                        </View>
-                                    )}
-                                    <View style={styles.infoItem}>
-                                        <Calendar size={14} color="#9CA3AF" />
-                                        <Text style={styles.infoText}>{formatJoinDate(user.joinedAt)}</Text>
-                                    </View>
-                                </View>
-
-                                {/* Stats */}
+                <FlatList
+                    data={activeData}
+                    renderItem={renderVideoItem}
+                    keyExtractor={(item, index) => `${item.id}-${index}`}
+                    numColumns={3}
+                    contentContainerStyle={styles.contentContainer}
+                    refreshControl={
+                        <RefreshControl
+                            refreshing={refreshing}
+                            onRefresh={handleRefresh}
+                            tintColor="#FF5A5F"
+                            colors={['#FF5A5F']}
+                        />
+                    }
+                    ListHeaderComponent={
+                        <Animated.View
+                            style={[
+                                styles.profileContainer,
+                                {
+                                    opacity: fadeAnim,
+                                    transform: [
+                                        { translateY: slideAnim },
+                                        { scale: scaleAnim }
+                                    ]
+                                }
+                            ]}
+                        >
+                            <View style={styles.profileSection}>
                                 <Animated.View
                                     style={[
-                                        styles.statsContainer,
-                                        { opacity: statsOpacity }
+                                        styles.profileImageContainer,
+                                        { transform: [{ scale: profileImageScale }] }
                                     ]}
                                 >
-                                    <View style={styles.statItem}>
-                                        <Text style={styles.statNumber}>
-                                            {formatNumber(user._count.videos)}
-                                        </Text>
-                                        <Text style={styles.statLabel}>Videos</Text>
-                                    </View>
-
-                                    <View style={styles.statItem}>
-                                        <Text style={styles.statNumber}>
-                                            {formatNumber(user._count.followers)}
-                                        </Text>
-                                        <Text style={styles.statLabel}>Followers</Text>
-                                    </View>
-
-                                    <View style={styles.statItem}>
-                                        <Text style={styles.statNumber}>
-                                            {formatNumber(user._count.following)}
-                                        </Text>
-                                        <Text style={styles.statLabel}>Following</Text>
-                                    </View>
+                                    <Image
+                                        source={{
+                                            uri: user.profilePhotoUrl || 'https://cdn-icons-png.flaticon.com/512/219/219983.png'
+                                        }}
+                                        style={styles.profileImage}
+                                    />
+                                    {user.creatorVerified && (
+                                        <View style={styles.verifiedBadge}>
+                                            <CheckCircle size={20} color="white" fill="#FF5A5F" />
+                                        </View>
+                                    )}
                                 </Animated.View>
 
-                                {/* Action Buttons */}
-                                <View style={styles.actionButtons}>
-                                    {isOwnProfile ? (
-                                        <TouchableOpacity
-                                            style={styles.editButton}
-                                            onPress={handleEditProfile}
-                                        >
-                                            <Edit3 size={18} color="white" />
-                                            <Text style={styles.editButtonText}>Edit Profile</Text>
-                                        </TouchableOpacity>
-                                    ) : (
-                                        <>
+                                <View style={styles.userInfo}>
+                                    <Text style={styles.displayName}>
+                                        {user.fullName || `@${user.username}`}
+                                    </Text>
+
+                                    <View style={styles.usernameRow}>
+                                        <Text style={styles.username}>@{user.username}</Text>
+                                        {user.creatorCategory && (
+                                            <View style={styles.categoryBadge}>
+                                                <Star size={12} color="#FF5A5F" fill="#FF5A5F" />
+                                                <Text style={styles.categoryText}>{user.creatorCategory}</Text>
+                                            </View>
+                                        )}
+                                    </View>
+
+                                    <Text style={styles.bio}>
+                                        {typeof user.bio === "string" ? user.bio : user.bio?.name ?? user.fullName}
+                                    </Text>
+
+                                    <View style={styles.additionalInfo}>
+                                        {user.location && (
+                                            <View style={styles.infoItem}>
+                                                <MapPin size={14} color="#9CA3AF" />
+                                                <Text style={styles.infoText}>{user.location}</Text>
+                                            </View>
+                                        )}
+                                        <View style={styles.infoItem}>
+                                            <Calendar size={14} color="#9CA3AF" />
+                                            <Text style={styles.infoText}>{formatJoinDate(user.joinedAt)}</Text>
+                                        </View>
+                                    </View>
+
+                                    <Animated.View
+                                        style={[
+                                            styles.statsContainer,
+                                            { opacity: statsOpacity }
+                                        ]}
+                                    >
+                                        <View style={styles.statItem}>
+                                            <Text style={styles.statNumber}>
+                                                {formatNumber(user?._count?.videos)}
+                                            </Text>
+                                            <Text style={styles.statLabel}>Videos</Text>
+                                        </View>
+
+                                        <View style={styles.statItem}>
+                                            <Text style={styles.statNumber}>
+                                                {formatNumber(user?._count?.followers)}
+                                            </Text>
+                                            <Text style={styles.statLabel}>Followers</Text>
+                                        </View>
+
+                                        <View style={styles.statItem}>
+                                            <Text style={styles.statNumber}>
+                                                {formatNumber(user?._count?.following)}
+                                            </Text>
+                                            <Text style={styles.statLabel}>Following</Text>
+                                        </View>
+                                    </Animated.View>
+
+                                    <View style={styles.actionButtons}>
+                                        {isOwnProfile ? (
                                             <TouchableOpacity
-                                                style={[
-                                                    styles.followButton,
-                                                    isFollowing && styles.followingButton
-                                                ]}
-                                                onPress={() => handleFollowChange(!isFollowing)}
+                                                style={styles.editButton}
+                                                onPress={handleEditProfile}
                                             >
-                                                <LinearGradient
-                                                    colors={isFollowing ? ['#374151', '#374151'] : ['#FF5A5F', '#FF5A5F']}
-                                                    style={styles.followGradient}
+                                                <Edit3 size={18} color="white" />
+                                                <Text style={styles.editButtonText}>Edit Profile</Text>
+                                            </TouchableOpacity>
+                                        ) : (
+                                            <>
+                                                <TouchableOpacity
+                                                    style={[
+                                                        styles.followButton,
+                                                        isFollowing && styles.followingButton
+                                                    ]}
+                                                    onPress={() => handleFollowChange(!isFollowing)}
                                                 >
-                                                    {isFollowing ? (
-                                                        <UserCheck size={18} color="white" />
-                                                    ) : (
-                                                        <UserPlus size={18} color="white" />
-                                                    )}
-                                                    <Text style={styles.followButtonText}>
-                                                        {isFollowing ? 'Following' : 'Follow'}
-                                                    </Text>
-                                                </LinearGradient>
-                                            </TouchableOpacity>
+                                                    <LinearGradient
+                                                        colors={isFollowing ? ['#374151', '#374151'] : ['#FF5A5F', '#FF5A5F']}
+                                                        style={styles.followGradient}
+                                                    >
+                                                        {isFollowing ? (
+                                                            <UserCheck size={18} color="white" />
+                                                        ) : (
+                                                            <UserPlus size={18} color="white" />
+                                                        )}
+                                                        <Text style={styles.followButtonText}>
+                                                            {isFollowing ? 'Following' : 'Follow'}
+                                                        </Text>
+                                                    </LinearGradient>
+                                                </TouchableOpacity>
 
-                                            <TouchableOpacity
-                                                style={styles.messageButton}
-                                                onPress={handleMessage}
-                                            >
-                                                <MessageCircle size={20} color="white" />
-                                            </TouchableOpacity>
+                                                <TouchableOpacity
+                                                    style={styles.messageButton}
+                                                    onPress={handleMessage}
+                                                >
+                                                    <MessageCircle size={20} color="white" />
+                                                </TouchableOpacity>
 
-                                            <TouchableOpacity style={styles.shareButton}>
-                                                <Share size={20} color="white" />
-                                            </TouchableOpacity>
-                                        </>
-                                    )}
+                                                <TouchableOpacity style={styles.shareButton}>
+                                                    <Share size={20} color="white" />
+                                                </TouchableOpacity>
+                                            </>
+                                        )}
+                                    </View>
                                 </View>
                             </View>
-                        </View>
 
-                        {/* Enhanced Tabs */}
-                        <View style={styles.tabsContainer}>
-                            <View style={styles.tabsWrapper}>
-                                {renderTabButton('videos',
-                                    <Grid3X3 size={20} color={activeTab === 'videos' ? '#FF5A5F' : '#6B7280'} />,
-                                    'Videos'
-                                )}
-                                {renderTabButton('likes',
-                                    <Heart size={20} color={activeTab === 'likes' ? '#FF5A5F' : '#6B7280'} />,
-                                    'Likes'
-                                )}
-                                {isOwnProfile && renderTabButton('saved',
-                                    <BookmarkPlus size={20} color={activeTab === 'saved' ? '#FF5A5F' : '#6B7280'} />,
-                                    'Saved'
-                                )}
-                                {isOwnProfile && renderTabButton('private',
-                                    <Lock size={20} color={activeTab === 'private' ? '#FF5A5F' : '#6B7280'} />,
-                                    'Private'
-                                )}
+                            <View style={styles.tabsContainer}>
+                                <View style={styles.tabsWrapper}>
+                                    {renderTabButton('videos',
+                                        <Grid3X3 size={20} color={activeTab === 'videos' ? '#fff' : '#6B7280'} />,
+                                        'Posts'
+                                    )}
+                                    {renderTabButton('likes',
+                                        <Heart size={20} color={activeTab === 'likes' ? '#fff' : '#6B7280'} />,
+                                        'Likes'
+                                    )}
+                                 {/** {isOwnProfile && renderTabButton('saved',
+                                        <BookmarkPlus size={20} color={activeTab === 'saved' ? '#fff' : '#6B7280'} />,
+                                        'Saved'
+                                    )}
+                                    {isOwnProfile && renderTabButton('private',
+                                        <Lock size={20} color={activeTab === 'private' ? '#fff' : '#6B7280'} />,
+                                        'Private'
+                                    )} */}  
+                                </View>
+
+                                <Animated.View
+                                    style={[
+                                        styles.tabIndicator,
+                                        {
+                                            width: width / visibleTabs,
+                                            transform: [{ translateX: tabIndicatorAnim }]
+                                        }
+                                    ]}
+                                />
                             </View>
-
-                            {/* Animated Tab Indicator */}
-                            <Animated.View
-                                style={[
-                                    styles.tabIndicator,
-                                    {
-                                        width: width / visibleTabs,
-                                        transform: [{ translateX: tabIndicatorAnim }]
-                                    }
-                                ]}
-                            />
-                        </View>
-                    </Animated.View>
-                }
-                ListEmptyComponent={renderEmptyState}
-                ItemSeparatorComponent={() => <View style={styles.videoSeparator} />}
-                columnWrapperStyle={styles.videoRow}
-                showsVerticalScrollIndicator={false}
-            />
+                        </Animated.View>
+                    }
+                    ListEmptyComponent={renderEmptyState}
+                    ItemSeparatorComponent={() => <View style={styles.videoSeparator} />}
+                    columnWrapperStyle={styles.videoRow}
+                    showsVerticalScrollIndicator={false}
+                />
+            </LinearGradient>
         </SafeAreaView>
     );
 }
@@ -877,7 +919,9 @@ export default function ProfilePage() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#1a1a2e',
+        // backgroundColor: '#1a1a2e',
+        backgroundColor: '#1E4A72',
+        paddingTop:40
     },
     header: {
         flexDirection: 'row',
@@ -885,9 +929,9 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         paddingHorizontal: 16,
         paddingVertical: 12,
-        backgroundColor: '#1a1a2e',
+        // backgroundColor: '#1a1a2e',
         borderBottomWidth: 1,
-        borderBottomColor: 'rgba(55,65,81,0.1)',
+        borderBottomColor: 'rgba(255,255,255,0.05)',
     },
     headerButton: {
         width: 44,
@@ -906,7 +950,7 @@ const styles = StyleSheet.create({
         fontFamily: 'Figtree',
     },
     profileContainer: {
-        backgroundColor: '#1a1a2e',
+        // backgroundColor: '#1a1a2e',
     },
     contentContainer: {
         flexGrow: 1,
@@ -926,14 +970,14 @@ const styles = StyleSheet.create({
         width: 120,
         height: 120,
         borderRadius: 60,
-        borderWidth: 3,
-        borderColor: '#FF5A5F',
+        borderWidth: 1,
+        borderColor: '#888',
     },
     verifiedBadge: {
         position: 'absolute',
         bottom: 5,
         right: 5,
-        backgroundColor: '#1a1a2e',
+        // backgroundColor: '#1a1a2e',
         borderRadius: 15,
         width: 30,
         height: 30,
@@ -1058,7 +1102,7 @@ const styles = StyleSheet.create({
         fontFamily: 'Figtree',
     },
     messageButton: {
-        backgroundColor: '#1a1a2e',
+        // backgroundColor: '#1a1a2e',
         width: 52,
         height: 52,
         borderRadius: 26,
@@ -1086,7 +1130,7 @@ const styles = StyleSheet.create({
         fontFamily: 'Figtree',
     },
     shareButton: {
-        backgroundColor: '#1a1a2e',
+        // backgroundColor: '#1a1a2e',
         width: 52,
         height: 52,
         borderRadius: 26,
@@ -1096,7 +1140,7 @@ const styles = StyleSheet.create({
         borderColor: '#4B5563',
     },
     tabsContainer: {
-        backgroundColor: '#1a1a2e',
+        // backgroundColor: '#1a1a2e',
         position: 'relative',
         marginBottom: 10,
     },
@@ -1123,7 +1167,7 @@ const styles = StyleSheet.create({
         fontFamily: 'Figtree',
     },
     activeTabLabel: {
-        color: '#FF5A5F',
+        color: '#fff',
         fontWeight: '700',
     },
     tabIndicator: {

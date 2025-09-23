@@ -76,8 +76,9 @@ export const usePostApi = () => {
     const createPost = useCallback(async (data: CreatePostData): Promise<PostResponse> => {
         try {
             setLoading(true);
-
-            const response = await apiClient.post<PostResponse>(
+            const token = await getTokens();
+            
+            const response =  await apiClient.post<PostResponse>(
                 VIDEO_ENDPOINTS.VIDEOS,
                 {
                     uploadId: data.uploadId,
@@ -85,12 +86,17 @@ export const usePostApi = () => {
                     description: data.description,
                     soundId: data.soundId,
                     isPublic: data.isPublic !== undefined ? data.isPublic : true,
+                }, {
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization:`Bearer ${token?.accessToken}`,
+                    },                            
                 }
             );
 
             return response.data;
         } catch (error: any) {
-            console.error('Create post error:', error);
+            console.error('Create post error:', error.message);
 
             // Better error handling for different error types
             let errorMessage = 'Failed to create post';
@@ -160,10 +166,11 @@ export const usePostApi = () => {
             setLoading(true);
 
             console.log("Creating slideshow with data:", data);
+            const token = await getTokens();
 
             // Use the heavy operations client with longer timeout
-            const response = await heavyOperationsClient.post<PostResponse>(
-                VIDEO_ENDPOINTS.VIDEOS + '/slideshow',
+            const response = await axios.post<PostResponse>(
+              'https://amize-next.vercel.app/api/videos/slideshow', 
                 {
                     uploadIds: data.uploadIds,
                     title: data.title,
@@ -173,6 +180,13 @@ export const usePostApi = () => {
                     transition: data.transition || 'fade',
                     isPublic: data.isPublic !== undefined ? data.isPublic : true,
                 }
+            , {
+                
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token?.accessToken}`,
+                },
+            }
             );
 
             console.log("Slideshow creation successful:", response.data);

@@ -1,7 +1,9 @@
 import { Platform } from 'react-native';
-import { AxiosProgressEvent, isAxiosError } from 'axios';
+import axios, { AxiosProgressEvent, isAxiosError } from 'axios';
 import { uploadClient } from './client';
-import { UPLOAD_ENDPOINTS } from './config';
+import { API_CONFIG, UPLOAD_ENDPOINTS } from './config';
+import { getTokens } from '../auth/tokens';
+import { secureStorage, STORAGE_KEYS } from '../auth/storage';
 
 export interface FileUploadOptions {
     uri: string;
@@ -69,96 +71,102 @@ export const uploadService = {
     /**
      * Upload a file to the server with progress tracking
      */
-    async uploadFile({ uri, name, type, uploadType, onProgress }: FileUploadOptions): Promise<UploadResponse> {
-        const filename = name || uri.split('/').pop() || 'file';
-
-        // Create FormData instance
-        const formData = new FormData();
-
-        // Determine MIME type based on file extension if not provided
+    async uploadFile({
+        uri,
+        name,
+        type,
+        uploadType,
+        onProgress,
+      }: FileUploadOptions): Promise<UploadResponse> {
+        const filename = name || uri.split("/").pop() || "file";
+      
+        // Detect mime type if not provided
         let mimeType = type;
         if (!mimeType) {
-            const extension = filename.split('.').pop()?.toLowerCase();
-            switch (extension) {
-                case 'jpg':
-                case 'jpeg':
-                    mimeType = 'image/jpeg';
-                    break;
-                case 'png':
-                    mimeType = 'image/png';
-                    break;
-                case 'webp':
-                    mimeType = 'image/webp';
-                    break;
-                case 'mp4':
-                    mimeType = 'video/mp4';
-                    break;
-                case 'mov':
-                    mimeType = 'video/quicktime';
-                    break;
-                case 'mp3':
-                    mimeType = 'audio/mpeg';
-                    break;
-                case 'wav':
-                    mimeType = 'audio/wav';
-                    break;
-                default:
-                    mimeType = uploadType === 'VIDEO' ? 'video/mp4' : 'image/jpeg';
-            }
+          const extension = filename.split(".").pop()?.toLowerCase();
+          switch (extension) {
+            case "jpg":
+            case "jpeg":
+              mimeType = "image/jpeg";
+              break;
+            case "png":
+              mimeType = "image/png";
+              break;
+            case "webp":
+              mimeType = "image/webp";
+              break;
+            case "mp4":
+              mimeType = "video/mp4";
+              break;
+            case "mov":
+              mimeType = "video/quicktime";
+              break;
+            default:
+              mimeType = uploadType === "VIDEO" ? "video/mp4" : "image/jpeg";
+          }
         }
+      
+        let finalUri = uri;
+        if (Platform.OS === "ios") {
+          finalUri = uri.replace("file://", "");
+        } else if (!uri.startsWith("file://")) {
+          finalUri = `file://${uri}`;
+        }
+      
+        const token = await getTokens();
+        console.log(token?.accessToken);
 
-        // Append the file with proper React Native file structure
-        const fileObject: ReactNativeFile = {
-            name: filename,
-            type: mimeType,
-            uri: Platform.OS === 'android' ? uri : uri.replace('file://', ''),
-        };
-
-        formData.append('file', fileObject as unknown as Blob);
-        formData.append('uploadType', uploadType);
-
+        const formData = new FormData();
+        formData.append("file", {
+          uri: finalUri,
+          type: mimeType,
+          name: filename,
+        } as any);
+        formData.append("uploadType", uploadType);
+      
         try {
-            // Make the upload request with progress tracking
-            const response = await uploadClient.post<UploadResponse>(
-                UPLOAD_ENDPOINTS.UPLOAD,
-                formData,
-                {
-                    onUploadProgress: (progressEvent: AxiosProgressEvent) => {
-                        if (progressEvent.total && onProgress) {
-                            const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-                            onProgress(percentCompleted);
-                        }
-                    },
+          const response = await axios.post<UploadResponse>(
+            API_CONFIG.BASE_URL + UPLOAD_ENDPOINTS.UPLOAD,
+            formData,
+            {
+              headers: {
+                "Content-Type": "multipart/form-data",
+                Authorization:`Bearer ${token?.accessToken}` ,
+              },
+              onUploadProgress: (progressEvent: AxiosProgressEvent) => {
+                if (progressEvent.total && onProgress) {
+                  const percentCompleted = Math.round(
+                    (progressEvent.loaded * 100) / progressEvent.total
+                  );
+                  onProgress(percentCompleted);
                 }
-            );
-
-            // Handle successful upload
-            if (response.status === 201 && response.data?.success) {
-                return response.data;
+              },
             }
-
-            throw new Error(response.data?.message || 'File upload failed');
-
+          );
+      
+          if (response.status === 201 && response.data?.success) {
+            return response.data;
+          }
+      
+          throw new Error(response.data?.message || "File upload failed");
         } catch (error) {
-            // Handle specific error codes
-            if (isAxiosError(error)) {
-                const status = error.response?.status;
-                const serverMessage = error.response?.data?.message;
-
-                if (status === 413) {
-                    throw new Error('File too large. Please select a smaller file.');
-                } else if (status === 415) {
-                    throw new Error('Unsupported file type. Please select a different file.');
-                } else if (status === 401) {
-                    throw new Error('Session expired. Please log in again.');
-                }
-
-                const errorMessage = serverMessage || error.message;
-                throw new Error(`Upload failed: ${errorMessage}`);
-            }
-            throw new Error('Unknown error occurred during file upload');
+          if (isAxiosError(error)) {
+            console.error("UPLOAD ERROR:", error);
+            const status = error.response?.status;
+            const serverMessage = error.response?.data?.message;
+      
+            if (status === 413)
+              throw new Error("File too large. Please select a smaller file.");
+            if (status === 415)
+              throw new Error("Unsupported file type. Please select a different file.");
+            if (status === 401)
+              throw new Error("Session expired. Please log in again.");
+      
+            throw new Error(`Upload failed: ${serverMessage || error.message}`);
+          }
+          throw new Error("Unknown error occurred during file upload");
         }
-    },
+      },
 
     /**
      * Get list of user's uploads

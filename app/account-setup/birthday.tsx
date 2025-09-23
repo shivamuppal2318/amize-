@@ -40,7 +40,7 @@ export default function BirthdayScreen() {
 
     const handleContinue = () => {
         const birthday = new Date(selectedYear, selectedMonth, selectedDay);
-        const formattedDate = birthday.toISOString().split('T')[0]; // Format as YYYY-MM-DD
+        const formattedDate = birthday?.toISOString().split('T')[0]; // Format as YYYY-MM-DD
         updateRegistrationData({ dateOfBirth: formattedDate });
 
         router.push('/account-setup/profile');
@@ -84,11 +84,11 @@ export default function BirthdayScreen() {
 
     return (
         <>
-            <StatusBar
+            {/* <StatusBar
                 barStyle="light-content"
                 backgroundColor="transparent"
                 translucent
-            />
+            /> */}
             <SafeAreaView
                 style={{ flex: 1, backgroundColor: '#1a1a2e' }}
                 edges={['top']}

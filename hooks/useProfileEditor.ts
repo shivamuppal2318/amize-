@@ -61,6 +61,11 @@ export const useProfileEditor = (): UseProfileEditorReturn => {
             setProfile(user);
             initializeFormData(user);
         }
+        if(typeof user?.bio === 'string' && user !== null) {
+            const parsedBio = JSON.parse(user?.bio);
+            setProfile(prev => prev ? {...prev, bio: parsedBio} : prev);
+            initializeFormData({...user, bio: parsedBio});
+        }
     }, [user, initializeFormData]);
 
     // Load profile from API
@@ -123,7 +128,8 @@ export const useProfileEditor = (): UseProfileEditorReturn => {
 
                 // Only include changed, non-empty values
                 if (value !== originalData[typedKey] && value !== '') {
-                    dataToSave[typedKey] = value;
+                    // dataToSave[typedKey] = value;
+                    dataToSave[typedKey] = typeof value === 'object' ? JSON.stringify(value) : value;
                 }
             });
 
