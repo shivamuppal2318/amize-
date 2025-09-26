@@ -23,13 +23,14 @@ import { manipulateAsync } from 'expo-image-manipulator';
 import { usePostingStore } from '@/stores/postingStore';
 import { useToast } from '@/hooks/useToast';
 import * as Linking from 'expo-linking';
+import { LinearGradient } from 'expo-linear-gradient';
+import { StatusBar } from 'react-native';
 
 const { width } = Dimensions.get('window');
 const COLUMN_COUNT = 3;
 const ITEM_SIZE = width / COLUMN_COUNT;
 const MAX_SELECTION = 9;
 
-// Define the media item type
 interface MediaItem {
     id: string;
     uri: string;
@@ -38,7 +39,7 @@ interface MediaItem {
     height: number;
     duration?: number;
     size: number;
-    assetId?: string; // To track gallery asset ID
+    assetId?: string; 
 }
 
 export default function MediaSelectScreen() {
@@ -46,7 +47,6 @@ export default function MediaSelectScreen() {
     const toast = useToast();
     const { addMedia, resetMedia } = usePostingStore();
 
-    // State for selected media
     const [selectedItems, setSelectedItems] = useState<MediaItem[]>([]);
     const [galleryItems, setGalleryItems] = useState<MediaLibrary.Asset[]>([]);
     const [galleryItemURIs, setGalleryItemURIs] = useState<Map<string, string>>(new Map());
@@ -56,12 +56,10 @@ export default function MediaSelectScreen() {
     const [endCursor, setEndCursor] = useState<string | undefined>(undefined);
     const [galleryPermission, setGalleryPermission] = useState(false);
 
-    // Reset media when component mounts
     useEffect(() => {
         resetMedia();
     }, []);
 
-    // Check and request media permissions
     const checkMediaPermissions = useCallback(async () => {
         try {
             const galleryStatus = await MediaLibrary.requestPermissionsAsync();
@@ -82,7 +80,6 @@ export default function MediaSelectScreen() {
     }, [toast]);
 
 
-    // Load gallery items from the device
     const loadGalleryItems = useCallback(async (refresh = false) => {
         if (loading || (!hasNextPage && !refresh)) return;
     
@@ -153,22 +150,17 @@ export default function MediaSelectScreen() {
         }
     }, [loading, hasNextPage, endCursor, toast, setGalleryItems, setGalleryItemURIs, setHasNextPage, setEndCursor]);
 
-    // Check for permissions on mount
     useEffect(() => {
         checkMediaPermissions().then(() => {
-            //
         });
     }, [checkMediaPermissions]);
 
-    // Load gallery items when permission is granted
     useEffect(() => {
         if (galleryPermission) {
             loadGalleryItems(true).then(() => {
-                //
             });
         }
     }, [galleryPermission, loadGalleryItems]);
-    // Check if an asset is selected
     const isAssetSelected = (asset: MediaLibrary.Asset): boolean => {
         return selectedItems.some(item =>
             item.assetId === asset.id ||
@@ -176,13 +168,11 @@ export default function MediaSelectScreen() {
         );
     };
 
-    // Toggle selection of a gallery item
     const toggleGalleryItem = async (asset: MediaLibrary.Asset) => {
         try {
             const isSelected = isAssetSelected(asset);
 
             if (isSelected) {
-                // Remove from selection
                 setSelectedItems(prev =>
                     prev.filter(item =>
                         item.assetId !== asset.id &&
@@ -192,7 +182,6 @@ export default function MediaSelectScreen() {
                 return;
             }
 
-            // Check if we've reached the max selection
             if (selectedItems.length >= MAX_SELECTION) {
                 toast.show('Selection Limit', `You can only select up to ${MAX_SELECTION} items`);
                 return;
@@ -200,10 +189,8 @@ export default function MediaSelectScreen() {
 
             setLoading(true);
 
-            // Make sure we have a valid URI to use
             let mediaUri = galleryItemURIs.get(asset.id) || '';
 
-            // If we don't have a valid URI yet, try to get one
             if (!mediaUri && Platform.OS === 'ios') {
                 try {
                     const assetInfo = await MediaLibrary.getAssetInfoAsync(asset.id);
@@ -223,7 +210,6 @@ export default function MediaSelectScreen() {
                 mediaUri = asset.uri;
             }
 
-            // Get file info for size (if possible)
             let fileSize = 0;
             try {
                 const fileInfo = await FileSystem.getInfoAsync(mediaUri);
@@ -234,7 +220,6 @@ export default function MediaSelectScreen() {
                 console.warn('Error getting file size:', error);
             }
 
-            // Add to selected media
             const newMediaItem: MediaItem = {
                 id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
                 uri: mediaUri,
@@ -255,7 +240,6 @@ export default function MediaSelectScreen() {
         }
     };
 
-    // Take a photo with camera
     const takePhoto = async () => {
         try {
             setLoading(true);
@@ -271,7 +255,6 @@ export default function MediaSelectScreen() {
                 const asset = result.assets[0];
                 const isVideo = asset.type?.startsWith('video') || asset.uri.endsWith('.mp4');
 
-                // Get file info for size
                 const fileInfo = await FileSystem.getInfoAsync(asset.uri);
 
                 const newMediaItem: MediaItem = {
@@ -294,7 +277,6 @@ export default function MediaSelectScreen() {
         }
     };
 
-    // Clear all selected media
     const clearAllMedia = () => {
         Alert.alert(
             'Clear Selection',
@@ -312,7 +294,6 @@ export default function MediaSelectScreen() {
         );
     };
 
-    // Handle going to next screen
     const handleNext = () => {
         if (selectedItems.length === 0) {
             toast.show('No Selection', 'Please select at least one photo or video');
@@ -320,7 +301,6 @@ export default function MediaSelectScreen() {
         }
 
         try {
-            // Add each selected media item to the store
             selectedItems.forEach(item => {
                 addMedia({
                     uri: item.uri,
@@ -333,7 +313,6 @@ export default function MediaSelectScreen() {
                 });
             });
 
-            // Navigate to the edit screen
             router.push('/post/edit');
         } catch (error) {
             console.error('Error proceeding to next screen:', error);
@@ -341,7 +320,6 @@ export default function MediaSelectScreen() {
         }
     };
 
-    // Format duration from seconds to mm:ss
     const formatDuration = (seconds?: number) => {
         if (!seconds) return '00:00';
         const mins = Math.floor(seconds / 60);
@@ -349,7 +327,6 @@ export default function MediaSelectScreen() {
         return `${mins < 10 ? '0' : ''}${mins}:${secs < 10 ? '0' : ''}${secs}`;
     };
 
-    // Render a gallery item in the grid
     const renderGalleryItem = ({ item }: { item: MediaLibrary.Asset }) => {
         const thumbnailUri = galleryItemURIs.get(item.id) || '';
         const isUriValid = thumbnailUri !== '';
@@ -401,7 +378,6 @@ export default function MediaSelectScreen() {
         );
     };
 
-    // Render captured items in camera tab
     const renderCapturedItem = ({ item }: { item: MediaItem }) => (
         <TouchableOpacity
             style={styles.capturedItemContainer}
@@ -426,14 +402,18 @@ export default function MediaSelectScreen() {
             )}
 
             <View style={styles.selectionIndicator}>
-                <CheckCircle size={24} color="#fff" fill="#FF4D67" />
+                <CheckCircle 
+                    size={24} 
+                    color="#fff" 
+                    // fill="#FF4D67" 
+                    fill="#1E4A72" 
+                />
             </View>
 
             <View style={styles.selectionOverlay} />
         </TouchableOpacity>
     );
 
-    // Handle opening settings
     const openSettings = () => {
         if (Platform.OS === 'ios') {
             Linking.openURL('app-settings:').then(r => {
@@ -462,6 +442,17 @@ export default function MediaSelectScreen() {
 
     return (
         <SafeAreaView style={styles.container}>
+            <StatusBar  
+                backgroundColor="transparent" 
+                barStyle="light-content" 
+                translucent={true} 
+            />
+            <LinearGradient
+                colors={['#1E4A72', '#000000']}  
+                start={{ x: 0.5, y: 0 }}
+                end={{ x: 0.5, y: 1 }}
+                style={{ flex: 1 }}
+            >
             <Stack.Screen options={{ headerShown: false }} />
 
             {/* Header */}
@@ -576,7 +567,11 @@ export default function MediaSelectScreen() {
                         onPress={takePhoto}
                         disabled={loading}
                     >
-                        <Camera size={48} color="#FF4D67" />
+                        <Camera 
+                            size={48} 
+                            // color="#FF4D67" 
+                            color="#999" 
+                        />
                         <Text style={styles.cameraText}>
                             {loading ? 'Processing...' : 'Take Photo or Video'}
                         </Text>
@@ -615,6 +610,7 @@ export default function MediaSelectScreen() {
                     fullWidth
                 />
             </View>
+            </LinearGradient>
         </SafeAreaView>
     );
 }
@@ -622,11 +618,11 @@ export default function MediaSelectScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#1a1a2e',
+        // backgroundColor: '#1a1a2e',
     },
     tabContainer: {
         flexDirection: 'row',
-        borderBottomWidth: 1,
+        borderBottomWidth: 0.3,
         borderBottomColor: '#333',
         marginBottom: 4,
     },
@@ -644,7 +640,8 @@ const styles = StyleSheet.create({
         fontSize: 16,
     },
     activeTabText: {
-        color: '#FF4D67',
+        // color: '#FF4D67',
+        color: '#fff',
         fontWeight: 'bold',
     },
     galleryContainer: {
@@ -720,7 +717,8 @@ const styles = StyleSheet.create({
         backgroundColor: 'rgba(255, 77, 103, 0.2)',
         borderRadius: 8,
         borderWidth: 2,
-        borderColor: '#FF4D67',
+        // borderColor: '#FF4D67',
+        borderColor: '#888',
         zIndex: 5,
     },
     capturedItemContainer: {
@@ -749,7 +747,8 @@ const styles = StyleSheet.create({
         marginBottom: 16,
     },
     cameraText: {
-        color: '#FF4D67',
+        // color: '#FF4D67',
+        color: '#fff',
         fontSize: 16,
         fontWeight: '500',
         marginTop: 12,
@@ -821,6 +820,7 @@ const styles = StyleSheet.create({
         padding: 16,
         borderTopWidth: 1,
         borderTopColor: '#333',
+        marginBottom:30
     },
     selectionText: {
         color: '#999',
@@ -829,7 +829,7 @@ const styles = StyleSheet.create({
     },
     clearText: {
         color: '#FF4D67',
-        fontSize: 14,
+        fontSize: 11,
         fontFamily: 'Figtree',
     },
     footerLoader: {

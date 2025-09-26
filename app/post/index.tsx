@@ -12,7 +12,7 @@ import {
     ActivityIndicator,
     BackHandler
 } from 'react-native';
-import { CameraView, Camera } from 'expo-camera';
+import { CameraView, Camera, FlashMode  } from 'expo-camera';
 import * as MediaLibrary from 'expo-media-library';
 import * as FileSystem from 'expo-file-system';
 import { useRouter, Stack } from 'expo-router';
@@ -52,6 +52,7 @@ export default function CameraScreen() {
 
     // Camera states
     const [cameraType, setCameraType] = useState('back');
+    // const [flashMode, setFlashMode] = useState('off');
     const [flashMode, setFlashMode] = useState('off');
     const [mode, setMode] = useState('photo'); 
     const [isRecording, setIsRecording] = useState(false);
@@ -415,9 +416,10 @@ export default function CameraScreen() {
                             <View style={styles.stopRecordingButton} />
                         ) : (
                             <LinearGradient
-                                colors={['#FF8395', '#FF4D67']}
+                                // colors={['#FF8395', '#FF4D67']}
+                                colors={['#666666', '#1E4A72']}
                                 locations={[0, 1]}
-                                start={{ x: 0, y: 0.5 }}
+                                start={{ x: 0, y: 0.8 }}
                                 end={{ x: 1, y: 0.5 }}
                                 style={styles.captureButtonInner}
                             />
@@ -606,7 +608,7 @@ const styles = StyleSheet.create({
         width: 65,
         height: 65,
         borderRadius: 35,
-        backgroundColor: '#FF4D67',
+        backgroundColor: '#1E4A72',
     },
     recordingButton: {
         backgroundColor: '#FF4A76',

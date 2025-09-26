@@ -128,8 +128,9 @@
         "origin": false
       },
       "eas": {
-        "projectId": "c7660850-f6de-4100-a29b-99b54b3bb811"
+        "projectId": "3114607c-2f05-4362-ae2e-27adab94dcb0"
       }
-    }
+    },
+    "owner": "dev-pearl-2024"
   }
 }

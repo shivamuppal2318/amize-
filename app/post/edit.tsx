@@ -29,6 +29,7 @@ import {
     UploadProgress
 } from '@/components/posts/upload';
 import { LinearGradient } from 'expo-linear-gradient';
+import { StatusBar } from 'react-native';
 
 export default function EditPostScreen() {
     const router = useRouter();
@@ -131,6 +132,11 @@ export default function EditPostScreen() {
 
     return (
         <SafeAreaView style={styles.container}>
+            <StatusBar  
+                backgroundColor="transparent" 
+                barStyle="light-content" 
+                translucent={true} 
+            />
             <LinearGradient
                 colors={['#1E4A72', '#000000']}  
                 start={{ x: 0.5, y: 0 }}

@@ -171,7 +171,8 @@ export default function ProfilePage() {
     const animateTabChange = useCallback(() => {
         const tabIndex = ['videos', 'likes'].indexOf(activeTab);
         // const tabIndex = ['videos', 'likes', 'saved', 'private'].indexOf(activeTab);
-        const visibleTabs = isOwnProfile ? 4 : 2;
+        // const visibleTabs = isOwnProfile ? 4 : 2;
+        const visibleTabs = 2;
         const indicatorPosition = (width / visibleTabs) * tabIndex;
 
         Animated.spring(tabIndicatorAnim, {
@@ -679,7 +680,8 @@ export default function ProfilePage() {
     }
 
     const activeData = getActiveData();
-    const visibleTabs = isOwnProfile ? 4 : 2;
+    // const visibleTabs = isOwnProfile ? 4 : 2;
+    const visibleTabs = 2;
 
     return (
         <SafeAreaView style={styles.container}>
