@@ -152,7 +152,7 @@ export const CustomModal = ({
 
                       {primaryAction && (
                         <LinearGradient
-                        colors={["#FF5A5F", "#FFFFFF"]}
+                        colors={["#FF5A5F", "#000000"]}
                         start={{ x: 0, y: 0 }}
                         end={{ x: 1, y: 1 }}
                         // additional styles in array
