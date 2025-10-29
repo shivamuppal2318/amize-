@@ -1,4 +1,5 @@
 // export const SERVER_URL = "https://amizew.com";
+// export const SERVER_URL = "http://192.168.0.128:3000";
 export const SERVER_URL = "https://amize-next.vercel.app";
 //TODO export const SERVER_URL = "http://192.168.0.103:3000";
 export const API_URL = `${SERVER_URL}/api`;

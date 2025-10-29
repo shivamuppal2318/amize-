@@ -7,9 +7,7 @@
     "icon": "./assets/images/icon.png",
     "scheme": "myapp",
     "userInterfaceStyle": "automatic",
-    "assetBundlePatterns": [
-      "assets/**/*"
-    ],
+    "assetBundlePatterns": ["assets/**/*"],
     "splash": {
       "image": "./assets/images/splash-icon.png",
       "resizeMode": "contain",
@@ -114,9 +112,13 @@
           "icon": "./assets/images/notification-icon.png",
           "color": "#FF4D67",
           "defaultChannel": "default",
-          "sounds": [
-            "./assets/sounds/notification.mp3"
-          ]
+          "sounds": ["./assets/sounds/notification.mp3"]
+        }
+      ],
+      [
+        "react-native-vision-camera",
+        {
+          "cameraPermissionText": "Allow access to your camera for AR filters"
         }
       ]
     ],

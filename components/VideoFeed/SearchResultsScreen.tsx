@@ -19,6 +19,7 @@ import { X, Search, Play, Music2 } from 'lucide-react-native';
 import useExplore from '@/hooks/useExplore';
 import { useSearchHistory } from '@/components/explore/SearchHistory';
 import { MixedFeedItem } from '@/lib/api/types/video';
+import { LinearGradient } from 'expo-linear-gradient';
 
 const { width } = Dimensions.get('window');
 
@@ -150,6 +151,12 @@ const SearchResultsScreen: React.FC<SearchResultsProps> = ({initialQuery = '', o
         const suggestions = getDisplaySuggestions();
 
         return (
+            <LinearGradient
+            colors={["#1E4A72", "#000000"]}
+            start={{ x: 0.5, y: 0 }}
+            end={{ x: 0.5, y: 1 }}
+            style={{ flex: 1 }}
+          >
             <ScrollView style={styles.fullHeightScrollView}>
                 <View style={styles.historyContainer}>
                     <View style={styles.historyHeader}>
@@ -189,6 +196,7 @@ const SearchResultsScreen: React.FC<SearchResultsProps> = ({initialQuery = '', o
                     ))}
                 </View>
             </ScrollView>
+            </LinearGradient>
         );
     };
 
@@ -212,6 +220,12 @@ const SearchResultsScreen: React.FC<SearchResultsProps> = ({initialQuery = '', o
         }
 
         return (
+                <LinearGradient
+            colors={["#1E4A72", "#000000"]}
+            start={{ x: 0.5, y: 0 }}
+            end={{ x: 0.5, y: 1 }}
+            style={{ flex: 1 }}
+          >
             <ScrollView style={styles.fullHeightScrollView}>
                 {/* Users Section */}
                 {userResults.length > 0 && (
@@ -333,6 +347,7 @@ const SearchResultsScreen: React.FC<SearchResultsProps> = ({initialQuery = '', o
                     </View>
                 )}
             </ScrollView>
+                </LinearGradient>
         );
     };
 
@@ -586,6 +601,12 @@ const SearchResultsScreen: React.FC<SearchResultsProps> = ({initialQuery = '', o
     };
 
     return (
+        <LinearGradient
+            colors={["#1E4A72", "#000000"]}
+            start={{ x: 0.5, y: 0 }}
+            end={{ x: 0.5, y: 1 }}
+            style={{ flex: 1 }}
+          >
         <SafeAreaView style={styles.container}>
             <StatusBar barStyle="light-content" />
 
@@ -652,16 +673,18 @@ const SearchResultsScreen: React.FC<SearchResultsProps> = ({initialQuery = '', o
                 {renderContent()}
             </View>
         </SafeAreaView>
+        </LinearGradient>
     );
 };
 
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#1a1a2e',
+        // backgroundColor: '#1a1a2e',
+        backgroundColor: '#1E4A72',
     },
     fixedTopSection: {
-        backgroundColor: '#1a1a2e',
+        // backgroundColor: '#1a1a2e',
         zIndex: 10,
     },
     expandedContentContainer: {

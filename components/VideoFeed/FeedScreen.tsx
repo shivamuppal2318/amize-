@@ -851,6 +851,27 @@ const FeedScreen: React.FC = () => {
         <TouchableOpacity
           style={[styles.tab, { minWidth: 80, minHeight: 40 }]}
           activeOpacity={0.7}
+          onPress={() => handleTabPress("forYou")}
+        >
+          <View style={styles.tabIconContainer}>
+            {feedType === "forYou" && (
+              <Heart size={18} color="white" style={styles.tabIcon} />
+            )}
+            <Text
+              style={[
+                styles.tabText,
+                feedType === "forYou" && styles.activeTabText,
+              ]}
+            >
+              For You
+            </Text>
+          </View>
+          {feedType === "forYou" && <View style={styles.activeTabIndicator} />}
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.tab, { minWidth: 80, minHeight: 40 }]}
+          activeOpacity={0.7}
           onPress={() => handleTabPress("following")}
         >
           <View style={styles.tabIconContainer}>
@@ -879,28 +900,7 @@ const FeedScreen: React.FC = () => {
           )}
         </TouchableOpacity>
 
-        <TouchableOpacity
-          style={[styles.tab, { minWidth: 80, minHeight: 40 }]}
-          activeOpacity={0.7}
-          onPress={() => handleTabPress("forYou")}
-        >
-          <View style={styles.tabIconContainer}>
-            {feedType === "forYou" && (
-              <Heart size={18} color="white" style={styles.tabIcon} />
-            )}
-            <Text
-              style={[
-                styles.tabText,
-                feedType === "forYou" && styles.activeTabText,
-              ]}
-            >
-              For You
-            </Text>
-          </View>
-          {feedType === "forYou" && <View style={styles.activeTabIndicator} />}
-        </TouchableOpacity>
-
-        <TouchableOpacity
+        {/* <TouchableOpacity
           style={[styles.tab, { minWidth: 80, minHeight: 40 }]}
           activeOpacity={0.7}
           onPress={() => handleTabPress("subscribed")}
@@ -929,7 +929,7 @@ const FeedScreen: React.FC = () => {
           {feedType === "subscribed" && (
             <View style={styles.activeTabIndicator} />
           )}
-        </TouchableOpacity>
+        </TouchableOpacity> */}
 
         <TouchableOpacity
           onPress={handleOpenSearch}
@@ -1093,7 +1093,7 @@ const FeedScreen: React.FC = () => {
   // Main render with enhanced FlatList
   return (
     <View style={styles.container}>
-      <StatusBar style="auto"  backgroundColor={"transparent"} />
+      <StatusBar style="auto" backgroundColor={"transparent"} />
 
       {/* Gradient Background */}
       <LinearGradient
@@ -1270,7 +1270,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     flexDirection: "row",
-    justifyContent: "center",
+    justifyContent: "space-between",
     alignItems: "center",
     zIndex: 25,
     paddingTop: 10,

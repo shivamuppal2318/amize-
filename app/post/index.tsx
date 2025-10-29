@@ -9,7 +9,8 @@ import {
     Alert,
     Dimensions,
     ActivityIndicator,
-    BackHandler
+    BackHandler,
+    ScrollView
 } from 'react-native';
 import { CameraView, Camera } from 'expo-camera';
 import * as MediaLibrary from 'expo-media-library';
@@ -26,7 +27,8 @@ import {
     MessageCircle,
     Zap,
     AlignJustify,
-    Image as ImageIcon
+    Image as ImageIcon,
+    ZapOff
 } from 'lucide-react-native';
 import { useCameraPermissions } from '@/hooks/useCameraPermissions';
 import { usePostingStore } from '@/stores/postingStore';
@@ -50,8 +52,25 @@ export default function CameraScreen() {
     const [cameraReady, setCameraReady] = useState(false);
     const [processingCapture, setProcessingCapture] = useState(false);
 
-    const [filter, setFilter] = useState<'none' | 'sepia' | 'grayscale' | 'cool'>('none');
-    const filters = ['none', 'sepia', 'grayscale', 'cool'];
+
+
+    const [showFilters, setShowFilters] = useState(false);
+    const [filter, setFilter] = useState<'none' | 'sepia' | 'grayscale' | 'cool' | 'warm' | 'vintage' | 'teal' | 'pink' | 'purple' | 'orange'>('none');
+
+    const filters: { name: string; color: string }[] = [
+    { name: 'none', color: 'transparent' },
+    { name: 'sepia', color: 'rgba(112, 66, 20, 0.3)' },
+    { name: 'grayscale', color: 'rgba(255, 255, 255, 0.5)' },
+    { name: 'cool', color: 'rgba(0, 128, 255, 0.2)' },
+    { name: 'warm', color: 'rgba(255, 100, 0, 0.2)' },
+    { name: 'vintage', color: 'rgba(120, 50, 100, 0.2)' },
+    { name: 'teal', color: 'rgba(0, 128, 128, 0.3)' },
+    { name: 'pink', color: 'rgba(255, 0, 128, 0.2)' },
+    { name: 'purple', color: 'rgba(128, 0, 255, 0.2)' },
+    { name: 'orange', color: 'rgba(255, 128, 0, 0.2)' },
+    ];
+
+    const toggleFilterMenu = () => setShowFilters(prev => !prev);
 
     const cameraRef = useRef<Camera | null>(null);
     const recordingTimerRef = useRef<NodeJS.Timer | null>(null);
@@ -133,7 +152,6 @@ export default function CameraScreen() {
                 exif: true,
             });
 
-            // Apply filter
             const filteredPhoto = filter !== 'none' ? await applyFilterToPhoto(photo.uri, filter) : photo;
 
             const timestamp = new Date().getTime();
@@ -258,7 +276,6 @@ export default function CameraScreen() {
                     ref={cameraRef}
                 />
 
-                {/* Filter Overlay */}
                 {filter !== 'none' && (
                     <View
                         style={[
@@ -268,7 +285,6 @@ export default function CameraScreen() {
                     />
                 )}
 
-                {/* UI Layer */}
                 <View style={StyleSheet.absoluteFill}>
                     <View style={styles.cameraControlsContainer}>
                         <TouchableOpacity style={styles.closeButton} onPress={() => router.back()}>
@@ -288,14 +304,13 @@ export default function CameraScreen() {
 
                             <TouchableOpacity
                                 style={styles.controlButton}
-                                onPress={() => {
-                                    const currentIndex = filters.indexOf(filter);
-                                    const nextIndex = (currentIndex + 1) % filters.length;
-                                    setFilter(filters[nextIndex] as any);
-                                }}
+                                onPress={() => setShowFilters(prev => !prev)}
                             >
-                                <Filter size={24} color="white" />
-                                <Text style={styles.controlText}>Filter: {filter}</Text>
+                                <Filter 
+                                    size={24} 
+                                    color={showFilters ? 'yellow' : 'white'} 
+                                />
+                                <Text style={styles.controlText}>Filter</Text>
                             </TouchableOpacity>
 
                             <TouchableOpacity style={styles.controlButton}>
@@ -309,7 +324,11 @@ export default function CameraScreen() {
                             </TouchableOpacity>
 
                             <TouchableOpacity style={styles.controlButton} onPress={toggleFlashMode}>
-                                <Zap size={24} color="white" />
+                            {flashMode === 'off' ? (
+                                <ZapOff size={24} color="yellow" /> 
+                            ) : (
+                                <Zap size={24} color="white" /> 
+                            )}
                                 <Text style={styles.controlText}>Flash</Text>
                             </TouchableOpacity>
                         </View>
@@ -322,13 +341,30 @@ export default function CameraScreen() {
                         </View>
                     )}
 
-                    <View style={styles.modeSelectionContainer}>
-                        <TouchableOpacity style={[styles.modeButton, mode === 'photo' && styles.activeMode]} onPress={() => { if (!isRecording) setMode('photo'); }}>
-                            <Text style={[styles.modeText, mode === 'photo' && styles.activeModeText]}>Photo</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity style={[styles.modeButton, mode === 'video' && styles.activeMode]} onPress={() => { if (!isRecording) setMode('video'); }}>
-                            <Text style={[styles.modeText, mode === 'video' && styles.activeModeText]}>Video</Text>
-                        </TouchableOpacity>
+                    <View style={styles.bottomMiddleControls}>
+                        {showFilters ? (
+                            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll}>
+                                {filters.map(f => (
+                                    <TouchableOpacity
+                                    key={f.name}
+                                    style={[
+                                        styles.filterCircle,
+                                        { backgroundColor: f.color, borderWidth: filter === f.name ? 3 : 0, borderColor: 'white' },
+                                    ]}
+                                    onPress={() => setFilter(f.name as any)}
+                                    />
+                                ))}
+                            </ScrollView>
+                        ) : (
+                            <View style={styles.modeSelectionContainer}>
+                                <TouchableOpacity style={[styles.modeButton, mode === 'photo' && styles.activeMode]} onPress={() => setMode('photo')}>
+                                    <Text style={[styles.modeText, mode === 'photo' && styles.activeModeText]}>Photo</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity style={[styles.modeButton, mode === 'video' && styles.activeMode]} onPress={() => setMode('video')}>
+                                    <Text style={[styles.modeText, mode === 'video' && styles.activeModeText]}>Video</Text>
+                                </TouchableOpacity>
+                            </View>
+                    )}
                     </View>
 
                     <View style={styles.bottomControls}>
@@ -536,7 +572,7 @@ const styles = StyleSheet.create({
     // Photo/Video mode selection
     modeSelectionContainer: {
         position: 'absolute',
-        bottom: 160,
+        bottom: 30,
         left: 0,
         right: 0,
         flexDirection: 'row',
@@ -602,4 +638,18 @@ const styles = StyleSheet.create({
         fontSize: 16,
         marginTop: 16,
     },
+    bottomMiddleControls: { 
+        position: 'absolute', 
+        bottom: 130, 
+        width: width, 
+        alignItems: 'center' },
+    filterScroll: { 
+        paddingHorizontal: 15, 
+        bottom:30
+    },
+    filterCircle: { 
+        width: 60, 
+        height: 60, 
+        borderRadius: 30, 
+        marginHorizontal: 8 },
 });

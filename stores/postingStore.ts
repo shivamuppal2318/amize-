@@ -12,6 +12,7 @@ export interface MediaItem {
     duration?: number; // in milliseconds, only for videos
     timestamp: number;
     isSelected?: boolean;
+    
 }
 
 export interface Post {

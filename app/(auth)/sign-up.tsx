@@ -160,305 +160,305 @@ export default function SignUpScreen() {
                 end={{ x: 0.5, y: 1 }}
                 style={{ flex: 1 }}
             >
-                    <TouchableOpacity
-                        style={{ padding: 8, marginLeft: 8, marginTop: 0, alignSelf: 'flex-start' }}
-                        onPress={() => router.back()}
-                    >
-                        <ChevronLeft size={24} color="white" />
-                    </TouchableOpacity>
-            <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
-                <View style={{ flex: 1, paddingHorizontal: 24 }}>
-                    {/* Back Button */}
+                <TouchableOpacity
+                    style={{ padding: 8, marginLeft: 8, marginTop: 0, alignSelf: 'flex-start' }}
+                    onPress={() => router.back()}
+                >
+                    <ChevronLeft size={24} color="white" />
+                </TouchableOpacity>
+                <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
+                    <View style={{ flex: 1, paddingHorizontal: 24 }}>
+                        {/* Back Button */}
 
-                    {/* Content Container */}
-                    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: 40 }}>
+                        {/* Content Container */}
+                        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: 40 }}>
 
-                        {/* Header Section */}
-                        <View style={{ alignItems: 'center', marginBottom: 48, width: '100%' }}>
-                            {/* Logo */}
-                            <View style={{
-                                width: 80,
-                                height: 80,
-                                borderRadius: 40,
-                                padding: 3,
-                                backgroundColor: '#FF5A5F',
-                                marginBottom: 24,
-                                alignItems: 'center',
-                                justifyContent: 'center'
-                            }}>
+                            {/* Header Section */}
+                            <View style={{ alignItems: 'center', marginBottom: 48, width: '100%' }}>
+                                {/* Logo */}
                                 <View style={{
-                                    width: 74,
-                                    height: 74,
-                                    borderRadius: 37,
-                                    backgroundColor: '#1a1a2e',
+                                    width: 80,
+                                    height: 80,
+                                    borderRadius: 40,
+                                    padding: 3,
+                                    backgroundColor: '#FF5A5F',
+                                    marginBottom: 24,
                                     alignItems: 'center',
                                     justifyContent: 'center'
                                 }}>
-                                    <Image
-                                        source={{ uri: AMIZE_LOGO }}
-                                        style={{ width: 80, height: 80, borderRadius: 40 }}
-                                        resizeMode="contain"
-                                    />
-                                </View>
-                            </View>
-
-                            {/* Title */}
-                            <Text style={{
-                                fontFamily: 'Figtree',
-                                color: 'white',
-                                fontSize: 28,
-                                fontWeight: 'bold',
-                                marginBottom: 8,
-                                textAlign: 'center'
-                            }}>
-                                Create your Account
-                            </Text>
-                        </View>
-
-                        {/* Form Section */}
-                        <View style={{ width: '100%', maxWidth: 400 }}>
-                            <Input
-                                label="Username"
-                                placeholder="Enter your username"
-                                value={registrationData.username || ''}
-                                onChangeText={handleUsernameChange}
-                                icon={<User size={20} color="#9CA3AF" />}
-                                error={registrationErrors.username}
-                                onBlur={() => validateField('username')}
-                            />
-
-                            <Input
-                                label="Email"
-                                placeholder="Enter your email"
-                                value={registrationData.email || ''}
-                                onChangeText={handleEmailChange}
-                                keyboardType="email-address"
-                                icon={<Mail size={20} color="#9CA3AF" />}
-                                error={registrationErrors.email}
-                                onBlur={() => validateField('email')}
-                            />
-
-                            <Input
-                                label="Password"
-                                placeholder="Enter your password"
-                                value={registrationData.password || ''}
-                                onChangeText={handlePasswordChange}
-                                secureTextEntry
-                                icon={<Lock size={20} color="#9CA3AF" />}
-                                error={registrationErrors.password}
-                                onBlur={() => validateField('password')}
-                                onFocus={() => setShowPasswordRequirements(true)}
-                            />
-
-                            {/* Password requirements */}
-                            {showPasswordRequirements && (
-                                <View style={{
-                                    marginBottom: 20,
-                                    padding: 16,
-                                    backgroundColor: '#2A2A3A',
-                                    borderRadius: 12,
-                                    borderWidth: 1,
-                                    borderColor: '#374151'
-                                }}>
-                                    <Text style={{
-                                        color: 'white',
-                                        marginBottom: 12,
-                                        fontFamily: 'Figtree',
-                                        fontWeight: '500'
-                                    }}>
-                                        Password requirements:
-                                    </Text>
-
-                                    <View style={{ marginLeft: 8 }}>
-                                        {[
-                                            { key: 'length', text: 'At least 8 characters', check: passwordChecks.length },
-                                            { key: 'uppercase', text: 'At least one uppercase letter', check: passwordChecks.uppercase },
-                                            { key: 'lowercase', text: 'At least one lowercase letter', check: passwordChecks.lowercase },
-                                            { key: 'number', text: 'At least one number', check: passwordChecks.number },
-                                            { key: 'special', text: 'At least one special character', check: passwordChecks.special }
-                                        ].map((requirement) => (
-                                            <View key={requirement.key} style={{
-                                                flexDirection: 'row',
-                                                alignItems: 'center',
-                                                marginBottom: 6
-                                            }}>
-                                                {requirement.check ? (
-                                                    <CheckCircle size={16} color="#00C853" style={{ marginRight: 8 }} />
-                                                ) : (
-                                                    <XCircle size={16} color="#FF5A5F" style={{ marginRight: 8 }} />
-                                                )}
-                                                <Text style={{
-                                                    color: requirement.check ? '#00C853' : '#9CA3AF',
-                                                    fontFamily: 'Figtree',
-                                                    fontSize: 14
-                                                }}>
-                                                    {requirement.text}
-                                                </Text>
-                                            </View>
-                                        ))}
-                                    </View>
-                                </View>
-                            )}
-
-                            <Input
-                                label="Confirm Password"
-                                placeholder="Confirm your password"
-                                value={registrationData.confirmPassword || ''}
-                                onChangeText={handleConfirmPasswordChange}
-                                secureTextEntry
-                                icon={<Lock size={20} color="#9CA3AF" />}
-                                error={registrationErrors.confirmPassword}
-                                onBlur={() => validateField('confirmPassword')}
-                            />
-
-                            {/* Terms Agreement */}
-                            <View style={{
-                                flexDirection: 'row',
-                                alignItems: 'flex-start',
-                                marginBottom: 32
-                            }}>
-                                <TouchableOpacity
-                                    onPress={() => setRememberMe(!rememberMe)}
-                                    style={{ flexDirection: 'row', alignItems: 'flex-start' }}
-                                >
                                     <View style={{
-                                        width: 20,
-                                        height: 20,
-                                        borderRadius: 4,
-                                        borderWidth: 1,
-                                        borderColor: rememberMe ? '#FF5A5F' : '#6B7280',
-                                        backgroundColor: rememberMe ? '#FF5A5F' : 'transparent',
-                                        marginRight: 12,
-                                        marginTop: 2,
+                                        width: 74,
+                                        height: 74,
+                                        borderRadius: 37,
+                                        backgroundColor: '#1a1a2e',
                                         alignItems: 'center',
                                         justifyContent: 'center'
                                     }}>
-                                        {rememberMe && <Text style={{ color: 'white', fontSize: 12 }}>✓</Text>}
+                                        <Image
+                                            source={{ uri: AMIZE_LOGO }}
+                                            style={{ width: 80, height: 80, borderRadius: 40 }}
+                                            resizeMode="contain"
+                                        />
                                     </View>
-                                    <Text style={{
-                                        color: '#9CA3AF',
-                                        fontFamily: 'Figtree',
-                                        flex: 1,
-                                        lineHeight: 20
-                                    }}>
-                                        I agree to the{' '}
-                                        <Text style={{ color: '#FF5A5F' }}>Terms of Service</Text>
-                                        {' '}and{' '}
-                                        <Text style={{ color: '#FF5A5F' }}>Privacy Policy</Text>
-                                    </Text>
-                                </TouchableOpacity>
-                            </View>
+                                </View>
 
-                            {/* Sign Up Button */}
-                            <Button
-                                label="Create Account"
-                                onPress={handleSignUp}
-                                variant="primary"
-                                fullWidth
-                                loading={loading}
-                                disabled={!rememberMe}
-                            />
-
-                            {/* Divider */}
-                            <View style={{
-                                flexDirection: 'row',
-                                alignItems: 'center',
-                                marginBottom: 32
-                            }}>
-                                <View style={{ flex: 1, height: 1, backgroundColor: '#1a1a2e' }} />
+                                {/* Title */}
                                 <Text style={{
-                                    color: '#6B7280',
-                                    marginHorizontal: 16,
-                                    fontFamily: 'Figtree'
+                                    fontFamily: 'Figtree',
+                                    color: 'white',
+                                    fontSize: 28,
+                                    fontWeight: 'bold',
+                                    marginBottom: 8,
+                                    textAlign: 'center'
                                 }}>
-                                    or continue with
+                                    Create your Account
                                 </Text>
-                                <View style={{ flex: 1, height: 1, backgroundColor: '#1a1a2e' }} />
                             </View>
 
-                            {/* Social Login Buttons */}
-                            <View style={{
-                                flexDirection: 'row',
-                                justifyContent: 'center',
-                                marginBottom: 32
-                            }}>
-                                <TouchableOpacity
-                                    style={{
-                                        width: 56,
-                                        height: 56,
-                                        borderRadius: 16,
-                                        backgroundColor: '#1a1a2e',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        marginHorizontal: 8
-                                    }}
-                                    onPress={handleFacebookSignup}
-                                >
-                                    <Image
-                                        source={{uri: FACEBOOK_ICON}}
-                                        style={{width: 24, height: 24}}
-                                    />
-                                </TouchableOpacity>
+                            {/* Form Section */}
+                            <View style={{ width: '100%', maxWidth: 400 }}>
+                                <Input
+                                    label="Username"
+                                    placeholder="Enter your username"
+                                    value={registrationData.username || ''}
+                                    onChangeText={handleUsernameChange}
+                                    icon={<User size={20} color="#9CA3AF" />}
+                                    error={registrationErrors.username}
+                                    onBlur={() => validateField('username')}
+                                />
 
-                                <TouchableOpacity
-                                    style={{
-                                        width: 56,
-                                        height: 56,
-                                        borderRadius: 16,
-                                        backgroundColor: '#1a1a2e',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        marginHorizontal: 8
-                                    }}
-                                    onPress={handleGoogleSignup}
-                                >
-                                    <Image
-                                        source={{uri: GOOGLE_ICON}}
-                                        style={{width: 24, height: 24}}
-                                    />
-                                </TouchableOpacity>
+                                <Input
+                                    label="Email"
+                                    placeholder="Enter your email"
+                                    value={registrationData.email || ''}
+                                    onChangeText={handleEmailChange}
+                                    keyboardType="email-address"
+                                    icon={<Mail size={20} color="#9CA3AF" />}
+                                    error={registrationErrors.email}
+                                    onBlur={() => validateField('email')}
+                                />
 
-                                <TouchableOpacity
-                                    style={{
-                                        width: 56,
-                                        height: 56,
-                                        borderRadius: 16,
-                                        backgroundColor: '#1a1a2e',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        marginHorizontal: 8
-                                    }}
-                                    onPress={handleAppleSignup}
-                                >
-                                    <Image
-                                        source={{uri: APPLE_ICON}}
-                                        style={{width: 24, height: 24}}
-                                    />
-                                </TouchableOpacity>
-                            </View>
+                                <Input
+                                    label="Password"
+                                    placeholder="Enter your password"
+                                    value={registrationData.password || ''}
+                                    onChangeText={handlePasswordChange}
+                                    secureTextEntry
+                                    icon={<Lock size={20} color="#9CA3AF" />}
+                                    error={registrationErrors.password}
+                                    onBlur={() => validateField('password')}
+                                    onFocus={() => setShowPasswordRequirements(true)}
+                                />
 
-                            {/* Sign In Link */}
-                            <View style={{
-                                flexDirection: 'row',
-                                justifyContent: 'center'
-                            }}>
-                                <Text style={{ color: '#9CA3AF', fontFamily: 'Figtree' }}>
-                                    Already have an account?
-                                </Text>
-                                <TouchableOpacity onPress={handleSignIn}>
+                                {/* Password requirements */}
+                                {showPasswordRequirements && (
+                                    <View style={{
+                                        marginBottom: 20,
+                                        padding: 16,
+                                        backgroundColor: '#2A2A3A',
+                                        borderRadius: 12,
+                                        borderWidth: 1,
+                                        borderColor: '#374151'
+                                    }}>
+                                        <Text style={{
+                                            color: 'white',
+                                            marginBottom: 12,
+                                            fontFamily: 'Figtree',
+                                            fontWeight: '500'
+                                        }}>
+                                            Password requirements:
+                                        </Text>
+
+                                        <View style={{ marginLeft: 8 }}>
+                                            {[
+                                                { key: 'length', text: 'At least 8 characters', check: passwordChecks.length },
+                                                { key: 'uppercase', text: 'At least one uppercase letter', check: passwordChecks.uppercase },
+                                                { key: 'lowercase', text: 'At least one lowercase letter', check: passwordChecks.lowercase },
+                                                { key: 'number', text: 'At least one number', check: passwordChecks.number },
+                                                { key: 'special', text: 'At least one special character', check: passwordChecks.special }
+                                            ].map((requirement) => (
+                                                <View key={requirement.key} style={{
+                                                    flexDirection: 'row',
+                                                    alignItems: 'center',
+                                                    marginBottom: 6
+                                                }}>
+                                                    {requirement.check ? (
+                                                        <CheckCircle size={16} color="#00C853" style={{ marginRight: 8 }} />
+                                                    ) : (
+                                                        <XCircle size={16} color="#FF5A5F" style={{ marginRight: 8 }} />
+                                                    )}
+                                                    <Text style={{
+                                                        color: requirement.check ? '#00C853' : '#9CA3AF',
+                                                        fontFamily: 'Figtree',
+                                                        fontSize: 14
+                                                    }}>
+                                                        {requirement.text}
+                                                    </Text>
+                                                </View>
+                                            ))}
+                                        </View>
+                                    </View>
+                                )}
+
+                                <Input
+                                    label="Confirm Password"
+                                    placeholder="Confirm your password"
+                                    value={registrationData.confirmPassword || ''}
+                                    onChangeText={handleConfirmPasswordChange}
+                                    secureTextEntry
+                                    icon={<Lock size={20} color="#9CA3AF" />}
+                                    error={registrationErrors.confirmPassword}
+                                    onBlur={() => validateField('confirmPassword')}
+                                />
+
+                                {/* Terms Agreement */}
+                                <View style={{
+                                    flexDirection: 'row',
+                                    alignItems: 'flex-start',
+                                    marginBottom: 32
+                                }}>
+                                    <TouchableOpacity
+                                        onPress={() => setRememberMe(!rememberMe)}
+                                        style={{ flexDirection: 'row', alignItems: 'flex-start' }}
+                                    >
+                                        <View style={{
+                                            width: 20,
+                                            height: 20,
+                                            borderRadius: 4,
+                                            borderWidth: 1,
+                                            borderColor: rememberMe ? '#FF5A5F' : '#6B7280',
+                                            backgroundColor: rememberMe ? '#FF5A5F' : 'transparent',
+                                            marginRight: 12,
+                                            marginTop: 2,
+                                            alignItems: 'center',
+                                            justifyContent: 'center'
+                                        }}>
+                                            {rememberMe && <Text style={{ color: 'white', fontSize: 12 }}>✓</Text>}
+                                        </View>
+                                        <Text style={{
+                                            color: '#9CA3AF',
+                                            fontFamily: 'Figtree',
+                                            flex: 1,
+                                            lineHeight: 20
+                                        }}>
+                                            I agree to the{' '}
+                                            <Text style={{ color: '#FF5A5F' }}>Terms of Service</Text>
+                                            {' '}and{' '}
+                                            <Text style={{ color: '#FF5A5F' }}>Privacy Policy</Text>
+                                        </Text>
+                                    </TouchableOpacity>
+                                </View>
+
+                                {/* Sign Up Button */}
+                                <Button
+                                    label="Create Account"
+                                    onPress={handleSignUp}
+                                    variant="primary"
+                                    fullWidth
+                                    loading={loading}
+                                    disabled={!rememberMe}
+                                />
+
+                                {/* Divider */}
+                                <View style={{
+                                    flexDirection: 'row',
+                                    alignItems: 'center',
+                                    marginBottom: 32
+                                }}>
+                                    <View style={{ flex: 1, height: 1, backgroundColor: '#1a1a2e' }} />
                                     <Text style={{
-                                        color: '#FF5A5F',
-                                        fontWeight: '500',
+                                        color: '#6B7280',
+                                        marginHorizontal: 16,
                                         fontFamily: 'Figtree'
                                     }}>
-                                        Sign in
+                                        or continue with
                                     </Text>
-                                </TouchableOpacity>
+                                    <View style={{ flex: 1, height: 1, backgroundColor: '#1a1a2e' }} />
+                                </View>
+
+                                {/* Social Login Buttons */}
+                                <View style={{
+                                    flexDirection: 'row',
+                                    justifyContent: 'center',
+                                    marginBottom: 32
+                                }}>
+                                    <TouchableOpacity
+                                        style={{
+                                            width: 56,
+                                            height: 56,
+                                            borderRadius: 16,
+                                            backgroundColor: '#1a1a2e',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            marginHorizontal: 8
+                                        }}
+                                        onPress={handleFacebookSignup}
+                                    >
+                                        <Image
+                                            source={{uri: FACEBOOK_ICON}}
+                                            style={{width: 24, height: 24}}
+                                        />
+                                    </TouchableOpacity>
+
+                                    <TouchableOpacity
+                                        style={{
+                                            width: 56,
+                                            height: 56,
+                                            borderRadius: 16,
+                                            backgroundColor: '#1a1a2e',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            marginHorizontal: 8
+                                        }}
+                                        onPress={handleGoogleSignup}
+                                    >
+                                        <Image
+                                            source={{uri: GOOGLE_ICON}}
+                                            style={{width: 24, height: 24}}
+                                        />
+                                    </TouchableOpacity>
+
+                                    <TouchableOpacity
+                                        style={{
+                                            width: 56,
+                                            height: 56,
+                                            borderRadius: 16,
+                                            backgroundColor: '#1a1a2e',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            marginHorizontal: 8
+                                        }}
+                                        onPress={handleAppleSignup}
+                                    >
+                                        <Image
+                                            source={{uri: APPLE_ICON}}
+                                            style={{width: 24, height: 24}}
+                                        />
+                                    </TouchableOpacity>
+                                </View>
+
+                                {/* Sign In Link */}
+                                <View style={{
+                                    flexDirection: 'row',
+                                    justifyContent: 'center'
+                                }}>
+                                    <Text style={{ color: '#9CA3AF', fontFamily: 'Figtree' }}>
+                                        Already have an account?
+                                    </Text>
+                                    <TouchableOpacity onPress={handleSignIn}>
+                                        <Text style={{
+                                            color: '#FF5A5F',
+                                            fontWeight: '500',
+                                            fontFamily: 'Figtree'
+                                        }}>
+                                            Sign in
+                                        </Text>
+                                    </TouchableOpacity>
+                                </View>
                             </View>
                         </View>
                     </View>
-                </View>
-            </ScrollView>
+                </ScrollView>
             </LinearGradient>
         </SafeAreaView>
     );

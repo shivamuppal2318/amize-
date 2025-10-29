@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import apiClient from "@/lib/api/client";
+import apiClient, { responseInterceptor } from "@/lib/api/client";
 import { VIDEO_ENDPOINTS } from "@/lib/api/config";
 import { useToast } from "@/hooks/useToast";
 import axios from "axios";
@@ -100,7 +100,7 @@ export const usePostApi = () => {
         return response.data;
       } catch (error: any) {
         console.error("Create post error:", error.message);
-
+        responseInterceptor(error)
         // Better error handling for different error types
         let errorMessage = "Failed to create post";
 
@@ -201,7 +201,7 @@ export const usePostApi = () => {
         return response.data;
       } catch (error: any) {
         console.error("Create slideshow error:", error);
-
+        responseInterceptor(error)
         // Better error handling for different error types
         let errorMessage = "Failed to create slideshow";
 
@@ -225,9 +225,7 @@ export const usePostApi = () => {
     []
   );
 
-  /**
-   * Get videos with filtering
-   */
+
   const getVideos = useCallback(
     async (params?: {
       userId?: string;
@@ -250,9 +248,7 @@ export const usePostApi = () => {
     []
   );
 
-  /**
-   * Get video by ID
-   */
+ 
   const getVideoById = useCallback(async (id: string) => {
     try {
       const response = await apiClient.get(VIDEO_ENDPOINTS.VIDEO_BY_ID(id));
@@ -264,9 +260,7 @@ export const usePostApi = () => {
     }
   }, []);
 
-  /**
-   * Like/unlike a video
-   */
+
   const toggleLike = useCallback(async (videoId: string) => {
     try {
       const response = await apiClient.post(VIDEO_ENDPOINTS.LIKE(videoId));
