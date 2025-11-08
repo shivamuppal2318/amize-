@@ -1066,7 +1066,7 @@ const FeedScreen: React.FC = () => {
           end={{ x: 0.5, y: 1 }}
           style={{ flex: 1 }}
         >
-          <StatusBar style="auto" backgroundColor="transparent" />
+          <StatusBar style="light" backgroundColor="transparent" />
           {renderTabs()}
           {renderEmpty()}
 
@@ -1093,7 +1093,7 @@ const FeedScreen: React.FC = () => {
   // Main render with enhanced FlatList
   return (
     <View style={styles.container}>
-      <StatusBar style="auto" backgroundColor={"transparent"} />
+      <StatusBar style="light" backgroundColor={"transparent"} />
 
       {/* Gradient Background */}
       <LinearGradient

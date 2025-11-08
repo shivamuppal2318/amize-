@@ -34,6 +34,7 @@ import { useCameraPermissions } from '@/hooks/useCameraPermissions';
 import { usePostingStore } from '@/stores/postingStore';
 import { useToast } from '@/hooks/useToast';
 import { SafeAreaView } from 'react-native-safe-area-context';
+// import ARCameraView from './ARCameraView';
 
 const { width, height } = Dimensions.get('window');
 
@@ -265,6 +266,8 @@ export default function CameraScreen() {
             <View style={styles.container}>
                 <StatusBar barStyle="light-content" />
                 <Stack.Screen options={{ headerShown: false }} />
+
+                {/* <ARCameraView/> */}
 
                 <CameraView
                     style={styles.camera}

@@ -3,7 +3,7 @@
 export const SERVER_URL = "https://amize-next.vercel.app";
 //TODO export const SERVER_URL = "http://192.168.0.103:3000";
 export const API_URL = `${SERVER_URL}/api`;
-export const SOCKET_URL = `${SERVER_URL}`;
+export const SOCKET_URL = `wss://amize‑next.vercel.app`;
 export const SITE_URL = `${SERVER_URL}`;
 
 // Help center categories

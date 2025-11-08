@@ -7,7 +7,9 @@
     "icon": "./assets/images/icon.png",
     "scheme": "myapp",
     "userInterfaceStyle": "automatic",
-    "assetBundlePatterns": ["assets/**/*"],
+    "assetBundlePatterns": [
+      "assets/**/*"
+    ],
     "splash": {
       "image": "./assets/images/splash-icon.png",
       "resizeMode": "contain",
@@ -21,6 +23,8 @@
     },
     "ios": {
       "supportsTablet": true,
+      "jsEngine": "hermes",
+      "newArchEnabled": true,
       "infoPlist": {
         "NSCameraUsageDescription": "Allow $(PRODUCT_NAME) to access your camera to take photos and record videos",
         "NSMicrophoneUsageDescription": "Allow $(PRODUCT_NAME) to access your microphone for recording videos with sound",
@@ -35,6 +39,8 @@
       "bundleIdentifier": "com.kentom.amize"
     },
     "android": {
+      "jsEngine": "hermes",
+      "newArchEnabled": true,
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
@@ -93,18 +99,7 @@
         }
       ],
       [
-        "expo-font",
-        {
-          "fonts": [
-            "./node_modules/@expo-google-fonts/figtree/300Light/Figtree_300Light.ttf",
-            "./node_modules/@expo-google-fonts/figtree/400Regular/Figtree_400Regular.ttf",
-            "./node_modules/@expo-google-fonts/figtree/500Medium/Figtree_500Medium.ttf",
-            "./node_modules/@expo-google-fonts/figtree/600SemiBold/Figtree_600SemiBold.ttf",
-            "./node_modules/@expo-google-fonts/figtree/700Bold/Figtree_700Bold.ttf",
-            "./node_modules/@expo-google-fonts/figtree/800ExtraBold/Figtree_800ExtraBold.ttf",
-            "./node_modules/@expo-google-fonts/figtree/900Black/Figtree_900Black.ttf"
-          ]
-        }
+        "expo-font"
       ],
       [
         "expo-notifications",
@@ -112,15 +107,14 @@
           "icon": "./assets/images/notification-icon.png",
           "color": "#FF4D67",
           "defaultChannel": "default",
-          "sounds": ["./assets/sounds/notification.mp3"]
+          "sounds": [
+            "./assets/sounds/notification.mp3"
+          ]
         }
       ],
-      [
-        "react-native-vision-camera",
-        {
-          "cameraPermissionText": "Allow access to your camera for AR filters"
-        }
-      ]
+     
+      "expo-build-properties",
+      "expo-secure-store"
     ],
     "experiments": {
       "typedRoutes": true

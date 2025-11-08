@@ -109,6 +109,110 @@ const MessagingSection: React.FC<MessagingSectionProps> = ({
     }
   }, [autoOpenConversation, conversations, selectedConversation]);
 
+  const dummyConversations: Conversation[] = [
+    // ✅ Direct Chat 1
+    {
+      id: "conv_1",
+      type: "direct",
+      title: "Rahul Sharma",
+      description: "Personal chat",
+      imageUrl: "https://i.pravatar.cc/150?img=20",
+      participants: [
+        { id: "user_1", username: "You" },
+        { id: "user_2", username: "Rahul Sharma" },
+      ],
+      lastMessageContent: "Bro, where are you?",
+      lastMessageAt: new Date().toISOString(),
+      lastMessageSender: "Rahul Sharma",
+      isActive: true,
+      createdAt: new Date(Date.now() - 1000 * 60 * 60).toISOString(),
+      updatedAt: new Date().toISOString(),
+      name: "Rahul Sharma",
+      avatar: "https://i.pravatar.cc/150?img=20",
+      lastMessage: "Bro, where are you?",
+      timestamp: new Date().toISOString(),
+      unreadCount: 0,
+      isOnline: false,
+    },
+
+    // ✅ Direct Chat 2
+    {
+      id: "conv_2",
+      type: "direct",
+      title: "Priya Singh",
+      description: "Chat with Priya",
+      imageUrl: "https://i.pravatar.cc/150?img=21",
+      participants: [
+        { id: "user_1", username: "You" },
+        { id: "user_3", username: "Priya Singh" },
+      ],
+      lastMessageContent: "I'll talk to you later.",
+      lastMessageAt: new Date(Date.now() - 1000 * 60 * 5).toISOString(),
+      lastMessageSender: "Priya Singh",
+      isActive: true,
+      createdAt: new Date(Date.now() - 1000 * 60 * 90).toISOString(),
+      updatedAt: new Date(Date.now() - 1000 * 60 * 5).toISOString(),
+      name: "Priya Singh",
+      avatar: "https://i.pravatar.cc/150?img=21",
+      lastMessage: "I'll talk to you later.",
+      timestamp: new Date(Date.now() - 1000 * 60 * 5).toISOString(),
+      unreadCount: 0,
+      isOnline: false,
+    },
+
+    // ✅ Direct Chat 3
+    {
+      id: "conv_3",
+      type: "direct",
+      title: "Ravi Kumar",
+      description: "Chat with Ravi",
+      imageUrl: "https://i.pravatar.cc/150?img=22",
+      participants: [
+        { id: "user_1", username: "You" },
+        { id: "user_4", username: "Ravi Kumar" },
+      ],
+      lastMessageContent: "Thanks bro! 👍",
+      lastMessageAt: new Date(Date.now() - 1000 * 60 * 25).toISOString(),
+      lastMessageSender: "Ravi Kumar",
+      isActive: true,
+      createdAt: new Date(Date.now() - 1000 * 60 * 140).toISOString(),
+      updatedAt: new Date(Date.now() - 1000 * 60 * 25).toISOString(),
+      name: "Ravi Kumar",
+      avatar: "https://i.pravatar.cc/150?img=22",
+      lastMessage: "Thanks bro! 👍",
+      timestamp: new Date(Date.now() - 1000 * 60 * 25).toISOString(),
+      unreadCount: 0,
+      isOnline: false,
+    },
+
+    // ✅ Group Chat 1
+    {
+      id: "conv_4",
+      type: "group",
+      title: "Office Team",
+      description: "Daily office communication",
+      imageUrl: "https://i.pravatar.cc/150?img=23",
+      participants: [
+        { id: "user_1", username: "You" },
+        { id: "user_2", username: "Rahul Sharma" },
+        { id: "user_3", username: "Priya Singh" },
+        { id: "user_4", username: "Ravi Kumar" },
+      ],
+      lastMessageContent: "Meeting starts in 10 minutes.",
+      lastMessageAt: new Date(Date.now() - 1000 * 60 * 60).toISOString(),
+      lastMessageSender: "Priya Singh",
+      isActive: true,
+      createdAt: new Date(Date.now() - 1000 * 60 * 600).toISOString(),
+      updatedAt: new Date(Date.now() - 1000 * 60 * 60).toISOString(),
+      name: "Office Team",
+      avatar: "https://i.pravatar.cc/150?img=23",
+      lastMessage: "Meeting starts in 10 minutes.",
+      timestamp: new Date(Date.now() - 1000 * 60 * 60).toISOString(),
+      unreadCount: 0,
+      isOnline: false,
+    },
+  ];
+
   // Add loading state for auto-opening
   useEffect(() => {
     if (autoOpenConversation && !selectedConversation) {

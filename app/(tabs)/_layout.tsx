@@ -38,7 +38,10 @@ export default function TabLayout() {
     if (label === "Create") {
       return (
         <TouchableOpacity
-          style={styles.createButton}
+          style={[
+            styles.createButton,
+            { marginBottom: Platform.OS === "android" ? 20 : 0 },
+          ]}
           onPress={onPress}
           activeOpacity={0.7}
         >
@@ -147,7 +150,7 @@ export default function TabLayout() {
             backgroundColor: "#1E4A72",
             borderTopWidth: 0,
             elevation: 0,
-            height: 40 + insets.bottom, 
+            height: 40 + insets.bottom,
             paddingTop: 5,
           },
           tabBarActiveTintColor: "#fff",
@@ -159,7 +162,7 @@ export default function TabLayout() {
             style={[
               styles.tabBar,
               {
-                height: 30 + Math.max(insets.bottom, 5),
+                height: 50 + Math.max(insets.bottom, 5),
               },
             ]}
           >
@@ -293,7 +296,7 @@ const styles = StyleSheet.create({
   tabBar: {
     flexDirection: "row",
     // backgroundColor: "#1E4A72",
-    backgroundColor: "#1a1a2e",
+    backgroundColor: "#1E4A72",
     borderTopWidth: 1,
     borderTopColor: "rgba(243,244,246,0.04)",
   },

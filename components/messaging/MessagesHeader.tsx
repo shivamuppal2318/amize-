@@ -68,7 +68,7 @@ const MessagesHeader: React.FC<MessagesHeaderProps> = ({
           {!isConnected && (
             <TouchableOpacity
               onPress={onRetry}
-              style={[styles.headerIconButton, {marginLeft:5}]}
+              style={[styles.headerIconButton, { marginLeft: 5 }]}
               activeOpacity={0.7}
             >
               <View style={[styles.iconContainer, styles.retryIcon]}>
