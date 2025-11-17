@@ -124,7 +124,8 @@ export default function ProfilePage() {
         try {
             setLoading(true);
             setError(null);
-
+            console.log("fetching profile for id:",id);
+            console.log(await getTokens())
             const response = await apiClient.get(`/users/${id}`);
             
             if (response.data.success) {

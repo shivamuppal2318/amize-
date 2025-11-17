@@ -6,6 +6,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useApi } from '@/hooks/useApi';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import PasswordEntryModal from '@/components/profile/PasswordEntryModal';
+import { Platform } from 'react-native';
 
 type AccountItemProps = {
     icon: React.ReactNode;
@@ -117,7 +118,7 @@ const EditFieldModal = ({
                             <Text className="text-white font-medium">Cancel</Text>
                         </TouchableOpacity>
                         <TouchableOpacity
-                            className="px-5 py-3 rounded-lg bg-[#FF4D67]"
+                            className={`px-5 py-3 rounded-lg bg-[#1E4A72]`}
                             onPress={() => onSave(inputValue)}
                             disabled={loading}
                         >
@@ -134,88 +135,118 @@ const EditFieldModal = ({
     );
 };
 
-// Modal component for date picker
 const DatePickerModal = ({
-                             visible,
-                             onClose,
-                             value,
-                             onSave,
-                             loading
-                         }: {
+    visible,
+    onClose,
+    value,
+    onSave,
+    loading
+  }: {
     visible: boolean;
     onClose: () => void;
     value: Date | null;
     onSave: (value: Date) => void;
     loading: boolean;
-}) => {
+  }) => {
     const [date, setDate] = useState<Date>(value || new Date());
-
+    const [showAndroidPicker, setShowAndroidPicker] = useState(false);
+  
     useEffect(() => {
-        if (visible && value) {
-            setDate(value);
-        }
+      if (visible && value) {
+        setDate(value);
+      }
     }, [visible, value]);
-
-    const handleChange = (event: any, selectedDate?: Date) => {
-        if (selectedDate) {
-            setDate(selectedDate);
-        }
+  
+    const handleAndroidChange = (event: any, selectedDate?: Date) => {
+      if (event.type === "set") {
+        const newDate = selectedDate || date;
+        setDate(newDate);
+      }
+      setShowAndroidPicker(false);
     };
-
+  
     return (
-        <Modal
-            visible={visible}
-            transparent={true}
-            animationType="fade"
-            onRequestClose={onClose}
-        >
-            <View className="flex-1 bg-black/50 justify-center items-center">
-                <View className="bg-[#262626] w-[90%] rounded-xl p-5">
-                    <View className="flex-row justify-between items-center mb-4">
-                        <Text className="text-white text-xl font-bold">Date of Birth</Text>
-                        <TouchableOpacity onPress={onClose} disabled={loading}>
-                            <X size={24} color="#FFFFFF" />
-                        </TouchableOpacity>
-                    </View>
-
-                    <View className="bg-[#1E1E1E] p-4 rounded-lg">
-                        <DateTimePicker
-                            value={date}
-                            mode="date"
-                            display="spinner"
-                            onChange={handleChange}
-                            maximumDate={new Date()}
-                            themeVariant="dark"
-                            textColor="#FFFFFF"
-                        />
-                    </View>
-
-                    <View className="flex-row justify-end mt-4">
-                        <TouchableOpacity
-                            className="px-5 py-3 mr-3 rounded-lg bg-[#333333]"
-                            onPress={onClose}
-                            disabled={loading}
-                        >
-                            <Text className="text-white font-medium">Cancel</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                            className="px-5 py-3 rounded-lg bg-[#FF4D67]"
-                            onPress={() => onSave(date)}
-                            disabled={loading}
-                        >
-                            {loading ? (
-                                <ActivityIndicator size="small" color="#FFFFFF" />
-                            ) : (
-                                <Text className="text-white font-medium">Save</Text>
-                            )}
-                        </TouchableOpacity>
-                    </View>
-                </View>
+      <Modal
+        visible={visible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={onClose}
+      >
+        <View className="flex-1 bg-black/50 justify-center items-center">
+          <View className="bg-[#262626] w-[90%] rounded-xl p-5">
+            {/* Header */}
+            <View className="flex-row justify-between items-center mb-4">
+              <Text className="text-white text-xl font-bold">Date of Birth</Text>
+              <TouchableOpacity onPress={onClose} disabled={loading}>
+                <X size={24} color="#FFFFFF" />
+              </TouchableOpacity>
             </View>
-        </Modal>
+  
+            {/* iOS picker inside modal */}
+            {Platform.OS === "ios" && (
+              <View className="bg-[#1E1E1E] p-4 rounded-lg">
+                <DateTimePicker
+                  value={date}
+                  mode="date"
+                  display="spinner"
+                  onChange={(e, d) => d && setDate(d)}
+                  maximumDate={new Date()}
+                  themeVariant="dark"
+                  textColor="#FFFFFF"
+                />
+              </View>
+            )}
+  
+            {/* Android button */}
+            {Platform.OS === "android" && (
+              <TouchableOpacity
+                onPress={() => setShowAndroidPicker(true)}
+                className="bg-[#1E1E1E] p-4 rounded-lg"
+              >
+                <Text className="text-white text-center">
+                  {date.toDateString()}
+                </Text>
+              </TouchableOpacity>
+            )}
+  
+            {/* Buttons */}
+            <View className="flex-row justify-end mt-4">
+              <TouchableOpacity
+                className="px-5 py-3 mr-3 rounded-lg bg-[#333333]"
+                onPress={onClose}
+                disabled={loading}
+              >
+                <Text className="text-white font-medium">Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                className="px-5 py-3 rounded-lg bg-[#1E4A72]"
+                onPress={() => onSave(date)}
+                disabled={loading}
+              >
+                {loading ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <Text className="text-white font-medium">Save</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+  
+        {/* Android system picker outside modal */}
+        {showAndroidPicker && (
+          <DateTimePicker
+            value={date}
+            mode="date"
+            display="calendar"
+            onChange={handleAndroidChange}
+            maximumDate={new Date()}
+          />
+        )}
+      </Modal>
     );
-};
-
+  };
+  
 // Confirmation modal
 const ConfirmationModal = ({
                                visible,

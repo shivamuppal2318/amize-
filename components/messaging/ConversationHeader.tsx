@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { View, Text, TouchableOpacity, Image, StyleSheet } from "react-native";
 import { ArrowLeft, Phone, MoreVertical } from "lucide-react-native";
 import { Conversation } from "@/types/messaging";
@@ -11,43 +11,62 @@ interface ConversationHeaderProps {
   typingUsers: string[];
 }
 
+const FALLBACK_AVATAR = "https://cdn-icons-png.flaticon.com/512/219/219983.png";
+
 const ConversationHeader: React.FC<ConversationHeaderProps> = ({
   conversation,
   onBack,
   isOnline = false,
   typingUsers,
-}) => (
-  <View style={styles.conversationHeaderContainer}>
-    <TouchableOpacity onPress={onBack} style={styles.backButton}>
-      <ArrowLeft size={24} color={COLORS.white} />
-    </TouchableOpacity>
-    <View style={styles.avatarContainer}>
-      <Image
-        source={{ uri: conversation.avatar }}
-        style={styles.conversationAvatar}
-      />
-      {isOnline && <View style={styles.onlineIndicatorSmall} />}
-    </View>
-    <View style={styles.conversationInfo}>
-      <Text style={styles.conversationTitle}>{conversation.name}</Text>
-      {typingUsers.length > 0 ? (
-        <Text style={styles.statusText}>typing...</Text>
-      ) : (
-        <Text style={styles.statusText}>
-          {isOnline ? "Online" : "Last seen recently"}
-        </Text>
-      )}
-    </View>
-    <View style={styles.conversationActions}>
-      <TouchableOpacity style={styles.actionButton}>
-        <Phone size={24} color={COLORS.white} />
+}) => {
+  const [imgError, setImgError] = useState(false);
+
+  useEffect(() => {
+    setImgError(false);
+  }, [conversation.avatar]);
+
+  return (
+    <View style={styles.conversationHeaderContainer}>
+      <TouchableOpacity onPress={onBack} style={styles.backButton}>
+        <ArrowLeft size={24} color={COLORS.white} />
       </TouchableOpacity>
-      <TouchableOpacity style={styles.actionButton}>
-        <MoreVertical size={24} color={COLORS.white} />
-      </TouchableOpacity>
+
+      <View style={styles.avatarContainer}>
+        <Image
+          source={{
+            uri: imgError
+              ? FALLBACK_AVATAR
+              : conversation.avatar || FALLBACK_AVATAR,
+          }}
+          style={styles.conversationAvatar}
+          onError={() => setImgError(true)}
+        />
+        {isOnline && <View style={styles.onlineIndicatorSmall} />}
+      </View>
+
+      <View style={styles.conversationInfo}>
+        <Text style={styles.conversationTitle}>{conversation.name}</Text>
+
+        {typingUsers.length > 0 ? (
+          <Text style={styles.statusText}>typing...</Text>
+        ) : (
+          <Text style={styles.statusText}>
+            {isOnline ? "Online" : "Last seen recently"}
+          </Text>
+        )}
+      </View>
+
+      {/* <View style={styles.conversationActions}>
+        <TouchableOpacity style={styles.actionButton}>
+          <Phone size={24} color={COLORS.white} />
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.actionButton}>
+          <MoreVertical size={24} color={COLORS.white} />
+        </TouchableOpacity>
+      </View> */}
     </View>
-  </View>
-);
+  );
+};
 
 const styles = StyleSheet.create({
   conversationHeaderContainer: {

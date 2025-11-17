@@ -256,7 +256,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
           style={styles.cameraButton}
           disabled={!connectionStatus.isConnected || isSending}
         >
-          <Camera size={24} color={getIconColor()} />
+          {/* <Camera size={24} color={getIconColor()} /> */}
         </TouchableOpacity>
       )}
     </View>

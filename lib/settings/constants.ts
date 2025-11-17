@@ -1,9 +1,10 @@
 // export const SERVER_URL = "https://amizew.com";
 // export const SERVER_URL = "http://192.168.0.128:3000";
-export const SERVER_URL = "https://amize-next.vercel.app";
+// export const SERVER_URL = "https://amize-next.vercel.app";
+export const SERVER_URL = "https://amize-next.onrender.com";
 //TODO export const SERVER_URL = "http://192.168.0.103:3000";
 export const API_URL = `${SERVER_URL}/api`;
-export const SOCKET_URL = `wss://amize‑next.vercel.app`;
+export const SOCKET_URL = `wss://amize-next.onrender.com`;
 export const SITE_URL = `${SERVER_URL}`;
 
 // Help center categories
