@@ -27,7 +27,7 @@ export const authApi = {
   // Register a new user
   register: async (data: RegisterRequest): Promise<AuthResponse> => {
     const response = await axios.post(
-      "https://amize-next.vercel.app/api/auth/register",
+      API_CONFIG.BASE_URL + AUTH_ENDPOINTS.REGISTER,
       data,
       {
         headers: {
@@ -41,11 +41,15 @@ export const authApi = {
 
   // Verify account with verification code
   verifyCode: async (data: VerifyCodeRequest): Promise<VerifyCodeResponse> => {
-    const response = await axios.post(API_CONFIG.BASE_URL + AUTH_ENDPOINTS.VERIFY_CODE, data, {
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
+    const response = await axios.post(
+      API_CONFIG.BASE_URL + AUTH_ENDPOINTS.VERIFY_CODE,
+      data,
+      {
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    );
     console.log("Verify code response:", response.data);
 
     return response.data;

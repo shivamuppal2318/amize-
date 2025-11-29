@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "188596080280",
+    "project_id": "amize-34007",
+    "storage_bucket": "amize-34007.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:188596080280:android:31ccd39b33b022367f4aed",
+        "android_client_info": {
+          "package_name": "com.kentom.amize"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDesY2o8iTMMJtQSQJTgffaSa-BzmFhSkM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

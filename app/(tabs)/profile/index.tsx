@@ -7,7 +7,6 @@ import { User } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Svg, Circle } from 'react-native-svg';
 
-// Create an animated Circle component for the animation
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
 export default function ProfileIndexPage() {
@@ -17,13 +16,10 @@ export default function ProfileIndexPage() {
     const rotateAnim = useRef(new Animated.Value(0)).current;
     const dashAnim = useRef(new Animated.Value(0)).current;
 
-    // State to manage color alternation
     const [colorIndex, setColorIndex] = useState(0);
-    // Colors to alternate between - using consistent app colors
     const colors = ['#FF5A5F', '#F3F4F6'];
     const colorsAlternate = ['#F3F4F6', '#FF5A5F'];
 
-    // Calculate circle circumference for the loader
     const circleRadius = 45;
     const circumference = 2 * Math.PI * circleRadius;
 
@@ -78,12 +74,10 @@ export default function ProfileIndexPage() {
     useEffect(() => {
         if (!loading) {
             if (isAuthenticated && user) {
-                // Redirect to the authenticated user's profile
                 setTimeout(() => {
                     router.replace(`/(tabs)/profile/${user.id}`);
                 }, 800);
             } else {
-                // Redirect to login if not authenticated
                 setTimeout(() => {
                     router.replace('/(auth)/sign-in');
                 }, 800);
@@ -137,7 +131,6 @@ export default function ProfileIndexPage() {
                                 })}
                             />
                         </Svg>
-                        {/* User icon with consistent color */}
                         <User size={44} color="#F3F4F6" />
                     </View>
 

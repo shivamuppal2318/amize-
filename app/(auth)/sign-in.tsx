@@ -1,333 +1,262 @@
-import React, { useState, useEffect } from 'react';
-import {View, Text,  TouchableOpacity, Image, Alert, ScrollView, StatusBar} from 'react-native';
-import { router } from 'expo-router';
-import { ChevronLeft, Mail, Lock } from 'lucide-react-native';
-import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
-import { IconButton } from '@/components/ui/IconButton';
-import { useAuth } from '@/hooks/useAuth';
+import React, { useState, useEffect } from "react";
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  Image,
+  Alert,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
+import { router } from "expo-router";
+import { Mail, Lock } from "lucide-react-native";
+
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { useAuth } from "@/hooks/useAuth";
+
+import * as WebBrowser from "expo-web-browser";
+import * as Google from "expo-auth-session/providers/google";
+import { GoogleAuthProvider, signInWithCredential } from "firebase/auth";
+import { auth } from "../../firebase/config";
+
+WebBrowser.maybeCompleteAuthSession();
+
+// Resolve icons
 // @ts-ignore
-import FacebookIcon from '@/assets/images/figma/facebook.png';
+import FacebookIcon from "@/assets/images/figma/facebook.png";
 // @ts-ignore
-import GoogleIcon from '@/assets/images/figma/google.png';
+import GoogleIcon from "@/assets/images/figma/google.png";
 // @ts-ignore
-import AppleIcon from '@/assets/images/figma/apple.png';
+import AppleIcon from "@/assets/images/figma/apple.png";
 // @ts-ignore
-import AmizeLogo from '@/assets/images/amize.png';
-import { LinearGradient } from 'expo-linear-gradient';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import AmizeLogo from "@/assets/images/amize.png";
+
 const AMIZE_LOGO = Image.resolveAssetSource(AmizeLogo).uri;
-
-
 const FACEBOOK_ICON = Image.resolveAssetSource(FacebookIcon).uri;
 const GOOGLE_ICON = Image.resolveAssetSource(GoogleIcon).uri;
 const APPLE_ICON = Image.resolveAssetSource(AppleIcon).uri;
 
 export default function SignInScreen() {
-    const { login, loading, isAuthenticated } = useAuth();
+  const { login, loading } = useAuth();
 
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-    const [rememberMe, setRememberMe] = useState(false);
-    const [errors, setErrors] = useState({ email: '', password: '' });
-    const [loginSuccess, setLoginSuccess] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [errors, setErrors] = useState({ email: "", password: "" });
 
-    // Check if we need to redirect after successful authentication
-    useEffect(() => {
-        if (isAuthenticated && loginSuccess) {
-            console.log("SignIn: Authentication successful, redirecting to tabs...");
-            setTimeout(() => {
-                router.replace('/(tabs)');
-            }, 200);
-        }
-    }, [isAuthenticated, loginSuccess]);
+  // -----------------------------
+  // GOOGLE AUTH HOOK
+  // -----------------------------
+  const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
+    clientId: "188596080280-jftm5uhn8q9hk1repn686tbk5urh4b7u.apps.googleusercontent.com", // Replace with Firebase Web Client ID
+  });
 
-    const validateForm = () => {
-        let isValid = true;
-        const newErrors = { email: '', password: '' };
+  useEffect(() => {
+    if (response?.type === "success" && response.params.id_token) {
+      const idToken = response.params.id_token;
+      handleGoogleFirebaseLogin(idToken);
+    }
+  }, [response]);
 
-        if (!email) {
-            newErrors.email = 'Email is required';
-            isValid = false;
-        }
+  const handleGoogleFirebaseLogin = async (idToken: string) => {
+    try {
+      const credential = GoogleAuthProvider.credential(idToken);
+      await signInWithCredential(auth, credential);
+    //   router.replace("/(tabs)");
+    } catch (e) {
+      console.error("Firebase Google login failed:", e);
+      Alert.alert("Login Failed", "Firebase authentication failed");
+    }
+  };
 
-        if (!password) {
-            newErrors.password = 'Password is required';
-            isValid = false;
-        }
+  // -----------------------------
+  // EMAIL LOGIN
+  // -----------------------------
+  const validateForm = () => {
+    let isValid = true;
+    const newErrors = { email: "", password: "" };
 
-        setErrors(newErrors);
-        return isValid;
-    };
+    if (!email) {
+      newErrors.email = "Email is required";
+      isValid = false;
+    }
 
-    const handleSignIn = async () => {
-        if (validateForm()) {
-            try {
-                console.log("SignIn: Attempting login...");
-                const result = await login(email, password);
-                console.log(`SignIn: Login result:`, result);
+    if (!password) {
+      newErrors.password = "Password is required";
+      isValid = false;
+    }
 
-                if (result.success) {
-                    setLoginSuccess(true);
-                    console.log("SignIn: Login successful, setting redirect flag");
-                    router.replace('/(tabs)');
-                } else {
-                    Alert.alert('Login Failed', result.message || 'Please check your credentials and try again.');
-                }
-            } catch (error) {
-                console.error("SignIn: Login error:", error);
-                Alert.alert('Login Error', 'An unexpected error occurred. Please try again.');
-            }
-        }
-    };
+    setErrors(newErrors);
+    return isValid;
+  };
 
-    const handleForgotPassword = () => {
-        router.push('/password-reset');
-    };
+  const handleSignIn = async () => {
+    if (!validateForm()) return;
 
-    const handleSignUp = () => {
-        router.push('/(auth)/sign-up');
-    };
+    try {
+      const result = await login(email, password);
+      if (result.success) {
+        router.replace("/(tabs)");
+      } else {
+        Alert.alert("Login Failed", result.message || "Invalid credentials");
+      }
+    } catch (e) {
+      console.error("Email login failed:", e);
+      Alert.alert("Login Error", "Something went wrong");
+    }
+  };
 
-    return (
-        <SafeAreaView style={{ flex: 1, 
-        // backgroundColor: '#1a1a2e'
-         }}>
-            <StatusBar barStyle="light-content" backgroundColor={"#1E4A72"} />
-             <LinearGradient
-                colors={['#1E4A72', '#000000']}  
-                start={{ x: 0.5, y: 0 }}
-                end={{ x: 0.5, y: 1 }}
-                style={{ flex: 1 }}
+  return (
+    <SafeAreaView style={{ flex: 1 }}>
+      <StatusBar barStyle="light-content" backgroundColor="#1E4A72" />
+
+      <ScrollView contentContainerStyle={{ flexGrow: 1, paddingTop: 30 }}>
+        <View style={{ flex: 1, paddingHorizontal: 24 }}>
+          {/* HEADER */}
+          <View style={{ alignItems: "center", marginBottom: 20 }}>
+            <View
+              style={{
+                width: 85,
+                height: 85,
+                borderRadius: 42.5,
+                backgroundColor: "rgba(3,5,16,0.45)",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
             >
-                    {/* <TouchableOpacity
-                        style={{ position:"absolute",padding: 8, marginLeft: 8, marginTop: 10, alignSelf: 'flex-start' }}
-                        onPress={() => router.back()}
-                    >
-                        <ChevronLeft size={24} color="white" />
-                    </TouchableOpacity> */}
-            <ScrollView contentContainerStyle={{ flexGrow: 1, top:30 }}>
-                <View style={{ flex: 1, paddingHorizontal: 24 }}>
-                    {/* Back Button */}
+              <Image
+                source={{ uri: AMIZE_LOGO }}
+                style={{ width: 80, height: 80, borderRadius: 40 }}
+              />
+            </View>
 
-                    {/* Content Container */}
-                    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: 40 }}>
+            <Text
+              style={{
+                fontFamily: "Figtree",
+                color: "white",
+                fontSize: 32,
+                fontWeight: "bold",
+                marginTop: 12,
+                marginBottom: 4,
+                textAlign: "center",
+              }}
+            >
+              Amize Login
+            </Text>
 
-                        {/* Logo Section */}
-                        <View style={{ alignItems: 'center', marginBottom: 20 }}>
-                            {/* Circular Logo with Gradient Ring */}
-                            <View>
-                                <View style={{
-                                    width: 85,
-                                    height: 85,
-                                    borderRadius: 47,
-                                    backgroundColor: 'rgba(3,5,16,0.45)',
-                                    alignItems: 'center',
-                                    justifyContent: 'center'
-                                }}>
-                                    <Image
-                                        source={{ uri: AMIZE_LOGO }}
-                                        style={{ width: 80, height: 80, borderRadius: 40 }}
-                                        resizeMode="contain"
-                                    />
-                                </View>
-                            </View>
+            <Text
+              style={{
+                color: "#9CA3AF",
+                fontSize: 16,
+                textAlign: "center",
+                lineHeight: 24,
+                maxWidth: 320,
+              }}
+            >
+              Sign in to continue to your account
+            </Text>
+          </View>
 
-                            {/* Title */}
-                            <Text style={{
-                                fontFamily: 'Figtree',
-                                color: 'white',
-                                fontSize: 32,
-                                fontWeight: 'bold',
-                                marginBottom: 12,
-                                textAlign: 'center'
-                            }}>
-                                Amize Login
-                            </Text>
+          {/* FORM */}
+          <View style={{ width: "100%", maxWidth: 400 }}>
+            <Input
+              label="Email"
+              placeholder="Enter your email"
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              icon={<Mail size={20} color="#9CA3AF" />}
+              error={errors.email}
+            />
 
-                            {/* Subtitle */}
-                            <Text style={{
-                                color: '#9CA3AF',
-                                fontSize: 16,
-                                fontFamily: 'Figtree',
-                                textAlign: 'center',
-                                lineHeight: 24,
-                                maxWidth: 320
-                            }}>
-                                Sign in to continue to your account and access all features
-                            </Text>
-                        </View>
+            <Input
+              label="Password"
+              placeholder="Enter your password"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
+              icon={<Lock size={20} color="#9CA3AF" />}
+              error={errors.password}
+            />
 
-                        {/* Form Section */}
-                        <View style={{ width: '100%', maxWidth: 400 }}>
-                            <Input
-                                label="Email"
-                                placeholder="Enter your email"
-                                value={email}
-                                onChangeText={setEmail}
-                                keyboardType="email-address"
-                                icon={<Mail size={20} color="#9CA3AF" />}
-                                error={errors.email}
-                            />
+            <Button
+              label="Sign In"
+              onPress={handleSignIn}
+              variant="primary"
+              fullWidth
+              loading={loading}
+            />
 
-                            <Input
-                                label="Password"
-                                placeholder="Enter your password"
-                                value={password}
-                                onChangeText={setPassword}
-                                secureTextEntry
-                                icon={<Lock size={20} color="#9CA3AF" />}
-                                error={errors.password}
-                            />
+            {/* DIVIDER */}
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                marginVertical: 32,
+              }}
+            >
+              <View
+                style={{ flex: 1, height: 1, backgroundColor: "#1a1a2e" }}
+              />
+              <Text style={{ color: "#6B7280", marginHorizontal: 16 }}>
+                or continue with
+              </Text>
+              <View
+                style={{ flex: 1, height: 1, backgroundColor: "#1a1a2e" }}
+              />
+            </View>
 
-                            {/* Remember Me */}
-                            <View style={{
-                                flexDirection: 'row',
-                                alignItems: 'center',
-                                marginBottom: 32
-                            }}>
-                                <TouchableOpacity
-                                    onPress={() => setRememberMe(!rememberMe)}
-                                    style={{ flexDirection: 'row', alignItems: 'center' }}
-                                >
-                                    <View style={{
-                                        width: 20,
-                                        height: 20,
-                                        borderRadius: 4,
-                                        borderWidth: 1,
-                                        borderColor: rememberMe ? '#FF5A5F' : '#6B7280',
-                                        backgroundColor: rememberMe ? '#FF5A5F' : 'transparent',
-                                        marginRight: 8,
-                                        alignItems: 'center',
-                                        justifyContent: 'center'
-                                    }}>
-                                        {rememberMe && <Text style={{ color: 'white', fontSize: 12 }}>✓</Text>}
-                                    </View>
-                                    <Text style={{ color: '#9CA3AF', fontFamily: 'Figtree' }}>Remember me</Text>
-                                </TouchableOpacity>
-                            </View>
+            {/* SOCIAL LOGIN */}
+            <View
+              style={{
+                flexDirection: "row",
+                justifyContent: "center",
+                marginBottom: 32,
+              }}
+            >
+              <TouchableOpacity style={styles.socialButtonStyle}>
+                <Image
+                  source={{ uri: FACEBOOK_ICON }}
+                  style={{ width: 24, height: 24 }}
+                />
+              </TouchableOpacity>
 
-                            {/* Sign In Button */}
-                            <Button
-                                label="Sign In"
-                                onPress={handleSignIn}
-                                variant="primary"
-                                fullWidth
-                                loading={loading}
-                            />
+              <TouchableOpacity
+                style={styles.socialButtonStyle}
+                disabled={!request}
+                onPress={() => promptAsync()} // Only triggers on button press
+              >
+                <Image
+                  source={{ uri: GOOGLE_ICON }}
+                  style={{ width: 24, height: 24 }}
+                />
+              </TouchableOpacity>
 
-                            {/* Forgot Password */}
-                            <TouchableOpacity
-                                onPress={handleForgotPassword}
-                                style={{ alignItems: 'center', marginBottom: 32 }}
-                            >
-                                <Text style={{ color: '#FF5A5F', fontFamily: 'Figtree', fontSize: 16 }}>
-                                    Forgot your password?
-                                </Text>
-                            </TouchableOpacity>
-
-                            {/* Divider */}
-                            <View style={{
-                                flexDirection: 'row',
-                                alignItems: 'center',
-                                marginBottom: 32
-                            }}>
-                                <View style={{ flex: 1, height: 1, backgroundColor: '#1a1a2e' }} />
-                                <Text style={{
-                                    color: '#6B7280',
-                                    marginHorizontal: 16,
-                                    fontFamily: 'Figtree'
-                                }}>
-                                    or continue with
-                                </Text>
-                                <View style={{ flex: 1, height: 1, backgroundColor: '#1a1a2e' }} />
-                            </View>
-
-                            {/* Social Login Buttons */}
-                            <View style={{
-                                flexDirection: 'row',
-                                justifyContent: 'center',
-                                marginBottom: 32
-                            }}>
-                                <TouchableOpacity
-                                    style={{
-                                        width: 56,
-                                        height: 56,
-                                        borderRadius: 16,
-                                        backgroundColor: '#1a1a2e',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        marginHorizontal: 8
-                                    }}
-                                    onPress={() => {}}
-                                >
-                                    <Image
-                                        source={{uri: FACEBOOK_ICON}}
-                                        style={{width: 24, height: 24}}
-                                    />
-                                </TouchableOpacity>
-
-                                <TouchableOpacity
-                                    style={{
-                                        width: 56,
-                                        height: 56,
-                                        borderRadius: 16,
-                                        backgroundColor: '#1a1a2e',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        marginHorizontal: 8
-                                    }}
-                                    onPress={() => {}}
-                                >
-                                    <Image
-                                        source={{uri: GOOGLE_ICON}}
-                                        style={{width: 24, height: 24}}
-                                    />
-                                </TouchableOpacity>
-
-                                <TouchableOpacity
-                                    style={{
-                                        width: 56,
-                                        height: 56,
-                                        borderRadius: 16,
-                                        backgroundColor: '#1a1a2e',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        marginHorizontal: 8
-                                    }}
-                                    onPress={() => {}}
-                                >
-                                    <Image
-                                        source={{uri: APPLE_ICON}}
-                                        style={{width: 24, height: 24}}
-                                    />
-                                </TouchableOpacity>
-                            </View>
-
-                            {/* Sign Up Link */}
-                            <View style={{
-                                flexDirection: 'row',
-                                justifyContent: 'center'
-                            }}>
-                                <Text style={{ color: '#9CA3AF', fontFamily: 'Figtree' }}>
-                                    Don't have an account?
-                                </Text>
-                                <TouchableOpacity onPress={handleSignUp}>
-                                    <Text style={{
-                                        color: '#FF5A5F',
-                                        fontWeight: '500',
-                                        fontFamily: 'Figtree'
-                                    }}>
-                                        Sign up
-                                    </Text>
-                                </TouchableOpacity>
-                            </View>
-                        </View>
-                    </View>
-                </View>
-            </ScrollView>
-            </LinearGradient>
-        </SafeAreaView>
-    );
+              <TouchableOpacity style={styles.socialButtonStyle}>
+                <Image
+                  source={{ uri: APPLE_ICON }}
+                  style={{ width: 24, height: 24 }}
+                />
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </ScrollView>
+    </SafeAreaView>
+  );
 }
+
+const styles = StyleSheet.create({
+  socialButtonStyle: {
+    width: 56,
+    height: 56,
+    borderRadius: 16,
+    backgroundColor: "#1a1a2e",
+    alignItems: "center",
+    justifyContent: "center",
+    marginHorizontal: 8,
+  },
+});

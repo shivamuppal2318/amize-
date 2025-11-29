@@ -47,7 +47,10 @@ export const AuthModalProvider: React.FC<AuthModalProviderProps> = ({ children }
 
     const handleLogin = () => {
         hideAuthModal();
-        router.push('/(auth)/sign-in');
+        setTimeout(() => {
+            console.log("Navigating to sign-in...");
+            router.push("/(auth)/sign-in");
+          }, 150); 
     };
 
     const handleSignup = () => {
