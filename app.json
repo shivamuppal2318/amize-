@@ -5,21 +5,20 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "myapp",
+    "scheme": "com.amize",
     "userInterfaceStyle": "automatic",
-    "assetBundlePatterns": ["assets/**/*"],
-
+    "assetBundlePatterns": [
+      "assets/**/*"
+    ],
     "splash": {
       "image": "./assets/images/splash-icon.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
-
     "notification": {
       "icon": "./assets/images/notification-icon.png",
       "color": "#FF4D67"
     },
-
     "ios": {
       "supportsTablet": true,
       "jsEngine": "hermes",
@@ -38,7 +37,6 @@
       "bundleIdentifier": "com.kentom.amize",
       "googleServicesFile": "./GoogleService-Info.plist"
     },
-
     "android": {
       "package": "com.kentom.amize",
       "jsEngine": "hermes",
@@ -47,12 +45,17 @@
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "googleServicesFile": "./google-services.json"
+      "googleServicesFile": "./google-services.json",
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.ACCESS_MEDIA_LOCATION"
+      ]
     },
-
     "plugins": [
       "expo-router",
-
       [
         "expo-splash-screen",
         {
@@ -62,7 +65,6 @@
           "backgroundColor": "#ffffff"
         }
       ],
-
       [
         "expo-camera",
         {
@@ -71,7 +73,6 @@
           "recordAudioAndroid": true
         }
       ],
-
       [
         "expo-media-library",
         {
@@ -80,7 +81,6 @@
           "isAccessMediaLocationEnabled": true
         }
       ],
-
       [
         "expo-video",
         {
@@ -88,9 +88,7 @@
           "supportsPictureInPicture": true
         }
       ],
-
       "expo-font",
-
       [
         "expo-notifications",
         {
@@ -104,27 +102,36 @@
         {
           "android": {
             "extraGradlePlugins": [
-              { "plugin": "com.google.gms.google-services", "apply": false }
+              {
+                "plugin": "com.google.gms.google-services",
+                "apply": false
+              }
             ],
             "appGradle": {
               "dependencies": [
                 "implementation platform('com.google.firebase:firebase-bom:34.6.0')",
                 "implementation 'com.google.firebase:firebase-analytics'"
               ],
-              "plugins": ["com.google.gms.google-services"]
+              "plugins": [
+                "com.google.gms.google-services"
+              ]
             }
           }
         }
       ],
-
-      "expo-secure-store"
+      "expo-secure-store",
+      "expo-web-browser"
     ],
-
     "extra": {
-      "router": { "origin": false },
-      "eas": { "projectId": "3114607c-2f05-4362-ae2e-27adab94dcb0" }
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "0be14a59-d982-4355-912f-96f06e10a369"
+      }
     },
-
-    "owner": "dev-pearl-2024"
+    "router": {
+      "origin": false
+    }
   }
 }

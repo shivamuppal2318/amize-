@@ -22,6 +22,20 @@ import * as WebBrowser from "expo-web-browser";
 import * as Google from "expo-auth-session/providers/google";
 import { GoogleAuthProvider, signInWithCredential } from "firebase/auth";
 import { auth } from "../../firebase/config";
+import { makeRedirectUri } from "expo-auth-session";
+
+import {
+  GoogleSignin,
+  isErrorWithCode,
+  isSuccessResponse,
+  statusCodes,
+} from "@react-native-google-signin/google-signin";
+
+GoogleSignin.configure({
+  webClientId:
+    "209523351860-hv5rn2970io3ss52krrnebj5cd88kf4g.apps.googleusercontent.com",
+  //  iosClientId: '<FROM DEVELOPER CONSOLE>'
+});
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -46,29 +60,63 @@ export default function SignInScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [errors, setErrors] = useState({ email: "", password: "" });
+  const [userInformation, setUserInformation] = useState<any>(null);
 
   // -----------------------------
   // GOOGLE AUTH HOOK
-  // -----------------------------
-  const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
-    clientId: "188596080280-jftm5uhn8q9hk1repn686tbk5urh4b7u.apps.googleusercontent.com", // Replace with Firebase Web Client ID
-  });
 
-  useEffect(() => {
-    if (response?.type === "success" && response.params.id_token) {
-      const idToken = response.params.id_token;
-      handleGoogleFirebaseLogin(idToken);
-    }
-  }, [response]);
+  // const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
+  //   clientId:
+  //     "188596080280-jftm5uhn8q9hk1repn686tbk5urh4b7u.apps.googleusercontent.com",
+  //   iosClientId: "",
+  //   androidClientId: "",
+  //   redirectUri: makeRedirectUri({
+  //     native: "com.amize:/oauth2redirect/google",
+  //   }),
+  // });
 
-  const handleGoogleFirebaseLogin = async (idToken: string) => {
+  // useEffect(() => {
+  //   if (response?.type === "success" && response.params.id_token) {
+  //     const idToken = response.params.id_token;
+  //     handleGoogleFirebaseLogin(idToken);
+  //   }
+  // }, [response]);
+
+  // const handleGoogleFirebaseLogin = async (idToken: string) => {
+  //   try {
+  //     const credential = GoogleAuthProvider.credential(idToken);
+  //     await signInWithCredential(auth, credential);
+  //     router.replace("/(tabs)");
+  //   } catch (e) {
+  //     console.error("Firebase Google login failed:", e);
+  //     Alert.alert("Login Failed", "Firebase authentication failed");
+  //   }
+  // };
+
+  const signInWithGoogle = async () => {
     try {
-      const credential = GoogleAuthProvider.credential(idToken);
-      await signInWithCredential(auth, credential);
-    //   router.replace("/(tabs)");
-    } catch (e) {
-      console.error("Firebase Google login failed:", e);
-      Alert.alert("Login Failed", "Firebase authentication failed");
+      await GoogleSignin.hasPlayServices();
+      const response = await GoogleSignin.signIn();
+      console.log("Sign in with google user data: ", response);
+      if (isSuccessResponse(response)) {
+        setUserInformation(response.data);
+      } else {
+        console.info("Google login failed:", response);
+      }
+    } catch (error) {
+      if (isErrorWithCode(error)) {
+        switch (error.code) {
+          case statusCodes.IN_PROGRESS:
+            Alert.alert("Google login failed", "Google login in progress");
+            break;
+          case statusCodes.PLAY_SERVICES_NOT_AVAILABLE:
+            Alert.alert("Google login failed", "Play services not available");
+            break;
+          default:
+        }
+      } else {
+        Alert.alert("Google login failed", "Something went wrong");
+      }
     }
   };
 
@@ -226,8 +274,9 @@ export default function SignInScreen() {
 
               <TouchableOpacity
                 style={styles.socialButtonStyle}
-                disabled={!request}
-                onPress={() => promptAsync()} // Only triggers on button press
+                // disabled={!request}
+                // onPress={() => promptAsync()} // Only triggers on button press
+                onPress={() => signInWithGoogle()}
               >
                 <Image
                   source={{ uri: GOOGLE_ICON }}
