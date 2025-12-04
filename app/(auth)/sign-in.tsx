@@ -265,12 +265,12 @@ export default function SignInScreen() {
                 marginBottom: 32,
               }}
             >
-              <TouchableOpacity style={styles.socialButtonStyle}>
+              {/* <TouchableOpacity style={styles.socialButtonStyle}>
                 <Image
                   source={{ uri: FACEBOOK_ICON }}
                   style={{ width: 24, height: 24 }}
                 />
-              </TouchableOpacity>
+              </TouchableOpacity> */}
 
               <TouchableOpacity
                 style={styles.socialButtonStyle}
@@ -284,12 +284,12 @@ export default function SignInScreen() {
                 />
               </TouchableOpacity>
 
-              <TouchableOpacity style={styles.socialButtonStyle}>
+              {/* <TouchableOpacity style={styles.socialButtonStyle}>
                 <Image
                   source={{ uri: APPLE_ICON }}
                   style={{ width: 24, height: 24 }}
                 />
-              </TouchableOpacity>
+              </TouchableOpacity> */}
             </View>
           </View>
         </View>

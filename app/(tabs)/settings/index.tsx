@@ -450,13 +450,13 @@ export default function SettingsScreen() {
                     subtitle="English"
                     onPress={() => handleNavigate("/settings/language")}
                   />
-                  <EnhancedToggle
+                  {/* <EnhancedToggle
                     icon={<Moon size={22} color="rgb(255,255,255)" />}
                     label="Dark Mode"
                     subtitle="Enable dark theme"
                     value={settings.darkMode}
                     onToggle={handleToggleDarkMode}
-                  />
+                  /> */}
                   <EnhancedMenuItem
                     icon={<Download size={22} color="rgb(255,255,255)" />}
                     label="Data & Storage"

@@ -98,7 +98,7 @@ export default function GetStartedScreen() {
                         {/* Social Login Section */}
                         <View style={{ width: '100%', maxWidth: 400, marginBottom: 32 }}>
                             {/* Facebook Button */}
-                            <TouchableOpacity
+                            {/* <TouchableOpacity
                                 onPress={handleFacebookLogin}
                                 style={{
                                     flexDirection: 'row',
@@ -125,10 +125,10 @@ export default function GetStartedScreen() {
                                 }}>
                                     Continue with Facebook
                                 </Text>
-                            </TouchableOpacity>
+                            </TouchableOpacity> */}
 
                             {/* Google Button */}
-                            <TouchableOpacity
+                            {/* <TouchableOpacity
                                 onPress={handleGoogleLogin}
                                 style={{
                                     flexDirection: 'row',
@@ -155,10 +155,10 @@ export default function GetStartedScreen() {
                                 }}>
                                     Continue with Google
                                 </Text>
-                            </TouchableOpacity>
+                            </TouchableOpacity> */}
 
                             {/* Apple Button */}
-                            <TouchableOpacity
+                            {/* <TouchableOpacity
                                 onPress={handleAppleLogin}
                                 style={{
                                     flexDirection: 'row',
@@ -185,11 +185,11 @@ export default function GetStartedScreen() {
                                 }}>
                                     Continue with Apple
                                 </Text>
-                            </TouchableOpacity>
+                            </TouchableOpacity> */}
                         </View>
 
                         {/* Divider */}
-                        <View style={{
+                        {/* <View style={{
                             flexDirection: 'row',
                             alignItems: 'center',
                             marginBottom: 32,
@@ -206,7 +206,7 @@ export default function GetStartedScreen() {
                                 or
                             </Text>
                             <View style={{ flex: 1, height: 1, backgroundColor: '#1a1a2e' }} />
-                        </View>
+                        </View> */}
 
                         {/* Sign in with Email Button */}
                         <View style={{ width: '100%', maxWidth: 400, marginBottom: 32 }}>

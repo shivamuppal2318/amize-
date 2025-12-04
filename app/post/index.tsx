@@ -64,11 +64,20 @@ export default function CameraScreen() {
 
   const [soundVisibleModel, setSoundVisibleModel] = useState(false);
   const [selectedSongId, setSelectedSongId] = useState<any>();
+  const [soundId, setSoundId] = useState<any>();
   const [postSong, setPostSong] = useState<String>("");
+  const [songTitle, setSongTitle] = useState<string>("");
+
   const [isPlaying, setIsPlaying] = useState(false);
   const soundRef = useRef<Audio.Sound | null>(null);
 
-  console.log("Selected Song Id Parnent: ", postSong);
+  console.log(
+    "Selected Song Id Parnent: ",
+    postSong,
+    selectedSongId,
+    soundId,
+    songTitle
+  );
 
   const [showFilters, setShowFilters] = useState(false);
   const [filter, setFilter] = useState<
@@ -307,6 +316,10 @@ export default function CameraScreen() {
         height: photo.height,
         size: await getFileSize(fileUri),
         timestamp,
+        postSong: postSong,
+        selectedSongId: selectedSongId,
+        soundId: soundId,
+        songTitle: songTitle,
       });
 
       router.push("/post/edit");
@@ -349,6 +362,10 @@ export default function CameraScreen() {
             size: await getFileSize(fileUri),
             duration: video.duration,
             timestamp,
+            postSong: postSong,
+            selectedSongId: selectedSongId,
+            soundId: soundId,
+            songTitle: songTitle,
           });
           router.push("/post/edit");
         })
@@ -489,7 +506,7 @@ export default function CameraScreen() {
                 <Text style={styles.controlText}>Camera</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity
+              {/* <TouchableOpacity
                 style={styles.controlButton}
                 onPress={() => setShowFilters((prev) => !prev)}
               >
@@ -506,7 +523,7 @@ export default function CameraScreen() {
                 <MessageCircle size={24} color="white" />
                 <Text style={styles.controlText}>Reply</Text>
               </TouchableOpacity>
-
+              */}
               <TouchableOpacity
                 style={styles.controlButton}
                 onPress={toggleFlashMode}
@@ -668,7 +685,9 @@ export default function CameraScreen() {
         onClose={() => setSoundVisibleModel(false)}
         onSoundSelect={handleSoundSelect}
         setSelectedSongId={setSelectedSongId}
+        setSoundId={setSoundId}
         setPostSong={setPostSong}
+        setSongTitle={setSongTitle}
       />
     </SafeAreaView>
   );

@@ -12,11 +12,16 @@ export interface MediaItem {
     duration?: number; // in milliseconds, only for videos
     timestamp: number;
     isSelected?: boolean;
+
+    postSong?: any;          // depending on your structure
+    selectedSongId?: string; 
+    songTitle?: string;
+    soundId?: string;
     
 }
 
 export interface Post {
-    soundId: undefined;
+    soundId:  string | null;
     caption: string;
     location?: string;
     visibility: 'public' | 'followers' | 'private';
@@ -65,7 +70,7 @@ interface PostingState {
 
 // Default draft post settings
 const DEFAULT_POST: Post = {
-    soundId: undefined,
+    soundId: null,
     caption: '',
     visibility: 'public',
     allowComments: true,
