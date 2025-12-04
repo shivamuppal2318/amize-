@@ -309,7 +309,8 @@ export default function MediaSelectScreen() {
                     height: item.height,
                     size: item.size,
                     duration: item.duration ? item.duration * 1000 : undefined,
-                    timestamp: new Date().getTime()
+                    timestamp: new Date().getTime(),
+                    
                 });
             });
 

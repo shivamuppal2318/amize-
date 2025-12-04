@@ -34,8 +34,7 @@
         "aps-environment": "development",
         "com.apple.developer.networking.wifi-info": true
       },
-      "bundleIdentifier": "com.kentom.amize",
-      "googleServicesFile": "./GoogleService-Info.plist"
+      "bundleIdentifier": "com.kentom.amize"
     },
     "android": {
       "package": "com.kentom.amize",
@@ -126,11 +125,11 @@
         "origin": false
       },
       "eas": {
-        "projectId": "0be14a59-d982-4355-912f-96f06e10a369"
+        "projectId": "3114607c-2f05-4362-ae2e-27adab94dcb0"
       }
-    },
-    "router": {
-      "origin": false
     }
+    // "router": {
+    //   "origin": false
+    // }
   }
 }

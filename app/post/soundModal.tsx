@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -11,12 +11,12 @@ import {
   TextInput,
   StatusBar,
   Alert,
-} from 'react-native';
-import axios, { AxiosError } from 'axios';
-import { Search, Play, Pause } from 'lucide-react-native';
-import { Audio } from 'expo-av';
+} from "react-native";
+import axios, { AxiosError } from "axios";
+import { Search, Play, Pause } from "lucide-react-native";
+import { Audio } from "expo-av";
 
-const { width, height } = Dimensions.get('window');
+const { width, height } = Dimensions.get("window");
 
 // ==================== TYPE DEFINITIONS ====================
 interface Sound {
@@ -48,7 +48,9 @@ interface SoundModalProps {
   onClose?: () => void;
   onSelectSound?: (sound: Sound) => void;
   setSelectedSongId?: (id: string) => void;
+  setSoundId?: (id: string) => void;
   setPostSong?: (audio: string) => void;
+  setSongTitle?: (audio: string) => void;
 }
 
 export default function SoundModal({
@@ -56,15 +58,17 @@ export default function SoundModal({
   onClose,
   onSelectSound,
   setSelectedSongId,
-  setPostSong
+  setSoundId,
+  setPostSong,
+  setSongTitle,
 }: SoundModalProps = {}) {
   const [internalVisible, setInternalVisible] = useState<boolean>(false);
   const [sounds, setSounds] = useState<Sound[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [selectedSound, setSelectedSound] = useState<Sound | null>(null);
-  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [searchQuery, setSearchQuery] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
-  
+
   // ==================== AUDIO PLAYBACK STATE ====================
   const [playingSound, setPlayingSound] = useState<Sound | null>(null);
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
@@ -72,7 +76,8 @@ export default function SoundModal({
   const soundObject = useRef<Audio.Sound | null>(null);
   const isLoadingAudio = useRef<boolean>(false); // Prevent double loading
 
-  const visible = externalVisible !== undefined ? externalVisible : internalVisible;
+  const visible =
+    externalVisible !== undefined ? externalVisible : internalVisible;
   const handleClose = onClose || (() => setInternalVisible(false));
 
   // ==================== AUDIO SETUP ====================
@@ -88,12 +93,12 @@ export default function SoundModal({
           staysActiveInBackground: false,
           shouldDuckAndroid: true,
         });
-        console.log('🔊 Audio mode configured successfully');
+        console.log("🔊 Audio mode configured successfully");
       } catch (error) {
-        console.error('❌ Error setting audio mode:', error);
+        console.error("❌ Error setting audio mode:", error);
       }
     };
-    
+
     setupAudio();
 
     // Cleanup on unmount
@@ -109,7 +114,7 @@ export default function SoundModal({
    */
   useEffect(() => {
     if (!visible) {
-      console.log('🔄 Modal closing, cleaning up audio...');
+      console.log("🔄 Modal closing, cleaning up audio...");
       stopAndUnloadSound();
       setPlayingSound(null);
       setIsPlaying(false);
@@ -126,19 +131,19 @@ export default function SoundModal({
   const stopAndUnloadSound = async () => {
     try {
       if (soundObject.current) {
-        console.log('⏹️ Stopping and unloading current sound');
+        console.log("⏹️ Stopping and unloading current sound");
         const status = await soundObject.current.getStatusAsync();
-        
+
         if (status.isLoaded) {
           await soundObject.current.stopAsync();
           await soundObject.current.unloadAsync();
         }
-        
+
         soundObject.current = null;
         isLoadingAudio.current = false;
       }
     } catch (error) {
-      console.error('❌ Error stopping sound:', error);
+      console.error("❌ Error stopping sound:", error);
       soundObject.current = null;
       isLoadingAudio.current = false;
     }
@@ -152,13 +157,18 @@ export default function SoundModal({
   const playSound = async (sound: Sound) => {
     // Prevent multiple simultaneous audio loads
     if (isLoadingAudio.current) {
-      console.log('⚠️ Audio already loading, ignoring request');
+      console.log("⚠️ Audio already loading, ignoring request");
       return;
     }
 
     try {
-      console.log('🎵 Attempting to play sound:', sound.title, '| ID:', sound.id);
-      
+      console.log(
+        "🎵 Attempting to play sound:",
+        sound.title,
+        "| ID:",
+        sound.id
+      );
+
       // Set loading state
       isLoadingAudio.current = true;
       setLoadingAudio(sound.id);
@@ -167,13 +177,13 @@ export default function SoundModal({
       // Stop current sound if playing
       await stopAndUnloadSound();
 
-      console.log('📥 Loading audio from URL:', sound.soundUrl);
+      console.log("📥 Loading audio from URL:", sound.soundUrl);
 
       // Create and load new sound
       const { sound: newSound } = await Audio.Sound.createAsync(
         { uri: sound.soundUrl },
-        { 
-          shouldPlay: true, 
+        {
+          shouldPlay: true,
           isLooping: true,
           volume: 1.0,
         },
@@ -186,20 +196,20 @@ export default function SoundModal({
       setLoadingAudio(null);
       isLoadingAudio.current = false;
 
-      console.log('✅ Sound loaded and playing successfully | ID:', sound.id);
+      console.log("✅ Sound loaded and playing successfully | ID:", sound.id);
     } catch (error) {
-      console.error('❌ Error playing sound:', error);
-      console.error('Failed sound URL:', sound.soundUrl);
-      
+      console.error("❌ Error playing sound:", error);
+      console.error("Failed sound URL:", sound.soundUrl);
+
       setLoadingAudio(null);
       isLoadingAudio.current = false;
       setPlayingSound(null);
       setIsPlaying(false);
-      
+
       Alert.alert(
-        'Playback Error',
+        "Playback Error",
         `Unable to play "${sound.title}". The audio file may be unavailable.`,
-        [{ text: 'OK' }]
+        [{ text: "OK" }]
       );
     }
   };
@@ -211,12 +221,12 @@ export default function SoundModal({
   const pauseSound = async () => {
     try {
       if (soundObject.current) {
-        console.log('⏸️ Pausing sound');
+        console.log("⏸️ Pausing sound");
         await soundObject.current.pauseAsync();
         setIsPlaying(false);
       }
     } catch (error) {
-      console.error('❌ Error pausing sound:', error);
+      console.error("❌ Error pausing sound:", error);
     }
   };
 
@@ -227,12 +237,12 @@ export default function SoundModal({
   const resumeSound = async () => {
     try {
       if (soundObject.current) {
-        console.log('▶️ Resuming sound');
+        console.log("▶️ Resuming sound");
         await soundObject.current.playAsync();
         setIsPlaying(true);
       }
     } catch (error) {
-      console.error('❌ Error resuming sound:', error);
+      console.error("❌ Error resuming sound:", error);
     }
   };
 
@@ -243,19 +253,19 @@ export default function SoundModal({
   const onPlaybackStatusUpdate = (status: any) => {
     if (status.isLoaded) {
       setIsPlaying(status.isPlaying);
-      
+
       // If sound finished playing (not looping)
       if (status.didJustFinish && !status.isLooping) {
-        console.log('🔚 Sound finished playing');
+        console.log("🔚 Sound finished playing");
         setIsPlaying(false);
       }
 
       // Log buffering status
       if (status.isBuffering) {
-        console.log('⏳ Audio buffering...');
+        console.log("⏳ Audio buffering...");
       }
     } else if (status.error) {
-      console.error('❌ Playback error:', status.error);
+      console.error("❌ Playback error:", status.error);
       setLoadingAudio(null);
       isLoadingAudio.current = false;
     }
@@ -268,11 +278,11 @@ export default function SoundModal({
 
     try {
       const response = await axios.get<SoundsApiResponse>(
-        'https://amize-next.onrender.com/api/sound',
+        "https://amize-next.onrender.com/api/sound",
         {
           timeout: 10000,
           headers: {
-            'Content-Type': 'application/json',
+            "Content-Type": "application/json",
           },
         }
       );
@@ -280,40 +290,39 @@ export default function SoundModal({
       if (response.data && response.data.success) {
         if (Array.isArray(response.data.sounds)) {
           setSounds(response.data.sounds);
-          console.log('✅ Sounds fetched successfully:', response.data.sounds.length);
+          console.log(
+            "✅ Sounds fetched successfully:",
+            response.data.sounds.length
+          );
         } else {
-          throw new Error('Invalid response format: sounds is not an array');
+          throw new Error("Invalid response format: sounds is not an array");
         }
       } else {
-        throw new Error('API returned success: false');
+        throw new Error("API returned success: false");
       }
     } catch (err) {
-      console.error('❌ Error fetching sounds:', err);
-      
-      let errorMessage = 'Failed to load sounds. Please try again.';
+      console.error("❌ Error fetching sounds:", err);
+
+      let errorMessage = "Failed to load sounds. Please try again.";
 
       if (axios.isAxiosError(err)) {
         const axiosError = err as AxiosError;
-        
-        if (axiosError.code === 'ECONNABORTED') {
-          errorMessage = 'Request timeout. Please check your connection.';
+
+        if (axiosError.code === "ECONNABORTED") {
+          errorMessage = "Request timeout. Please check your connection.";
         } else if (axiosError.response) {
           errorMessage = `Server error: ${axiosError.response.status}`;
         } else if (axiosError.request) {
-          errorMessage = 'No response from server. Please check your internet.';
+          errorMessage = "No response from server. Please check your internet.";
         }
       }
 
       setError(errorMessage);
-      
-      Alert.alert(
-        'Error Loading Sounds',
-        errorMessage,
-        [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Retry', onPress: fetchSounds },
-        ]
-      );
+
+      Alert.alert("Error Loading Sounds", errorMessage, [
+        { text: "Cancel", style: "cancel" },
+        { text: "Retry", onPress: fetchSounds },
+      ]);
     } finally {
       setLoading(false);
     }
@@ -321,22 +330,22 @@ export default function SoundModal({
 
   useEffect(() => {
     if (visible) {
-      console.log('🔄 Modal opened, fetching sounds...');
+      console.log("🔄 Modal opened, fetching sounds...");
       fetchSounds();
     } else {
-      setSearchQuery('');
+      setSearchQuery("");
       setError(null);
     }
   }, [visible]);
 
   const formatDuration = (seconds: number | undefined | null): string => {
-    if (typeof seconds !== 'number' || isNaN(seconds) || seconds < 0) {
-      return '0:00';
+    if (typeof seconds !== "number" || isNaN(seconds) || seconds < 0) {
+      return "0:00";
     }
 
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
+    return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
 
   const filteredSounds: Sound[] = sounds.filter((sound) => {
@@ -346,40 +355,41 @@ export default function SoundModal({
     if (!searchLower) return true;
 
     const titleMatch = sound.title.toLowerCase().includes(searchLower);
-    const artistMatch = sound.artistName?.toLowerCase().includes(searchLower) ?? false;
+    const artistMatch =
+      sound.artistName?.toLowerCase().includes(searchLower) ?? false;
 
     return titleMatch || artistMatch;
   });
 
   //  Handles sound selection - Selects sound WITHOUT playing
   const handleSoundSelect = (sound: Sound): void => {
-    console.log('✅ Sound selected | Title:', sound.title, '| ID:', sound.id);
+    console.log("✅ Sound selected | Title:", sound.title, "| ID:", sound.id);
     setSelectedSound(sound);
   };
 
-    // Toggles play/pause for a sound
+  // Toggles play/pause for a sound
   const handlePlayPauseToggle = async (sound: Sound): Promise<void> => {
     // Don't allow interaction while loading
     if (loadingAudio) {
-      console.log('⚠️ Audio is loading, please wait');
+      console.log("⚠️ Audio is loading, please wait");
       return;
     }
 
-    console.log('🎛️ Play/Pause toggled for:', sound.title, '| ID:', sound.id);
+    console.log("🎛️ Play/Pause toggled for:", sound.title, "| ID:", sound.id);
 
     // If same sound is playing, pause it
     if (playingSound?.id === sound.id && isPlaying) {
-      console.log('⏸️ Pausing current sound');
+      console.log("⏸️ Pausing current sound");
       await pauseSound();
-    } 
+    }
     // If same sound is paused, resume it
     else if (playingSound?.id === sound.id && !isPlaying) {
-      console.log('▶️ Resuming current sound');
+      console.log("▶️ Resuming current sound");
       await resumeSound();
-    } 
+    }
     // If different sound, play new one
     else {
-      console.log('🔄 Switching to new sound');
+      console.log("🔄 Switching to new sound");
       await playSound(sound);
     }
   };
@@ -393,18 +403,23 @@ export default function SoundModal({
       // console.log('✅ Confirming selection | Title:', selectedSound.title, '| ID:', selectedSound.id);
       // @ts-ignore
       setSelectedSongId(selectedSound?.id);
+      if (setSoundId) {
+        setSoundId(selectedSound?.id);
+      }
       // @ts-ignore
       setPostSong(selectedSound?.soundUrl);
-
+      if (setSongTitle) {
+        setSongTitle(selectedSound?.title);
+      }
 
       if (onSelectSound) {
         onSelectSound(selectedSound);
       }
-      
+
       // Stop sound before closing
       await stopAndUnloadSound();
       handleClose();
-      
+
       setTimeout(() => {
         setSelectedSound(null);
         setPlayingSound(null);
@@ -419,7 +434,7 @@ export default function SoundModal({
    */
   const renderSoundItem = ({ item }: { item: Sound }) => {
     if (!item || !item.id) {
-      console.warn('⚠️ Invalid sound item:', item);
+      console.warn("⚠️ Invalid sound item:", item);
       return null;
     }
 
@@ -430,10 +445,7 @@ export default function SoundModal({
 
     return (
       <TouchableOpacity
-        style={[
-          styles.soundItem,
-          isSelected && styles.selectedItem
-        ]}
+        style={[styles.soundItem, isSelected && styles.selectedItem]}
         onPress={() => handleSoundSelect(item)}
         activeOpacity={0.7}
         disabled={isAnyAudioLoading} // Disable selection while audio is loading
@@ -443,7 +455,9 @@ export default function SoundModal({
           onPress={() => handlePlayPauseToggle(item)}
           style={[
             styles.playPauseButton,
-            (isAnyAudioLoading && !isLoadingThisSound) && styles.disabledPlayButton
+            isAnyAudioLoading &&
+              !isLoadingThisSound &&
+              styles.disabledPlayButton,
           ]}
           disabled={isAnyAudioLoading && !isLoadingThisSound} // Disable other buttons while loading
         >
@@ -456,53 +470,71 @@ export default function SoundModal({
             <Play size={20} color="#0095f6" fill="#0095f6" />
           )}
         </TouchableOpacity>
-        
+
         {/* Sound Wave Icon */}
-        <View style={[
-          styles.soundWaveIcon,
-          isCurrentlyPlaying && styles.playingWaveIcon
-        ]}>
-          <View style={[
-            styles.waveBar,
-            isCurrentlyPlaying && styles.animatedWaveBar
-          ]} />
-          <View style={[
-            styles.waveBar,
-            styles.waveBar2,
-            isCurrentlyPlaying && styles.animatedWaveBar
-          ]} />
-          <View style={[
-            styles.waveBar,
-            styles.waveBar3,
-            isCurrentlyPlaying && styles.animatedWaveBar
-          ]} />
-          <View style={[
-            styles.waveBar,
-            styles.waveBar2,
-            isCurrentlyPlaying && styles.animatedWaveBar
-          ]} />
+        <View
+          style={[
+            styles.soundWaveIcon,
+            isCurrentlyPlaying && styles.playingWaveIcon,
+          ]}
+        >
+          <View
+            style={[
+              styles.waveBar,
+              isCurrentlyPlaying && styles.animatedWaveBar,
+            ]}
+          />
+          <View
+            style={[
+              styles.waveBar,
+              styles.waveBar2,
+              isCurrentlyPlaying && styles.animatedWaveBar,
+            ]}
+          />
+          <View
+            style={[
+              styles.waveBar,
+              styles.waveBar3,
+              isCurrentlyPlaying && styles.animatedWaveBar,
+            ]}
+          />
+          <View
+            style={[
+              styles.waveBar,
+              styles.waveBar2,
+              isCurrentlyPlaying && styles.animatedWaveBar,
+            ]}
+          />
         </View>
-        
+
         <View style={styles.soundInfo}>
-          <Text style={[
-            styles.soundTitle,
-            (isAnyAudioLoading && !isLoadingThisSound) && styles.disabledText
-          ]} numberOfLines={1}>
-            {item.title || 'Untitled'}
+          <Text
+            style={[
+              styles.soundTitle,
+              isAnyAudioLoading && !isLoadingThisSound && styles.disabledText,
+            ]}
+            numberOfLines={1}
+          >
+            {item.title || "Untitled"}
           </Text>
-          <Text style={[
-            styles.artistName,
-            (isAnyAudioLoading && !isLoadingThisSound) && styles.disabledText
-          ]} numberOfLines={1}>
-            {item.artistName || 'Unknown Artist'}
+          <Text
+            style={[
+              styles.artistName,
+              isAnyAudioLoading && !isLoadingThisSound && styles.disabledText,
+            ]}
+            numberOfLines={1}
+          >
+            {item.artistName || "Unknown Artist"}
           </Text>
         </View>
-        
+
         <View style={styles.soundMeta}>
-          <Text style={[
-            styles.duration,
-            (isAnyAudioLoading && !isLoadingThisSound) && styles.disabledText
-          ]}>
+          <Text
+            style={[
+              styles.duration,
+              isAnyAudioLoading && !isLoadingThisSound && styles.disabledText,
+            ]}
+          >
             {formatDuration(item.duration)}
           </Text>
           {isSelected && (
@@ -552,10 +584,12 @@ export default function SoundModal({
                 disabled={!selectedSound}
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               >
-                <Text style={[
-                  styles.doneButtonText,
-                  !selectedSound && styles.doneButtonDisabled
-                ]}>
+                <Text
+                  style={[
+                    styles.doneButtonText,
+                    !selectedSound && styles.doneButtonDisabled,
+                  ]}
+                >
                   Done
                 </Text>
               </TouchableOpacity>
@@ -574,8 +608,8 @@ export default function SoundModal({
                 autoCapitalize="none"
               />
               {searchQuery.length > 0 && (
-                <TouchableOpacity 
-                  onPress={() => setSearchQuery('')}
+                <TouchableOpacity
+                  onPress={() => setSearchQuery("")}
                   hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                 >
                   <Text style={styles.clearIcon}>✕</Text>
@@ -593,7 +627,7 @@ export default function SoundModal({
               <View style={styles.errorContainer}>
                 <Text style={styles.errorIcon}>⚠️</Text>
                 <Text style={styles.errorText}>{error}</Text>
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={styles.retryButton}
                   onPress={fetchSounds}
                 >
@@ -611,7 +645,7 @@ export default function SoundModal({
                   <View style={styles.emptyContainer}>
                     <Text style={styles.emptyIcon}>🔍</Text>
                     <Text style={styles.emptyText}>
-                      {searchQuery ? 'No sounds found' : 'No sounds available'}
+                      {searchQuery ? "No sounds found" : "No sounds available"}
                     </Text>
                     {searchQuery && (
                       <Text style={styles.emptySubtext}>
@@ -633,7 +667,9 @@ export default function SoundModal({
                     </View>
                   )}
                   <Text style={styles.previewLabel}>
-                    {isPlaying && playingSound?.id === selectedSound.id ? 'Now Playing:' : 'Selected:'}
+                    {isPlaying && playingSound?.id === selectedSound.id
+                      ? "Now Playing:"
+                      : "Selected:"}
                   </Text>
                   <Text style={styles.previewTitle} numberOfLines={1}>
                     {selectedSound.title}
@@ -656,74 +692,74 @@ const styles = StyleSheet.create({
   container: {},
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.8)',
-    justifyContent: 'flex-end',
+    backgroundColor: "rgba(0, 0, 0, 0.8)",
+    justifyContent: "flex-end",
   },
   modalContent: {
-    backgroundColor: '#1a1a1a',
+    backgroundColor: "#1a1a1a",
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     height: height * 0.85,
     paddingBottom: 20,
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingHorizontal: 16,
     paddingTop: 20,
     paddingBottom: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#333',
+    borderBottomColor: "#333",
   },
   closeButton: {
     width: 40,
     height: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   closeButtonText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 24,
-    fontWeight: '300',
+    fontWeight: "300",
   },
   headerTitle: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: "700",
     flex: 1,
-    textAlign: 'center',
+    textAlign: "center",
   },
   doneButton: {
     width: 60,
-    alignItems: 'flex-end',
+    alignItems: "flex-end",
   },
   doneButtonText: {
-    color: '#0095f6',
+    color: "#0095f6",
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   doneButtonDisabled: {
     opacity: 0.4,
   },
   searchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     justifyContent: "center",
-    backgroundColor: '#2a2a2a',
+    backgroundColor: "#2a2a2a",
     margin: 16,
     paddingHorizontal: 12,
     borderRadius: 10,
-    gap: 8
+    gap: 8,
   },
   searchInput: {
     flex: 1,
-    color: '#fff',
+    color: "#fff",
     fontSize: 15,
     paddingVertical: 10,
   },
   clearIcon: {
-    color: '#888',
+    color: "#888",
     fontSize: 18,
     padding: 4,
   },
@@ -732,14 +768,14 @@ const styles = StyleSheet.create({
     paddingBottom: 100,
   },
   soundItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingVertical: 14,
     borderBottomWidth: 1,
-    borderBottomColor: '#2a2a2a',
+    borderBottomColor: "#2a2a2a",
   },
   selectedItem: {
-    backgroundColor: 'rgba(0, 149, 246, 0.1)',
+    backgroundColor: "rgba(0, 149, 246, 0.1)",
     borderRadius: 8,
     paddingHorizontal: 12,
     marginHorizontal: -12,
@@ -747,33 +783,33 @@ const styles = StyleSheet.create({
   playPauseButton: {
     width: 36,
     height: 36,
-    backgroundColor: 'rgba(0, 149, 246, 0.15)',
+    backgroundColor: "rgba(0, 149, 246, 0.15)",
     borderRadius: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     marginRight: 12,
   },
   disabledPlayButton: {
     opacity: 0.3,
   },
   soundWaveIcon: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     width: 36,
     height: 36,
-    backgroundColor: '#333',
+    backgroundColor: "#333",
     borderRadius: 18,
-    justifyContent: 'center',
+    justifyContent: "center",
     gap: 2,
     marginRight: 12,
   },
   playingWaveIcon: {
-    backgroundColor: 'rgba(0, 149, 246, 0.2)',
+    backgroundColor: "rgba(0, 149, 246, 0.2)",
   },
   waveBar: {
     width: 2,
     height: 12,
-    backgroundColor: '#0095f6',
+    backgroundColor: "#0095f6",
     borderRadius: 1,
   },
   waveBar2: {
@@ -783,61 +819,61 @@ const styles = StyleSheet.create({
     height: 8,
   },
   animatedWaveBar: {
-    backgroundColor: '#00d4ff',
+    backgroundColor: "#00d4ff",
   },
   soundInfo: {
     flex: 1,
     marginRight: 12,
   },
   soundTitle: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 15,
-    fontWeight: '600',
+    fontWeight: "600",
     marginBottom: 2,
   },
   artistName: {
-    color: '#888',
+    color: "#888",
     fontSize: 13,
   },
   disabledText: {
     opacity: 0.4,
   },
   soundMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 8,
   },
   duration: {
-    color: '#888',
+    color: "#888",
     fontSize: 13,
   },
   checkmark: {
     width: 20,
     height: 20,
     borderRadius: 10,
-    backgroundColor: '#0095f6',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "#0095f6",
+    justifyContent: "center",
+    alignItems: "center",
   },
   checkmarkText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 12,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   loadingContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   loadingText: {
-    color: '#888',
+    color: "#888",
     marginTop: 12,
     fontSize: 14,
   },
   errorContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     paddingHorizontal: 40,
   },
   errorIcon: {
@@ -845,75 +881,75 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   errorText: {
-    color: '#ff4444',
+    color: "#ff4444",
     fontSize: 15,
-    textAlign: 'center',
+    textAlign: "center",
     marginBottom: 20,
   },
   retryButton: {
-    backgroundColor: '#0095f6',
+    backgroundColor: "#0095f6",
     paddingHorizontal: 24,
     paddingVertical: 10,
     borderRadius: 8,
   },
   retryButtonText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 15,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   emptyContainer: {
     paddingVertical: 60,
-    alignItems: 'center',
+    alignItems: "center",
   },
   emptyIcon: {
     fontSize: 48,
     marginBottom: 12,
   },
   emptyText: {
-    color: '#888',
+    color: "#888",
     fontSize: 15,
   },
   emptySubtext: {
-    color: '#666',
+    color: "#666",
     fontSize: 13,
     marginTop: 4,
   },
   selectedPreview: {
-    position: 'absolute',
+    position: "absolute",
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: '#2a2a2a',
+    backgroundColor: "#2a2a2a",
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderTopWidth: 1,
-    borderTopColor: '#333',
+    borderTopColor: "#333",
   },
   previewContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
   },
   nowPlayingIndicator: {
     marginRight: 8,
   },
   nowPlayingDot: {
-    color: '#0095f6',
+    color: "#0095f6",
     fontSize: 20,
   },
   previewLabel: {
-    color: '#888',
+    color: "#888",
     fontSize: 13,
     marginRight: 8,
   },
   previewTitle: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
     flex: 1,
   },
   previewDuration: {
-    color: '#0095f6',
+    color: "#0095f6",
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: "600",
   },
 });
