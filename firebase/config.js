@@ -19,6 +19,13 @@ export const firebaseConfig = {
   client_x509_cert_url:
     "https://www.googleapis.com/robot/v1/metadata/x509/firebase-adminsdk-fbsvc%40amize-34007.iam.gserviceaccount.com",
   universe_domain: "googleapis.com",
+
+  apiKey: "AIzaSyDesY2o8iTMMJtQSQJTgffaSa-BzmFhSkM",
+  authDomain: "amize-34007.firebaseapp.com",
+  projectId: "amize-34007",
+  storageBucket: "amize-34007.appspot.com",
+  messagingSenderId: "188596080280",
+  appId: "1:188596080280:web:31ccd39b33b022367f4aed",
 };
 
 const firebaseApp = initializeApp(firebaseConfig);

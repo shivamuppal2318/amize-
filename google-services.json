@@ -12,7 +12,20 @@
           "package_name": "com.kentom.amize"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "188596080280-7e6jt20ikgsfifdlse50ftvo8p3bb5s5.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.kentom.amize",
+            "certificate_hash": "814ceb20594c82ab2f994414902bb8541508db8e"
+          }
+        },
+        {
+          "client_id": "188596080280-jftm5uhn8q9hk1repn686tbk5urh4b7u.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyDesY2o8iTMMJtQSQJTgffaSa-BzmFhSkM"
@@ -20,7 +33,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "188596080280-jftm5uhn8q9hk1repn686tbk5urh4b7u.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }

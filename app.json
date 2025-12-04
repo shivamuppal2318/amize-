@@ -5,10 +5,10 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "com.amize",
+    "scheme": "com.amize://oauth2redirect/google",
     "userInterfaceStyle": "automatic",
     "assetBundlePatterns": [
-      "assets/**/*"
+      "assets/**/*" 
     ],
     "splash": {
       "image": "./assets/images/splash-icon.png",
@@ -96,7 +96,6 @@
           "color": "#FF4D67"
         }
       ],
-      "@react-native-google-signin/google-signin",
       [
         "expo-build-properties",
         {

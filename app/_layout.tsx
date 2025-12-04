@@ -1,8 +1,14 @@
 import {DarkTheme, DefaultTheme, ThemeProvider} from '@react-navigation/native';
+import * as Notifications from "expo-notifications";
+import { registerForPushNotificationsAsync } from '@/Notification';
+
+
 import {Slot, useRouter, useSegments} from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import {StatusBar} from 'expo-status-bar';
-import {useEffect} from 'react';
+import { useEffect, useRef, useState } from "react";
+
+
 import {ActivityIndicator, View, Platform} from 'react-native';
 import 'react-native-reanimated';
 import {RegistrationProvider} from '@/context/RegistrationContext';
@@ -161,6 +167,53 @@ export default function RootLayout() {
         Figtree_800ExtraBold_Italic,
         Figtree_900Black_Italic
     });
+
+
+
+      const [token, setToken] = useState<string | undefined>();
+  const notificationListener = useRef<Notifications.Subscription | null>(null);
+  const responseListener = useRef<Notifications.Subscription | null>(null);
+
+  useEffect(() => {
+    //  Get FCM token
+    registerForPushNotificationsAsync().then((t) => setToken(t));
+
+    //  Listen for incoming notifications (foreground)
+    notificationListener.current =
+      Notifications.addNotificationReceivedListener(
+        (notification: Notifications.Notification) => {
+          console.log("📩 Notification Received:", notification);
+        }
+      );
+
+    //  Listen for user tapping on notification
+    responseListener.current =
+      Notifications.addNotificationResponseReceivedListener(
+        (response: Notifications.NotificationResponse) => {
+          console.log("👆 Notification Response:", response);
+        }
+      );
+
+    return () => {
+      if (notificationListener.current) {
+        Notifications.removeNotificationSubscription(
+          notificationListener.current
+        );
+      }
+      if (responseListener.current) {
+        Notifications.removeNotificationSubscription(responseListener.current);
+      }
+    };
+  }, []);
+
+
+
+
+
+
+
+
+
 
     useEffect(() => {
         if (loaded || error) {
