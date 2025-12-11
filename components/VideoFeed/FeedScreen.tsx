@@ -1388,6 +1388,7 @@ const emptyStyles = StyleSheet.create({
     justifyContent: "center",
     padding: 24,
     width: "100%",
+    height: "100%",
   },
   iconContainer: {
     marginBottom: 32,
