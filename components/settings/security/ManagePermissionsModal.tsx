@@ -87,7 +87,7 @@ export const ManagePermissionsModal = ({ visible, onClose }: ManagePermissionsMo
                                         <Switch
                                             value={item.granted}
                                             onValueChange={(value) => handleTogglePermission(item.id, value, item.required)}
-                                            trackColor={{ false: '#4B5563', true: '#FF4D67' }}
+                                            trackColor={{ false: '#4B5563', true: '#1E4A72' }}
                                             thumbColor="#FFFFFF"
                                             disabled={item.required && item.granted}
                                         />
@@ -193,7 +193,7 @@ const styles = StyleSheet.create({
         fontSize: 16
     },
     requiredBadge: {
-        color: '#FF4D67'
+        color: '#1E4A72'
     },
     permissionDescription: {
         color: '#9CA3AF',
@@ -215,7 +215,7 @@ const styles = StyleSheet.create({
         flex: 1
     },
     closeButton: {
-        backgroundColor: '#FF4D67',
+        backgroundColor: '#1E4A72',
         paddingVertical: 12,
         borderRadius: 8,
         alignItems: 'center',

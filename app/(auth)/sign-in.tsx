@@ -34,6 +34,7 @@ import GoogleIcon from "@/assets/images/figma/google.png";
 import AppleIcon from "@/assets/images/figma/apple.png";
 // @ts-ignore
 import AmizeLogo from "@/assets/images/amize.png";
+import { LinearGradient } from "expo-linear-gradient";
 
 const AMIZE_LOGO = Image.resolveAssetSource(AmizeLogo).uri;
 const FACEBOOK_ICON = Image.resolveAssetSource(FacebookIcon).uri;
@@ -54,7 +55,8 @@ export default function SignInScreen() {
     clientId:
       "188596080280-jftm5uhn8q9hk1repn686tbk5urh4b7u.apps.googleusercontent.com",
     iosClientId: "",
-    androidClientId: "188596080280-7e6jt20ikgsfifdlse50ftvo8p3bb5s5.apps.googleusercontent.com",
+    androidClientId:
+      "188596080280-7e6jt20ikgsfifdlse50ftvo8p3bb5s5.apps.googleusercontent.com",
     redirectUri: makeRedirectUri({
       native: "com.kentom.amize:/oauth2redirect/google",
     }),
@@ -117,140 +119,147 @@ export default function SignInScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1 }}>
-      <StatusBar barStyle="light-content" backgroundColor="#1E4A72" />
+      <LinearGradient
+        colors={["#1E4A72", "#000000"]}
+        start={{ x: 0.5, y: 0 }}
+        end={{ x: 0.5, y: 1 }}
+        style={{ flex: 1 }}
+      >
+        <StatusBar barStyle="light-content" backgroundColor="#1E4A72" />
 
-      <ScrollView contentContainerStyle={{ flexGrow: 1, paddingTop: 30 }}>
-        <View style={{ flex: 1, paddingHorizontal: 24 }}>
-          {/* HEADER */}
-          <View style={{ alignItems: "center", marginBottom: 20 }}>
-            <View
-              style={{
-                width: 85,
-                height: 85,
-                borderRadius: 42.5,
-                backgroundColor: "rgba(3,5,16,0.45)",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <Image
-                source={{ uri: AMIZE_LOGO }}
-                style={{ width: 80, height: 80, borderRadius: 40 }}
-              />
-            </View>
-
-            <Text
-              style={{
-                fontFamily: "Figtree",
-                color: "white",
-                fontSize: 32,
-                fontWeight: "bold",
-                marginTop: 12,
-                marginBottom: 4,
-                textAlign: "center",
-              }}
-            >
-              Amize Login
-            </Text>
-
-            <Text
-              style={{
-                color: "#9CA3AF",
-                fontSize: 16,
-                textAlign: "center",
-                lineHeight: 24,
-                maxWidth: 320,
-              }}
-            >
-              Sign in to continue to your account
-            </Text>
-          </View>
-
-          {/* FORM */}
-          <View style={{ width: "100%", maxWidth: 400 }}>
-            <Input
-              label="Email"
-              placeholder="Enter your email"
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              icon={<Mail size={20} color="#9CA3AF" />}
-              error={errors.email}
-            />
-
-            <Input
-              label="Password"
-              placeholder="Enter your password"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-              icon={<Lock size={20} color="#9CA3AF" />}
-              error={errors.password}
-            />
-
-            <Button
-              label="Sign In"
-              onPress={handleSignIn}
-              variant="primary"
-              fullWidth
-              loading={loading}
-            />
-
-            {/* DIVIDER */}
-            <View
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                marginVertical: 32,
-              }}
-            >
+        <ScrollView contentContainerStyle={{ flexGrow: 1, paddingTop: 30 }}>
+          <View style={{ flex: 1, paddingHorizontal: 24 }}>
+            {/* HEADER */}
+            <View style={{ alignItems: "center", marginBottom: 20 }}>
               <View
-                style={{ flex: 1, height: 1, backgroundColor: "#1a1a2e" }}
-              />
-              <Text style={{ color: "#6B7280", marginHorizontal: 16 }}>
-                or continue with
+                style={{
+                  width: 85,
+                  height: 85,
+                  borderRadius: 42.5,
+                  backgroundColor: "rgba(3,5,16,0.45)",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Image
+                  source={{ uri: AMIZE_LOGO }}
+                  style={{ width: 80, height: 80, borderRadius: 40 }}
+                />
+              </View>
+
+              <Text
+                style={{
+                  fontFamily: "Figtree",
+                  color: "white",
+                  fontSize: 32,
+                  fontWeight: "bold",
+                  marginTop: 12,
+                  marginBottom: 4,
+                  textAlign: "center",
+                }}
+              >
+                Amize Login
               </Text>
-              <View
-                style={{ flex: 1, height: 1, backgroundColor: "#1a1a2e" }}
-              />
+
+              <Text
+                style={{
+                  color: "#9CA3AF",
+                  fontSize: 16,
+                  textAlign: "center",
+                  lineHeight: 24,
+                  maxWidth: 320,
+                }}
+              >
+                Sign in to continue to your account
+              </Text>
             </View>
 
-            {/* SOCIAL LOGIN */}
-            <View
-              style={{
-                flexDirection: "row",
-                justifyContent: "center",
-                marginBottom: 32,
-              }}
-            >
-              {/* <TouchableOpacity style={styles.socialButtonStyle}>
+            {/* FORM */}
+            <View style={{ width: "100%", maxWidth: 400 }}>
+              <Input
+                label="Email"
+                placeholder="Enter your email"
+                value={email}
+                onChangeText={setEmail}
+                keyboardType="email-address"
+                icon={<Mail size={20} color="#9CA3AF" />}
+                error={errors.email}
+              />
+
+              <Input
+                label="Password"
+                placeholder="Enter your password"
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry
+                icon={<Lock size={20} color="#9CA3AF" />}
+                error={errors.password}
+              />
+
+              <Button
+                label="Sign In"
+                onPress={handleSignIn}
+                variant="primary"
+                fullWidth
+                loading={loading}
+              />
+
+              {/* DIVIDER */}
+              {/* <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  marginVertical: 32,
+                }}
+              >
+                <View
+                  style={{ flex: 1, height: 1, backgroundColor: "#1a1a2e" }}
+                />
+                <Text style={{ color: "#6B7280", marginHorizontal: 16 }}>
+                  or continue with
+                </Text>
+                <View
+                  style={{ flex: 1, height: 1, backgroundColor: "#1a1a2e" }}
+                />
+              </View> */}
+
+              {/* SOCIAL LOGIN */}
+              <View
+                style={{
+                  flexDirection: "row",
+                  justifyContent: "center",
+                  marginBottom: 32,
+                }}
+              >
+                {/* <TouchableOpacity style={styles.socialButtonStyle}>
                 <Image
                   source={{ uri: FACEBOOK_ICON }}
                   style={{ width: 24, height: 24 }}
                 />
               </TouchableOpacity> */}
 
-              <TouchableOpacity
-                style={styles.socialButtonStyle}
-                disabled={!request}
-                onPress={() => promptAsync()} // Only triggers on button press
-              >
-                <Image
-                  source={{ uri: GOOGLE_ICON }}
-                  style={{ width: 24, height: 24 }}
-                />
-              </TouchableOpacity>
+                {/* <TouchableOpacity
+                  style={styles.socialButtonStyle}
+                  disabled={!request}
+                  onPress={() => promptAsync()} // Only triggers on button press
+                >
+                  <Image
+                    source={{ uri: GOOGLE_ICON }}
+                    style={{ width: 24, height: 24 }}
+                  />
+                </TouchableOpacity> */}
 
-              {/* <TouchableOpacity style={styles.socialButtonStyle}>
+                {/* <TouchableOpacity style={styles.socialButtonStyle}>
                 <Image
                   source={{ uri: APPLE_ICON }}
                   style={{ width: 24, height: 24 }}
                 />
               </TouchableOpacity> */}
+              </View>
             </View>
           </View>
-        </View>
-      </ScrollView>
+        </ScrollView>
+      </LinearGradient>
     </SafeAreaView>
   );
 }

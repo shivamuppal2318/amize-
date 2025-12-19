@@ -293,13 +293,13 @@ const styles = StyleSheet.create({
         marginBottom: 8
     },
     closeButton: {
-        backgroundColor: '#FF4D67',
+        backgroundColor: '#1E4A72',
         paddingVertical: 12,
         borderRadius: 8,
         alignItems: 'center'
     },
     closeButtonText: {
         color: '#FFFFFF',
-        fontWeight: '500'
+        fontWeight: '500' 
     }
 });

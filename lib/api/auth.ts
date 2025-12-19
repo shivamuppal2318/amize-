@@ -12,16 +12,21 @@ import {
   ResendCodeResponse,
 } from "./types";
 import { getDeviceId } from "@/lib/utils/deviceInfo";
+import { API_URL } from "../settings/constants";
 
 export const authApi = {
   // Login with email and password
   login: async (data: LoginRequest): Promise<AuthResponse> => {
     console.log("Login data:", data);
+    try {
+      const response = await axios.post(API_URL + AUTH_ENDPOINTS.LOGIN, data);
+      console.log("Login response:", response.data);
 
-    const response = await client.post(AUTH_ENDPOINTS.LOGIN, data);
-    console.log("Login response:", response.data);
-
-    return response.data;
+      return response.data;
+    } catch (error) {
+      console.error("Login error:", error);
+      throw error;
+    }
   },
 
   // Register a new user

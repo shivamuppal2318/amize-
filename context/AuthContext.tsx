@@ -548,7 +548,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       } catch (error: any) {
         console.error(
           "[AuthContext] Error resending verification code:",
-          error
+          error?.response
         );
         return {
           success: false,
