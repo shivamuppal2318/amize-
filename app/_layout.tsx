@@ -140,11 +140,13 @@ function RootLayoutNavigation() {
       hasCompletedOnboarding &&
       !isInSignupFlow &&
       user &&
-      !user.verified &&
-      !segments.join("/").includes("account-setup/verify")
+      !user.verified
     ) {
-      router.navigate("/account-setup/verify");
-      return;
+      // ❗️Only block sensitive flows, NOT tabs
+      if (segments[0] === "post" || segments[0] === "live") {
+        router.navigate("/account-setup/verify");
+        return;
+      }
     }
   }, [
     loading,

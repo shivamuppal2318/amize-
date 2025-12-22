@@ -661,12 +661,13 @@ const VideoItem: React.FC<VideoItemProps> = ({
           {item.description}
         </Text>
 
-        <TouchableOpacity style={styles.musicInfo} onPress={handleMusicPress}>
+        {/* <TouchableOpacity style={styles.musicInfo} onPress={handleMusicPress}> */}
+        <View style={styles.musicInfo}>
           <Music size={15} color="white" />
           <Text style={styles.musicText} numberOfLines={1}>
             {item.music.name}
           </Text>
-        </TouchableOpacity>
+        </View>
       </View>
 
       {/* Modals */}
