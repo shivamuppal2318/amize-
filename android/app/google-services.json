@@ -1,21 +1,30 @@
 {
   "project_info": {
-    "project_number": "188596080280",
-    "project_id": "amize-34007",
-    "storage_bucket": "amize-34007.firebasestorage.app"
+    "project_number": "517888045551",
+    "project_id": "amize-social-media-api",
+    "storage_bucket": "amize-social-media-api.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:188596080280:android:31ccd39b33b022367f4aed",
+        "mobilesdk_app_id": "1:517888045551:android:232982cdd280a20cbe461a",
         "android_client_info": {
           "package_name": "com.kentom.amize"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "517888045551-hs2d29lk116on1if08fbgfjn7bl5m1mp.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.kentom.amize",
+            "certificate_hash": "be108ff9e243ad610619f9f71b0a50b6c74bea2f"
+          }
+        }
+      ],
       "api_key": [
         {
-          "current_key": "AIzaSyDesY2o8iTMMJtQSQJTgffaSa-BzmFhSkM"
+          "current_key": "AIzaSyCBxR4EnHoilbgDPljili-tONxPiYJWLbQ"
         }
       ],
       "services": {

@@ -5,10 +5,10 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "com.amize://oauth2redirect/google",
+    "scheme": "com.kentom.amize",
     "userInterfaceStyle": "automatic",
     "assetBundlePatterns": [
-      "assets/**/*" 
+      "assets/**/*"
     ],
     "splash": {
       "image": "./assets/images/splash-icon.png",
@@ -125,11 +125,8 @@
         "origin": false
       },
       "eas": {
-        "projectId": "3114607c-2f05-4362-ae2e-27adab94dcb0"
+        "projectId": "9251be20-3114-4883-83c5-93fec6459ea2"
       }
     }
-    // "router": {
-    //   "origin": false
-    // }
   }
 }
