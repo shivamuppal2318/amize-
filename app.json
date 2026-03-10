@@ -22,7 +22,6 @@
     "ios": {
       "supportsTablet": true,
       "jsEngine": "hermes",
-      "newArchEnabled": true,
       "infoPlist": {
         "NSCameraUsageDescription": "Allow $(PRODUCT_NAME) to access your camera to take photos and record videos",
         "NSMicrophoneUsageDescription": "Allow $(PRODUCT_NAME) to access your microphone for recording videos with sound",
@@ -39,7 +38,6 @@
     "android": {
       "package": "com.kentom.amize",
       "jsEngine": "hermes",
-      "newArchEnabled": true,
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
@@ -98,7 +96,11 @@
       [
         "expo-build-properties",
         {
+          "ios": {
+            "newArchEnabled": true
+          },
           "android": {
+            "newArchEnabled": true,
             "extraGradlePlugins": [
               {
                 "plugin": "com.google.gms.google-services",
@@ -117,8 +119,7 @@
           }
         }
       ],
-      "expo-secure-store",
-      "expo-web-browser"
+      "expo-secure-store"
     ],
     "extra": {
       "router": {
