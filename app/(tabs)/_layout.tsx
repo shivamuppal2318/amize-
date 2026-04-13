@@ -26,9 +26,10 @@ interface TabBarButtonProps {
 
 export default function TabLayout() {
   const [modalVisible, setModalVisible] = useState(false);
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, loading } = useAuth();
   const { showAuthModal } = useAuthModal();
   const insets = useSafeAreaInsets();
+  const canAccessAuthGatedTabs = isAuthenticated || !!user;
 
   const TabBarButton = ({
     label,
@@ -196,7 +197,10 @@ export default function TabLayout() {
 
                   if (route.name === "create") {
                     onPress = () => {
-                      if (!isAuthenticated) {
+                      if (!canAccessAuthGatedTabs) {
+                        if (loading) {
+                          return;
+                        }
                         showAuthModal("create_content");
                         return;
                       }
@@ -206,12 +210,15 @@ export default function TabLayout() {
 
                   if (route.name === "profile") {
                     onPress = () => {
-                      if (isAuthenticated && user) {
+                      if (canAccessAuthGatedTabs && user) {
                         navigation.navigate("profile", {
                           screen: "[id]",
                           params: { id: user.id },
                         });
                       } else {
+                        if (loading) {
+                          return;
+                        }
                         showAuthModal("access_profile");
                       }
                     };
@@ -219,7 +226,7 @@ export default function TabLayout() {
 
                   if (route.name === "inbox") {
                     onPress = () => {
-                      if (isAuthenticated) {
+                      if (canAccessAuthGatedTabs) {
                         const event = navigation.emit({
                           type: "tabPress",
                           target: route.key,
@@ -230,6 +237,9 @@ export default function TabLayout() {
                           navigation.navigate(route.name);
                         }
                       } else {
+                        if (loading) {
+                          return;
+                        }
                         showAuthModal("access_messages");
                       }
                     };
@@ -245,7 +255,7 @@ export default function TabLayout() {
                   } else if (route.name === "create") {
                     icon = <ContentIcon color="#FFB700" />;
                   } else if (route.name === "inbox") {
-                    const iconColor = !isAuthenticated
+                    const iconColor = !canAccessAuthGatedTabs
                       ? isFocused
                         ? "#FF4D67"
                         : "rgba(136, 136, 136, 0.6)"
@@ -254,7 +264,7 @@ export default function TabLayout() {
                       : "#fff";
                     icon = <MessageIcon color={iconColor} />;
                   } else if (route.name === "profile") {
-                    const iconColor = !isAuthenticated
+                    const iconColor = !canAccessAuthGatedTabs
                       ? isFocused
                         ? "#FF4D67"
                         : "rgba(136, 136, 136, 0.6)"
