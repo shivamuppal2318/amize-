@@ -5,6 +5,7 @@ import {
 } from "@react-navigation/native";
 import * as Notifications from "expo-notifications";
 import { registerForPushNotificationsAsync } from "@/Notification";
+import { shouldInitializeMobileAds } from "@/lib/ads/config";
 
 import { Slot, useRouter, useSegments } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
@@ -24,6 +25,7 @@ import { SocketProvider } from "@/context/SocketContext";
 import { MessageProvider } from "@/context/MessageContext";
 import { NotificationProvider } from "@/context/NotificationContext";
 import { useAuth } from "@/hooks/useAuth";
+import { LanguageProvider } from "@/context/LanguageContext";
 import { useFonts } from "@expo-google-fonts/figtree/useFonts";
 import { Figtree_300Light } from "@expo-google-fonts/figtree/300Light";
 import { Figtree_400Regular } from "@expo-google-fonts/figtree/400Regular";
@@ -43,6 +45,9 @@ import { Figtree_900Black_Italic } from "@expo-google-fonts/figtree/900Black_Ita
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { useSocketInitialization } from "@/hooks/useSocketInitialization";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { DemoBanner } from "@/components/demo/DemoBanner";
+import { AppErrorBoundary } from "@/components/error/AppErrorBoundary";
+import { captureException } from "@/utils/errorReporting";
 
 // Import css for global styles
 import "../global.css";
@@ -52,10 +57,18 @@ SplashScreen.preventAutoHideAsync().then(() => {
   //Ignore
 });
 
+const requireNativeModule = (moduleName: string) => {
+  const dynamicRequire = eval("require") as NodeRequire;
+  return dynamicRequire(moduleName);
+};
+
 // Authentication state provider component
 function RootLayoutNavigation() {
   const router = useRouter();
   const segments = useSegments(); // This gives us the current route segments
+  const segmentList = segments as string[];
+  const rootSegment = segmentList[0];
+  const childSegment = segmentList[1];
   const {
     isAuthenticated,
     hasCompletedOnboarding,
@@ -72,31 +85,40 @@ function RootLayoutNavigation() {
     if (loading) return;
 
     // ✅ protect verify route
-    if (segments.join("/").includes("account-setup/verify")) {
+    const isVerifyRoute =
+      rootSegment === "account-setup" && childSegment === "verify";
+
+    if (isVerifyRoute) {
       return;
     }
 
-    const inAuthFlow = segments[0] === "(auth)";
-    const inOnboardingFlow = segments[0] === "onboarding";
-    const inAccountSetupFlow = segments[0] === "account-setup";
-    const inTabsFlow = segments[0] === "(tabs)";
-    const inPostFlow = segments[0] === "post";
-    const inLiveFlow = segments[0] === "live";
+    const inAuthFlow = rootSegment === "(auth)";
+    const inOnboardingFlow = rootSegment === "onboarding";
+    const inAccountSetupFlow = rootSegment === "account-setup";
+    const inPasswordResetFlow = rootSegment === "password-reset";
+    const inTabsFlow = rootSegment === "(tabs)";
+    const inPostFlow = rootSegment === "post";
+    const inLiveFlow = rootSegment === "live";
     const inSupportedFlows = inTabsFlow || inPostFlow || inLiveFlow;
+    const restrictedGuestTabs = new Set(["create", "inbox"]);
 
     console.log("[Layout] Navigation check:", {
       isAuthenticated,
       hasCompletedOnboarding,
       isInSignupFlow,
-      currentSegment: segments[0],
+      currentSegment: rootSegment,
       inAuthFlow,
       inOnboardingFlow,
       inAccountSetupFlow,
+      inPasswordResetFlow,
       inSupportedFlows,
     });
 
     // RULE 0
-    if (isInSignupFlow && !inAccountSetupFlow) return;
+    if (isInSignupFlow && !inAccountSetupFlow) {
+      router.replace("/account-setup/birthday");
+      return;
+    }
 
     // RULE 1
     if (inAccountSetupFlow) return;
@@ -110,8 +132,17 @@ function RootLayoutNavigation() {
     // RULE 3
     if (!isAuthenticated) {
       if (inAuthFlow) return;
+      if (inPasswordResetFlow) return;
+      if (inPostFlow || inLiveFlow) {
+        router.replace("/(auth)/get-started");
+        return;
+      }
+      if (inTabsFlow && restrictedGuestTabs.has(childSegment || "")) {
+        router.replace("/(auth)/get-started");
+        return;
+      }
       if (inSupportedFlows) return;
-      if (!inOnboardingFlow && !inAccountSetupFlow) {
+      if (!inOnboardingFlow && !inAccountSetupFlow && !inPasswordResetFlow) {
         router.replace("/(tabs)");
         return;
       }
@@ -143,7 +174,7 @@ function RootLayoutNavigation() {
       !user.verified
     ) {
       // ❗️Only block sensitive flows, NOT tabs
-      if (segments[0] === "post" || segments[0] === "live") {
+      if (rootSegment === "post" || rootSegment === "live") {
         router.navigate("/account-setup/verify");
         return;
       }
@@ -175,7 +206,14 @@ function RootLayoutNavigation() {
   }
 
   // Important: Always render a Slot first before any navigation happens
-  return <Slot />;
+  return (
+    <AppErrorBoundary>
+      <View style={{ flex: 1 }}>
+        <DemoBanner />
+        <Slot />
+      </View>
+    </AppErrorBoundary>
+  );
 }
 
 // Root layout wrapper
@@ -201,37 +239,86 @@ export default function RootLayout() {
   const [token, setToken] = useState<string | undefined>();
   const notificationListener = useRef<Notifications.Subscription | null>(null);
   const responseListener = useRef<Notifications.Subscription | null>(null);
+  const globalErrorHandlerSet = useRef(false);
+
+useEffect(() => {
+  if (Platform.OS === "web") {
+    return;
+  }
+
+  //  Get FCM token
+  registerForPushNotificationsAsync().then((t) => setToken(t));
+
+  //  Listen for incoming notifications (foreground)
+  notificationListener.current =
+    Notifications.addNotificationReceivedListener(
+      (notification: Notifications.Notification) => {
+        console.log("📩 Notification Received:", notification);
+      }
+    );
+
+  //  Listen for user tapping on notification
+  responseListener.current =
+    Notifications.addNotificationResponseReceivedListener(
+      (response: Notifications.NotificationResponse) => {
+        console.log("👆 Notification Response:", response);
+      }
+    );
+
+  return () => {
+    // ✅ FIXED CLEANUP
+    notificationListener.current?.remove();
+    responseListener.current?.remove();
+  };
+}, []);
 
   useEffect(() => {
-    //  Get FCM token
-    registerForPushNotificationsAsync().then((t) => setToken(t));
+    if (globalErrorHandlerSet.current) {
+      return;
+    }
 
-    //  Listen for incoming notifications (foreground)
-    notificationListener.current =
-      Notifications.addNotificationReceivedListener(
-        (notification: Notifications.Notification) => {
-          console.log("📩 Notification Received:", notification);
-        }
-      );
+    globalErrorHandlerSet.current = true;
+    const errorUtils = (global as any)?.ErrorUtils;
+    if (!errorUtils?.setGlobalHandler) {
+      return;
+    }
 
-    //  Listen for user tapping on notification
-    responseListener.current =
-      Notifications.addNotificationResponseReceivedListener(
-        (response: Notifications.NotificationResponse) => {
-          console.log("👆 Notification Response:", response);
-        }
-      );
+    const defaultHandler = errorUtils.getGlobalHandler
+      ? errorUtils.getGlobalHandler()
+      : null;
 
-    return () => {
-      if (notificationListener.current) {
-        Notifications.removeNotificationSubscription(
-          notificationListener.current
-        );
+    errorUtils.setGlobalHandler((error: Error, isFatal?: boolean) => {
+      captureException(error, {
+        tags: { scope: "global-handler" },
+        extra: { isFatal: Boolean(isFatal) },
+      });
+
+      if (defaultHandler) {
+        defaultHandler(error, isFatal);
       }
-      if (responseListener.current) {
-        Notifications.removeNotificationSubscription(responseListener.current);
-      }
-    };
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!shouldInitializeMobileAds()) {
+      return;
+    }
+
+    const adsModule = requireNativeModule("react-native-google-mobile-ads");
+    const nativeMobileAds = adsModule.default;
+    const { MaxAdContentRating } = adsModule;
+
+    nativeMobileAds()
+      .setRequestConfiguration({
+        maxAdContentRating: MaxAdContentRating.T,
+        tagForChildDirectedTreatment: false,
+        tagForUnderAgeOfConsent: false,
+        testDeviceIdentifiers: ["EMULATOR"],
+      })
+      .then(() => nativeMobileAds().initialize())
+      .catch((error: unknown) => {
+        console.error("[Ads] Mobile Ads initialization failed:", error);
+      });
   }, []);
 
   useEffect(() => {
@@ -251,26 +338,28 @@ export default function RootLayout() {
       <SafeAreaProvider>
         <ErrorProvider>
           <RegistrationProvider>
-            <AuthProvider>
-              <AuthModalProvider>
-                <SocketProvider>
-                  <MessageProvider>
-                    <NotificationProvider>
-                      <GestureHandlerRootView style={{ flex: 1 }}>
-                        {/* Configure StatusBar properly for both platforms */}
-                        <StatusBar
-                          style="light"
-                          backgroundColor="#1a1a2e"
-                          translucent={Platform.OS === "android"}
-                        />
-                        {/* Remove nested SafeAreaView - let individual screens handle it */}
-                        <RootLayoutNavigation />
-                      </GestureHandlerRootView>
-                    </NotificationProvider>
-                  </MessageProvider>
-                </SocketProvider>
-              </AuthModalProvider>
-            </AuthProvider>
+            <LanguageProvider>
+              <AuthProvider>
+                <AuthModalProvider>
+                  <SocketProvider>
+                    <MessageProvider>
+                      <NotificationProvider>
+                        <GestureHandlerRootView style={{ flex: 1 }}>
+                          {/* Configure StatusBar properly for both platforms */}
+                          <StatusBar
+                            style="light"
+                            backgroundColor="#1a1a2e"
+                            translucent={Platform.OS === "android"}
+                          />
+                          {/* Remove nested SafeAreaView - let individual screens handle it */}
+                          <RootLayoutNavigation />
+                        </GestureHandlerRootView>
+                      </NotificationProvider>
+                    </MessageProvider>
+                  </SocketProvider>
+                </AuthModalProvider>
+              </AuthProvider>
+            </LanguageProvider>
           </RegistrationProvider>
         </ErrorProvider>
       </SafeAreaProvider>

@@ -1,20 +1,18 @@
-// components/MessagingSection.tsx - Updated with unified interfaces and fixed typing logic
-import React, { useState, useRef, useEffect } from "react";
-import { View, Animated, Dimensions, StyleSheet } from "react-native";
+import React, { useEffect, useRef, useState } from "react";
+import { Animated, Dimensions, StyleSheet, View } from "react-native";
 import { router } from "expo-router";
-import { useMessages } from "@/context/MessageContext";
-import { Conversation } from "@/types/messaging";
-import { useAuth } from "@/hooks/useAuth";
-import { ConversationUtils } from "@/types/messaging";
-import { COLORS, ANIMATION } from "./constants";
+import { LinearGradient } from "expo-linear-gradient";
 
-// Component imports
+import { useMessages } from "@/context/MessageContext";
+import { Conversation, ConversationUtils } from "@/types/messaging";
+import { useAuth } from "@/hooks/useAuth";
+
+import { ANIMATION } from "./constants";
 import CustomStatusBar from "./CustomStatusBar";
 import ConnectionStatus from "./ConnectionStatus";
 import ConversationsList from "./ConversationsList";
 import ConversationDetail from "./ConversationDetail";
 import LoadingScreen from "./LoadingScreen";
-import { LinearGradient } from "expo-linear-gradient";
 
 interface AutoOpenConversation {
   id: string;
@@ -29,27 +27,24 @@ interface MessagingSectionProps {
 const MessagingSection: React.FC<MessagingSectionProps> = ({
   autoOpenConversation,
 }) => {
-  // State
   const [searchText, setSearchText] = useState("");
   const [activeTab, setActiveTab] = useState("Chats");
   const [selectedConversation, setSelectedConversation] =
     useState<Conversation | null>(null);
   const [isAnimating, setIsAnimating] = useState(false);
 
-  // Refs
   const hasAutoOpened = useRef(false);
   const autoOpenConversationRef = useRef(autoOpenConversation);
   const screenWidth = Dimensions.get("window").width;
   const listPosition = useRef(new Animated.Value(0)).current;
   const detailPosition = useRef(new Animated.Value(screenWidth)).current;
 
-  // Auth and Context - FIXED: Added user context for typing logic
   const { user } = useAuth();
   const {
     conversations,
     messages,
     markAsRead,
-    connectionStatus, // FIXED: Use unified connection status
+    connectionStatus,
     loading,
     refreshConversations,
     refreshMessages,
@@ -61,192 +56,11 @@ const MessagingSection: React.FC<MessagingSectionProps> = ({
     isUserOnline,
   } = useMessages();
 
-  // Handle auto-opening conversation
-  useEffect(() => {
-    // Reset the flag when autoOpenConversation changes
-    if (autoOpenConversationRef.current?.id !== autoOpenConversation?.id) {
-      hasAutoOpened.current = false;
-      autoOpenConversationRef.current = autoOpenConversation;
-    }
-
-    if (
-      autoOpenConversation &&
-      conversations.length > 0 &&
-      !hasAutoOpened.current &&
-      !selectedConversation
-    ) {
-      // Find the conversation in the list
-      let conversation = conversations.find(
-        (c) => c.id === autoOpenConversation.id
-      );
-
-      // If not found, create a temporary conversation object using unified interface
-      if (!conversation) {
-        conversation = {
-          id: autoOpenConversation.id,
-          name: autoOpenConversation.name,
-          avatar: autoOpenConversation.avatar,
-          lastMessage: "",
-          timestamp: "",
-          unreadCount: 0,
-          participants: [],
-          type: "direct" as const,
-          isOnline: false,
-          // Required unified fields
-          isActive: true,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        };
-      }
-
-      // Mark as handled BEFORE calling handleConversationPress
-      hasAutoOpened.current = true;
-
-      // Auto-open the conversation
-      setTimeout(() => {
-        handleConversationPress(conversation!);
-      }, 100);
-    }
-  }, [autoOpenConversation, conversations, selectedConversation]);
-
-  const dummyConversations: Conversation[] = [
-    // ✅ Direct Chat 1
-    {
-      id: "conv_1",
-      type: "direct",
-      title: "Rahul Sharma",
-      description: "Personal chat",
-      imageUrl: "https://i.pravatar.cc/150?img=20",
-      participants: [
-        { id: "user_1", username: "You" },
-        { id: "user_2", username: "Rahul Sharma" },
-      ],
-      lastMessageContent: "Bro, where are you?",
-      lastMessageAt: new Date().toISOString(),
-      lastMessageSender: "Rahul Sharma",
-      isActive: true,
-      createdAt: new Date(Date.now() - 1000 * 60 * 60).toISOString(),
-      updatedAt: new Date().toISOString(),
-      name: "Rahul Sharma",
-      avatar: "https://i.pravatar.cc/150?img=20",
-      lastMessage: "Bro, where are you?",
-      timestamp: new Date().toISOString(),
-      unreadCount: 0,
-      isOnline: false,
-    },
-
-    // ✅ Direct Chat 2
-    {
-      id: "conv_2",
-      type: "direct",
-      title: "Priya Singh",
-      description: "Chat with Priya",
-      imageUrl: "https://i.pravatar.cc/150?img=21",
-      participants: [
-        { id: "user_1", username: "You" },
-        { id: "user_3", username: "Priya Singh" },
-      ],
-      lastMessageContent: "I'll talk to you later.",
-      lastMessageAt: new Date(Date.now() - 1000 * 60 * 5).toISOString(),
-      lastMessageSender: "Priya Singh",
-      isActive: true,
-      createdAt: new Date(Date.now() - 1000 * 60 * 90).toISOString(),
-      updatedAt: new Date(Date.now() - 1000 * 60 * 5).toISOString(),
-      name: "Priya Singh",
-      avatar: "https://i.pravatar.cc/150?img=21",
-      lastMessage: "I'll talk to you later.",
-      timestamp: new Date(Date.now() - 1000 * 60 * 5).toISOString(),
-      unreadCount: 0,
-      isOnline: false,
-    },
-
-    // ✅ Direct Chat 3
-    {
-      id: "conv_3",
-      type: "direct",
-      title: "Ravi Kumar",
-      description: "Chat with Ravi",
-      imageUrl: "https://i.pravatar.cc/150?img=22",
-      participants: [
-        { id: "user_1", username: "You" },
-        { id: "user_4", username: "Ravi Kumar" },
-      ],
-      lastMessageContent: "Thanks bro! 👍",
-      lastMessageAt: new Date(Date.now() - 1000 * 60 * 25).toISOString(),
-      lastMessageSender: "Ravi Kumar",
-      isActive: true,
-      createdAt: new Date(Date.now() - 1000 * 60 * 140).toISOString(),
-      updatedAt: new Date(Date.now() - 1000 * 60 * 25).toISOString(),
-      name: "Ravi Kumar",
-      avatar: "https://i.pravatar.cc/150?img=22",
-      lastMessage: "Thanks bro! 👍",
-      timestamp: new Date(Date.now() - 1000 * 60 * 25).toISOString(),
-      unreadCount: 0,
-      isOnline: false,
-    },
-
-    // ✅ Group Chat 1
-    {
-      id: "conv_4",
-      type: "group",
-      title: "Office Team",
-      description: "Daily office communication",
-      imageUrl: "https://i.pravatar.cc/150?img=23",
-      participants: [
-        { id: "user_1", username: "You" },
-        { id: "user_2", username: "Rahul Sharma" },
-        { id: "user_3", username: "Priya Singh" },
-        { id: "user_4", username: "Ravi Kumar" },
-      ],
-      lastMessageContent: "Meeting starts in 10 minutes.",
-      lastMessageAt: new Date(Date.now() - 1000 * 60 * 60).toISOString(),
-      lastMessageSender: "Priya Singh",
-      isActive: true,
-      createdAt: new Date(Date.now() - 1000 * 60 * 600).toISOString(),
-      updatedAt: new Date(Date.now() - 1000 * 60 * 60).toISOString(),
-      name: "Office Team",
-      avatar: "https://i.pravatar.cc/150?img=23",
-      lastMessage: "Meeting starts in 10 minutes.",
-      timestamp: new Date(Date.now() - 1000 * 60 * 60).toISOString(),
-      unreadCount: 0,
-      isOnline: false,
-    },
-  ];
-
-  // Add loading state for auto-opening
-  useEffect(() => {
-    if (autoOpenConversation && !selectedConversation) {
-      // Show loading state while waiting for conversations to load
-      setSelectedConversation({
-        id: autoOpenConversation.id,
-        name: autoOpenConversation.name,
-        avatar: autoOpenConversation.avatar,
-        lastMessage: "",
-        timestamp: "",
-        unreadCount: 0,
-        participants: [],
-        type: "direct" as const,
-        isOnline: false,
-        // Required unified fields
-        isActive: true,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      });
-
-      // Start with conversation view open
-      listPosition.setValue(-screenWidth);
-      detailPosition.setValue(0);
-    }
-  }, [autoOpenConversation]);
-
-  // Handlers
   const handleConversationPress = (conversation: Conversation) => {
     setSelectedConversation(conversation);
     setIsAnimating(true);
     markAsRead(conversation.id);
     joinConversation(conversation.id);
-
-    // Load messages for this conversation
     refreshMessages(conversation.id);
 
     Animated.parallel([
@@ -262,6 +76,68 @@ const MessagingSection: React.FC<MessagingSectionProps> = ({
       }),
     ]).start(() => setIsAnimating(false));
   };
+
+  useEffect(() => {
+    if (autoOpenConversationRef.current?.id !== autoOpenConversation?.id) {
+      hasAutoOpened.current = false;
+      autoOpenConversationRef.current = autoOpenConversation;
+    }
+
+    if (
+      autoOpenConversation &&
+      conversations.length > 0 &&
+      !hasAutoOpened.current &&
+      !selectedConversation
+    ) {
+      let conversation = conversations.find(
+        (item) => item.id === autoOpenConversation.id
+      );
+
+      if (!conversation) {
+        conversation = {
+          id: autoOpenConversation.id,
+          name: autoOpenConversation.name,
+          avatar: autoOpenConversation.avatar,
+          lastMessage: "",
+          timestamp: "",
+          unreadCount: 0,
+          participants: [],
+          type: "direct" as const,
+          isOnline: false,
+          isActive: true,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+      }
+
+      hasAutoOpened.current = true;
+      setTimeout(() => {
+        handleConversationPress(conversation!);
+      }, 100);
+    }
+  }, [autoOpenConversation, conversations, selectedConversation]);
+
+  useEffect(() => {
+    if (autoOpenConversation && !selectedConversation) {
+      setSelectedConversation({
+        id: autoOpenConversation.id,
+        name: autoOpenConversation.name,
+        avatar: autoOpenConversation.avatar,
+        lastMessage: "",
+        timestamp: "",
+        unreadCount: 0,
+        participants: [],
+        type: "direct" as const,
+        isOnline: false,
+        isActive: true,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      });
+
+      listPosition.setValue(-screenWidth);
+      detailPosition.setValue(0);
+    }
+  }, [autoOpenConversation, detailPosition, listPosition, screenWidth, selectedConversation]);
 
   const handleBackPress = () => {
     if (selectedConversation) {
@@ -285,7 +161,6 @@ const MessagingSection: React.FC<MessagingSectionProps> = ({
       setIsAnimating(false);
       setSelectedConversation(null);
 
-      // Reset the auto-open flag when going back
       if (autoOpenConversation) {
         hasAutoOpened.current = false;
         router.replace("/(tabs)/inbox");
@@ -297,15 +172,13 @@ const MessagingSection: React.FC<MessagingSectionProps> = ({
     refreshConversations();
   };
 
-  // Get current conversation data
   const currentMessages = selectedConversation
     ? messages[selectedConversation.id] || []
     : [];
   const typingUsers = selectedConversation
-    ? getTypingUsers(selectedConversation.id).map((user) => user.username)
+    ? getTypingUsers(selectedConversation.id).map((item) => item.username)
     : [];
 
-  // FIXED: Handle typing for current conversation with correct user ID logic
   const handleTypingStart = () => {
     if (!selectedConversation?.participants || !user) {
       console.warn(
@@ -314,9 +187,8 @@ const MessagingSection: React.FC<MessagingSectionProps> = ({
       return;
     }
 
-    // ✅ FIXED: Use current user ID instead of conversation ID
     const otherParticipant = selectedConversation.participants.find(
-      (p) => p.id !== user.id // ✅ Compare with current user ID, not conversation ID
+      (participant) => participant.id !== user.id
     );
 
     if (otherParticipant) {
@@ -331,9 +203,9 @@ const MessagingSection: React.FC<MessagingSectionProps> = ({
       console.warn("[MessagingSection] No other participant found for typing", {
         conversationId: selectedConversation.id,
         currentUserId: user.id,
-        participants: selectedConversation.participants.map((p) => ({
-          id: p.id,
-          username: p.username,
+        participants: selectedConversation.participants.map((participant) => ({
+          id: participant.id,
+          username: participant.username,
         })),
       });
     }
@@ -347,9 +219,8 @@ const MessagingSection: React.FC<MessagingSectionProps> = ({
       return;
     }
 
-    // ✅ FIXED: Use current user ID instead of conversation ID
     const otherParticipant = selectedConversation.participants.find(
-      (p) => p.id !== user.id // ✅ Compare with current user ID, not conversation ID
+      (participant) => participant.id !== user.id
     );
 
     if (otherParticipant) {
@@ -363,29 +234,22 @@ const MessagingSection: React.FC<MessagingSectionProps> = ({
     }
   };
 
-  // Enhanced online status check using unified utilities
   const getConversationOnlineStatus = (conversation: Conversation): boolean => {
     if (!user || !conversation.participants) return false;
 
+    const otherParticipants = ConversationUtils.getOtherParticipants(
+      conversation,
+      user.id
+    );
+
     if (conversation.type === "group") {
-      // For groups, check if any other participant is online
-      const otherParticipants = ConversationUtils.getOtherParticipants(
-        conversation,
-        user.id
-      );
-      return otherParticipants.some((p) => isUserOnline(p.id));
-    } else {
-      // For direct conversations, check the other participant
-      const otherParticipants = ConversationUtils.getOtherParticipants(
-        conversation,
-        user.id
-      );
-      const otherParticipant = otherParticipants[0];
-      return otherParticipant ? isUserOnline(otherParticipant.id) : false;
+      return otherParticipants.some((participant) => isUserOnline(participant.id));
     }
+
+    const otherParticipant = otherParticipants[0];
+    return otherParticipant ? isUserOnline(otherParticipant.id) : false;
   };
 
-  // Loading states
   if (autoOpenConversation && loading && conversations.length === 0) {
     return (
       <View style={styles.container}>
@@ -413,13 +277,11 @@ const MessagingSection: React.FC<MessagingSectionProps> = ({
         style={{ flex: 1 }}
       >
         <CustomStatusBar />
-        {/* FIXED: Use unified connection status */}
         <ConnectionStatus
           isConnected={connectionStatus.isConnected}
           onRetry={handleRetryConnection}
         />
 
-        {/* Messages List */}
         <Animated.View
           style={[
             styles.animatedContainer,
@@ -435,14 +297,13 @@ const MessagingSection: React.FC<MessagingSectionProps> = ({
             activeTab={activeTab}
             setActiveTab={setActiveTab}
             onConversationPress={handleConversationPress}
-            isConnected={connectionStatus.isConnected} // FIXED: Use unified connection status
+            isConnected={connectionStatus.isConnected}
             loading={loading}
             onRetry={handleRetryConnection}
             onRefresh={refreshConversations}
           />
         </Animated.View>
 
-        {/* Conversation Detail */}
         <Animated.View
           style={[
             styles.animatedContainer,
@@ -451,7 +312,7 @@ const MessagingSection: React.FC<MessagingSectionProps> = ({
             },
           ]}
         >
-          {selectedConversation && (
+          {selectedConversation ? (
             <ConversationDetail
               conversation={selectedConversation}
               messages={currentMessages}
@@ -462,7 +323,7 @@ const MessagingSection: React.FC<MessagingSectionProps> = ({
               onTypingStart={handleTypingStart}
               onTypingStop={handleTypingStop}
             />
-          )}
+          ) : null}
         </Animated.View>
       </LinearGradient>
     </View>
@@ -472,7 +333,6 @@ const MessagingSection: React.FC<MessagingSectionProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    // backgroundColor: COLORS.background,
   },
   animatedContainer: {
     position: "absolute",

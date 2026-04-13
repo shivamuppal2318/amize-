@@ -10,7 +10,7 @@ import {
 } from "react-native";
 import { router } from "expo-router";
 import { SettingsHeader } from "@/components/settings/SettingsHeader";
-import { SITE_URL } from "@/lib/settings/constants";
+import { appLinks, getSupportMailtoUrl } from "@/lib/config/appLinks";
 import {
   ChevronRight,
   Download,
@@ -59,7 +59,7 @@ export default function PrivacyPolicyScreen() {
 
   const handleViewFullPolicy = async () => {
     try {
-      const url = `${SITE_URL}/privacy`;
+      const url = appLinks.privacyPolicyUrl;
       const supported = await Linking.canOpenURL(url);
 
       if (supported) {
@@ -67,7 +67,7 @@ export default function PrivacyPolicyScreen() {
       } else {
         Alert.alert(
           "Unable to open browser",
-          "Please visit amize.com/privacy in your web browser to view the complete privacy policy."
+          "Please open the privacy policy URL in your web browser to view the complete policy."
         );
       }
     } catch (error) {
@@ -154,7 +154,7 @@ export default function PrivacyPolicyScreen() {
                 privacy practices, please contact our privacy team.
               </Text>
               <TouchableOpacity
-                onPress={() => Linking.openURL("mailto:privacy@amize.com")}
+                onPress={() => Linking.openURL(getSupportMailtoUrl("Privacy Inquiry"))}
                 className="bg-gray-800 rounded-xl py-3 px-4 flex-row items-center justify-center"
                 activeOpacity={0.7}
               >
@@ -175,13 +175,7 @@ export default function PrivacyPolicyScreen() {
                 <TouchableOpacity
                   className="bg-gray-900 rounded-xl p-4 flex-row items-center justify-between"
                   activeOpacity={0.7}
-                  onPress={() => {
-                    // Navigate to account settings or data management
-                    Alert.alert(
-                      "Coming Soon",
-                      "Data management features will be available in account settings."
-                    );
-                  }}
+                  onPress={() => router.push("/settings/data-storage")}
                 >
                   <View className="flex-row items-center">
                     <Users size={20} color="#ec4899" />
@@ -195,13 +189,7 @@ export default function PrivacyPolicyScreen() {
                 <TouchableOpacity
                   className="bg-gray-900 rounded-xl p-4 flex-row items-center justify-between"
                   activeOpacity={0.7}
-                  onPress={() => {
-                    // Navigate to privacy settings
-                    Alert.alert(
-                      "Coming Soon",
-                      "Privacy settings will be available in account settings."
-                    );
-                  }}
+                  onPress={() => router.push("/settings/security")}
                 >
                   <View className="flex-row items-center">
                     <Shield size={20} color="#ec4899" />
@@ -216,9 +204,7 @@ export default function PrivacyPolicyScreen() {
                   className="bg-gray-900 rounded-xl p-4 flex-row items-center justify-between"
                   activeOpacity={0.7}
                   onPress={() => {
-                    Linking.openURL(
-                      "mailto:privacy@amize.com?subject=Data%20Download%20Request"
-                    );
+                    Linking.openURL(getSupportMailtoUrl("Data Download Request"));
                   }}
                 >
                   <View className="flex-row items-center">

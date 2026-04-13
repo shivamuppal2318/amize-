@@ -1,5 +1,5 @@
 import React, { createContext, useState, useEffect } from 'react';
-import * as SecureStore from 'expo-secure-store';
+import { secureStorage } from '@/lib/auth/storage';
 import { mockUserData, UserContextType, UserData, SignupData, Gender } from '@/data/mockUser';
 
 export const UserContext = createContext<UserContextType>({
@@ -36,10 +36,10 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 setHasCompletedOnboarding(false);
 
                 // Check if user is logged in
-                const userJSON = await SecureStore.getItemAsync('user');
+                const userJSON = await secureStorage.get('user');
 
                 // Check if user is in signup flow
-                const signupFlow = await SecureStore.getItemAsync('signupFlow');
+                const signupFlow = await secureStorage.get('signupFlow');
                 setIsInSignupFlow(!!signupFlow);
 
                 if (userJSON) {
@@ -51,7 +51,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     } catch (parseError) {
                         console.error('Error parsing user data:', parseError);
                         // Clear invalid data
-                        await SecureStore.deleteItemAsync('user');
+                        await secureStorage.remove('user');
                     }
                 }
             } catch (error) {
@@ -73,7 +73,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setUser(updatedUser);
 
             // Save to secure storage
-            SecureStore.setItemAsync('user', JSON.stringify(updatedUser))
+            secureStorage.set('user', JSON.stringify(updatedUser))
                 .then(() => console.log("UserContext: User data saved"))
                 .catch(error => console.error('Error saving user data:', error));
         }
@@ -100,7 +100,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const setOnboardingComplete = async (): Promise<void> => {
         console.log("UserContext: Setting onboarding as complete");
         try {
-            await SecureStore.setItemAsync('onboardingCompleted', 'true');
+            await secureStorage.set('onboardingCompleted', 'true');
             setHasCompletedOnboarding(true);
             console.log("UserContext: Onboarding marked as complete");
         } catch (error) {
@@ -112,7 +112,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const completeSignupFlow = async () => {
         console.log("UserContext: Completing signup flow");
         try {
-            await SecureStore.deleteItemAsync('signupFlow');
+            await secureStorage.remove('signupFlow');
             setIsInSignupFlow(false);
             console.log("UserContext: Signup flow marked as complete");
         } catch (error) {
@@ -140,7 +140,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setIsAuthenticated(true);
 
             // Save to secure storage
-            await SecureStore.setItemAsync('user', JSON.stringify(userData));
+            await secureStorage.set('user', JSON.stringify(userData));
             console.log(`UserContext: Login successful for ${email}`);
 
             return true;
@@ -157,7 +157,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setLoading(true);
         try {
             // Mark that we're entering signup flow BEFORE authentication
-            await SecureStore.setItemAsync('signupFlow', 'true');
+            await secureStorage.set('signupFlow', 'true');
             setIsInSignupFlow(true);
             console.log("UserContext: Marked as in signup flow");
 
@@ -183,7 +183,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setIsAuthenticated(true);
 
             // Save to secure storage
-            await SecureStore.setItemAsync('user', JSON.stringify(newUser));
+            await secureStorage.set('user', JSON.stringify(newUser));
             console.log(`UserContext: Account created for ${userData.email}`);
 
             // FIXED: Make sure storage is updated first
@@ -192,7 +192,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
             return true;
         } catch (error) {
             // Clear signup flow flag on error
-            await SecureStore.deleteItemAsync('signupFlow');
+            await secureStorage.remove('signupFlow');
             setIsInSignupFlow(false);
             console.error('Signup error:', error);
             return false;
@@ -204,9 +204,9 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const logout = async () => {
         console.log("UserContext: Logging out");
         try {
-            await SecureStore.deleteItemAsync('user');
-            await SecureStore.deleteItemAsync('signupFlow'); // Clear signup flow on logout
-            await SecureStore.deleteItemAsync('onboardingCompleted'); // FIXED: Clear onboarding status on logout for demo
+            await secureStorage.remove('user');
+            await secureStorage.remove('signupFlow'); // Clear signup flow on logout
+            await secureStorage.remove('onboardingCompleted'); // FIXED: Clear onboarding status on logout for demo
             setUser(null);
             setInterests([]);
             setIsAuthenticated(false);

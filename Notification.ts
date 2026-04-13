@@ -14,6 +14,10 @@ Notifications.setNotificationHandler({
 });
 
 export async function registerForPushNotificationsAsync() {
+  if (Platform.OS === "web") {
+    return undefined;
+  }
+
   let token;
 
   if (Device.isDevice) {
@@ -32,10 +36,15 @@ export async function registerForPushNotificationsAsync() {
     }
 
     try {
+      const projectId = Constants.expoConfig?.extra?.eas?.projectId;
+
+      if (!projectId) {
+        console.error("Missing Expo EAS projectId for push notifications");
+        return;
+      }
+
       const pushTokenData = await Notifications.getExpoPushTokenAsync({
-        projectId:
-          Constants.expoConfig?.extra?.eas?.projectId ||
-          "a437666f-939a-49dd-962f-4c338f74a055",
+        projectId,
       });
 
       const deviceToken = await Notifications.getDevicePushTokenAsync();
@@ -62,9 +71,13 @@ export async function registerForPushNotificationsAsync() {
 }
 
 export async function registerForPushNotificationsAsyncAlternative() {
+  if (Platform.OS === "web") {
+    return undefined;
+  }
+
   let token;
 
-  const isPhysicalDevice = Device.isDevice && Platform.OS !== "web";
+  const isPhysicalDevice = Device.isDevice;
   
   if (isPhysicalDevice) {
     const { status: existingStatus } = await Notifications.getPermissionsAsync();
@@ -81,8 +94,15 @@ export async function registerForPushNotificationsAsyncAlternative() {
     }
 
     try {
+      const projectId = Constants.expoConfig?.extra?.eas?.projectId;
+
+      if (!projectId) {
+        console.warn("Missing Expo EAS projectId for push notifications");
+        return;
+      }
+
       token = (await Notifications.getExpoPushTokenAsync({
-        projectId: Constants.expoConfig?.extra?.eas?.projectId || "a437666f-939a-49dd-962f-4c338f74a055"
+        projectId
       })).data;
       console.log("📲 Push Token:", token);
     } catch (error) {

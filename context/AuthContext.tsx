@@ -1,12 +1,19 @@
 import React, { createContext, useState, useEffect, useCallback } from "react";
 import { secureStorage, STORAGE_KEYS } from "@/lib/auth/storage";
 import {
+  resolveLocalDemoSession,
+  LOCAL_DEMO_ACCOUNTS,
+  canUseLocalDemoAuth,
+} from "@/lib/auth/localDemoAuth";
+import { isDemoMode } from "@/lib/release/releaseConfig";
+import {
   storeTokens,
   removeTokens,
   validateTokens,
   isTokenAuthenticated,
   tryRefreshTokens,
   clearAuthData,
+  getTokens,
 } from "@/lib/auth/tokens";
 import { authApi } from "@/lib/api/auth";
 import { getFullDeviceDetails } from "@/lib/utils/deviceInfo";
@@ -15,6 +22,7 @@ import {
   RegisterRequest,
   VerifyCodeResponse,
   ResendCodeResponse,
+  AppleLoginRequest,
 } from "@/lib/api/types";
 import { AuthContextValue, LoginResult, RegisterResult } from "@/lib/api/types";
 import { socketManager } from "@/lib/socket/socketManager";
@@ -28,6 +36,9 @@ const defaultContextValue: AuthContextValue = {
   hasCompletedOnboarding: false,
   isInSignupFlow: false,
   login: async () => ({ success: false }),
+  loginWithGoogle: async () => ({ success: false }),
+  loginWithFacebook: async () => ({ success: false }),
+  loginWithApple: async () => ({ success: false }),
   register: async () => ({ success: false }),
   logout: async () => {},
   updateUser: () => {},
@@ -88,6 +99,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   // Validate authentication state against actual tokens
   const validateAuthState = useCallback(async (): Promise<boolean> => {
     try {
+      const tokens = await getTokens();
+      const isLocalDemoToken =
+        tokens?.accessToken?.startsWith("local-demo-token-") ||
+        tokens?.refreshToken?.startsWith("local-demo-refresh-");
+
+      if (isLocalDemoToken && !canUseLocalDemoAuth()) {
+        console.log(
+          "[AuthContext] Local demo tokens present but demo auth disabled. Clearing."
+        );
+        await clearAuthData();
+        return false;
+      }
+
       const hasValidTokens = await isTokenAuthenticated();
       const userJSON = await secureStorage.get(STORAGE_KEYS.USER_DATA);
 
@@ -109,6 +133,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       return false;
     }
   }, []);
+
+  const applyAuthenticatedUser = useCallback(
+    async (authenticatedUser: User, token: string, refreshToken: string) => {
+      await storeTokens({
+        accessToken: token,
+        refreshToken,
+      });
+
+      await secureStorage.set(
+        STORAGE_KEYS.USER_DATA,
+        JSON.stringify(authenticatedUser)
+      );
+
+      setUser(authenticatedUser);
+      setInterests(authenticatedUser.interests?.map((i) => i.name) || []);
+      setIsAuthenticated(true);
+
+      await initializeSocketForUser(authenticatedUser, hasCompletedOnboarding);
+    },
+    [hasCompletedOnboarding]
+  );
 
   // Update authentication state based on token validity
   const syncAuthState = useCallback(
@@ -209,6 +254,39 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
             }
           }
         } else {
+          if (isDemoMode() && canUseLocalDemoAuth()) {
+            const demoAccount =
+              LOCAL_DEMO_ACCOUNTS.find(
+                (account) => account.label === "Demo Admin"
+              ) || LOCAL_DEMO_ACCOUNTS[0];
+            if (demoAccount) {
+              const demoSession = resolveLocalDemoSession(
+                demoAccount.identifier,
+                demoAccount.password
+              );
+              if (demoSession) {
+                await secureStorage.set(
+                  STORAGE_KEYS.ONBOARDING_COMPLETED,
+                  "true"
+                );
+                await secureStorage.remove(STORAGE_KEYS.SIGNUP_FLOW);
+                setHasCompletedOnboarding(true);
+                setIsInSignupFlow(false);
+
+                await applyAuthenticatedUser(
+                  demoSession.user,
+                  demoSession.token,
+                  demoSession.refreshToken
+                );
+
+                console.log(
+                  "[AuthContext] Demo mode active - auto signed in demo admin"
+                );
+                setLoading(false);
+                return;
+              }
+            }
+          }
           console.log("[AuthContext] No valid authentication found");
           setIsAuthenticated(false);
         }
@@ -351,16 +429,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
   // Login with token validation
   const login = useCallback(
-    async (email: string, password: string): Promise<LoginResult> => {
+    async (identifier: string, password: string): Promise<LoginResult> => {
       setLoading(true);
 
       try {
+        const localDemoSession = resolveLocalDemoSession(identifier, password);
+        if (localDemoSession) {
+          await secureStorage.set(STORAGE_KEYS.ONBOARDING_COMPLETED, "true");
+          await secureStorage.remove(STORAGE_KEYS.SIGNUP_FLOW);
+          setHasCompletedOnboarding(true);
+          setIsInSignupFlow(false);
+
+          await applyAuthenticatedUser(
+            localDemoSession.user,
+            localDemoSession.token,
+            localDemoSession.refreshToken
+          );
+
+          console.log("[AuthContext] Local demo user logged in successfully");
+          return { success: true, message: "Signed in with local demo user" };
+        }
+
         // Get device info
         const deviceDetails = await getFullDeviceDetails();
 
         // Call login API
         const response = await authApi.login({
-          email,
+          identifier,
           password,
           ...deviceDetails,
         });
@@ -374,27 +469,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
           response.user.id &&
           response.user
         ) {
-          // Store tokens
-          await storeTokens({
-            accessToken: response.token,
-            refreshToken: response.refreshToken,
-          });
-
-          // Store user data
-          await secureStorage.set(
-            STORAGE_KEYS.USER_DATA,
-            JSON.stringify(response.user)
+          await applyAuthenticatedUser(
+            response.user,
+            response.token,
+            response.refreshToken
           );
 
-          // Update state
-          setUser(response.user);
-          setInterests(response.user.interests?.map((i) => i.name) || []);
-          setIsAuthenticated(true);
-
           console.log("[AuthContext] User logged in successfully");
-
-          // Initialize socket for logged in user
-          await initializeSocketForUser(response.user, hasCompletedOnboarding);
 
           return { success: true };
         }
@@ -411,7 +492,48 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         setLoading(false);
       }
     },
-    [hasCompletedOnboarding]
+    [applyAuthenticatedUser]
+  );
+
+  const loginWithGoogle = useCallback(
+    async (idToken: string): Promise<LoginResult> => {
+      setLoading(true);
+
+      try {
+        const response = await authApi.googleLogin({ idToken });
+
+        if (
+          response.success &&
+          response.token &&
+          response.refreshToken &&
+          response.user
+        ) {
+          await applyAuthenticatedUser(
+            response.user,
+            response.token,
+            response.refreshToken
+          );
+
+          return { success: true };
+        }
+
+        return {
+          success: false,
+          message: response.message || "Google login failed",
+        };
+      } catch (error: any) {
+        console.error("[AuthContext] Google login error:", error);
+        return {
+          success: false,
+          message:
+            error?.response?.data?.message ||
+            "Google login failed. Please try again.",
+        };
+      } finally {
+        setLoading(false);
+      }
+    },
+    [applyAuthenticatedUser]
   );
 
   // Register
@@ -474,13 +596,97 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     []
   );
 
-  // Verify account with code
-  const verifyCode = useCallback(
-    async (email: string, code: string): Promise<VerifyCodeResponse> => {
+  const loginWithFacebook = useCallback(
+    async (accessToken: string): Promise<LoginResult> => {
       setLoading(true);
 
       try {
-        const response = await authApi.verifyCode({ email, code });
+        const response = await authApi.facebookLogin({ accessToken });
+
+        if (
+          response.success &&
+          response.token &&
+          response.refreshToken &&
+          response.user
+        ) {
+          await applyAuthenticatedUser(
+            response.user,
+            response.token,
+            response.refreshToken
+          );
+
+          return { success: true };
+        }
+
+        return {
+          success: false,
+          message: response.message || "Facebook login failed",
+        };
+      } catch (error: any) {
+        console.error("[AuthContext] Facebook login failed:", error);
+        return {
+          success: false,
+          message:
+            error?.response?.data?.message ||
+            error?.message ||
+            "Facebook login failed",
+        };
+      } finally {
+        setLoading(false);
+      }
+    },
+    [applyAuthenticatedUser]
+  );
+
+  const loginWithApple = useCallback(
+    async (data: AppleLoginRequest): Promise<LoginResult> => {
+      setLoading(true);
+
+      try {
+        const response = await authApi.appleLogin(data);
+
+        if (
+          response.success &&
+          response.token &&
+          response.refreshToken &&
+          response.user
+        ) {
+          await applyAuthenticatedUser(
+            response.user,
+            response.token,
+            response.refreshToken
+          );
+
+          return { success: true };
+        }
+
+        return {
+          success: false,
+          message: response.message || "Apple login failed",
+        };
+      } catch (error: any) {
+        console.error("[AuthContext] Apple login failed:", error);
+        return {
+          success: false,
+          message:
+            error?.response?.data?.message ||
+            error?.message ||
+            "Apple login failed",
+        };
+      } finally {
+        setLoading(false);
+      }
+    },
+    [applyAuthenticatedUser]
+  );
+
+  // Verify account with code
+  const verifyCode = useCallback(
+    async (identifier: string, code: string): Promise<VerifyCodeResponse> => {
+      setLoading(true);
+
+      try {
+        const response = await authApi.verifyCode({ identifier, code });
         console.log("[AuthContext] Verification response:", response);
 
         if (
@@ -539,11 +745,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
   // Resend verification code
   const resendVerificationCode = useCallback(
-    async (email: string): Promise<ResendCodeResponse> => {
-      console.log(`[AuthContext] Resending verification code for ${email}`);
+    async (identifier: string): Promise<ResendCodeResponse> => {
+      console.log(`[AuthContext] Resending verification code for ${identifier}`);
 
       try {
-        const response = await authApi.resendCode(email);
+        const response = await authApi.resendCode(identifier);
         return response;
       } catch (error: any) {
         console.error(
@@ -603,6 +809,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     hasCompletedOnboarding,
     isInSignupFlow,
     login,
+    loginWithGoogle,
+    loginWithFacebook,
+    loginWithApple,
     register,
     logout,
     updateUser,

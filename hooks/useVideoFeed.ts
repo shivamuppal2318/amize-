@@ -3,6 +3,8 @@ import VideoService from '@/lib/api/videoService';
 import { adaptVideosForUI, adaptVideoForUI } from '@/lib/adapters/videoAdapter';
 import { ApiVideo } from '@/lib/api/types/video';
 import { VideoItemData } from '@/components/VideoFeed/VideoItem';
+import { isDemoMode } from '@/lib/release/releaseConfig';
+import { mockVideos, mockApiVideos } from '@/data/mockVideos';
 
 export type FeedType = 'forYou' | 'following' | 'subscribed';
 
@@ -50,6 +52,7 @@ export default function useVideoFeed(options: UseVideoFeedOptions = {}) {
     const [hasMore, setHasMore] = useState(true);
     const [nextCursor, setNextCursor] = useState<string | null>(null);
     const [focusedIndex, setFocusedIndex] = useState(0);
+    const demoMode = isDemoMode();
 
     // Load more management state
     const loadMoreState = useRef<LoadMoreState>({
@@ -87,7 +90,7 @@ export default function useVideoFeed(options: UseVideoFeedOptions = {}) {
     });
 
     // Debounced logging to prevent spam
-    const debouncedLog = useRef<(message: string, data?: any) => void>();
+    const debouncedLog = useRef<(message: string, data?: any) => void>(() => {});
     useEffect(() => {
         let logTimer: ReturnType<typeof setTimeout> | null = null;
         const logQueue: Array<{message: string, data?: any, timestamp: number}> = [];
@@ -112,6 +115,17 @@ export default function useVideoFeed(options: UseVideoFeedOptions = {}) {
             if (logTimer) clearTimeout(logTimer);
         };
     }, []);
+
+    useEffect(() => {
+        if (!demoMode) return;
+        setApiVideos(mockApiVideos);
+        setVideos(mockVideos);
+        setNextCursor(null);
+        setHasMore(false);
+        setError(null);
+        setLoading(false);
+        setRefreshing(false);
+    }, [demoMode]);
 
     // Enhanced load more detection
     const shouldTriggerLoadMore = useCallback((currentIndex: number, totalVideos: number): boolean => {
@@ -162,6 +176,14 @@ export default function useVideoFeed(options: UseVideoFeedOptions = {}) {
         refresh = false
     ): Promise<{videos: VideoItemData[], nextCursor: string | null} | null> => {
         //if (!isMounted.current) return null;
+        if (demoMode) {
+            setApiVideos(mockApiVideos);
+            setVideos(mockVideos);
+            setNextCursor(null);
+            setHasMore(false);
+            setError(null);
+            return { videos: mockVideos, nextCursor: null };
+        }
 
         const startTime = Date.now();
         const metrics = performanceMetrics.current;
@@ -245,13 +267,19 @@ export default function useVideoFeed(options: UseVideoFeedOptions = {}) {
                         setVideos(transformedVideos);
                         setNextCursor(cachedData.nextCursor);
                         setHasMore(!cachedData.isComplete);
+                    } else {
+                        setApiVideos(mockApiVideos);
+                        setVideos(mockVideos);
+                        setNextCursor(null);
+                        setHasMore(false);
+                        setError(null);
                     }
                 }
             }
 
             return null;
         }
-    }, [pageSize, videos.length]);
+    }, [demoMode, pageSize, videos.length]);
 
     // Enhanced load more with comprehensive state management
     const loadMore = useCallback(async (): Promise<boolean> => {
@@ -341,6 +369,13 @@ export default function useVideoFeed(options: UseVideoFeedOptions = {}) {
                 return existingVideo;
             }
 
+            if (demoMode) {
+                const demoVideo = mockVideos.find(v => v.id === videoId);
+                if (demoVideo) {
+                    return demoVideo;
+                }
+            }
+
             const response = await VideoService.getVideo(videoId);
             const adaptedVideo = adaptVideoForUI(response.video);
 
@@ -351,7 +386,7 @@ export default function useVideoFeed(options: UseVideoFeedOptions = {}) {
             setError('Failed to load video');
             return null;
         }
-    }, [videos]);
+    }, [demoMode, videos]);
 
     // Jump to specific video
     const jumpToVideo = useCallback(async (video: VideoItemData): Promise<void> => {

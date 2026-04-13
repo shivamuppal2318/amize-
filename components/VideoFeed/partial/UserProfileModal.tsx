@@ -1,5 +1,7 @@
 import React, { useEffect, useState, useCallback } from "react";
 import {
+  Alert,
+  Modal,
   View,
   Text,
   StyleSheet,
@@ -23,11 +25,15 @@ import {
   AlertTriangle,
   CreditCard,
 } from "lucide-react-native";
-import { CreatorAPI, SubscriptionPlan, SocialAPI } from "@/lib/api/CreatorAPI";
+import { CreatorAPI, SubscriptionPlan } from "@/lib/api/CreatorAPI";
+import { SocialAPI } from "@/lib/api/SocialAPI";
+import { completePendingPayment } from "@/lib/payments/completePendingPayment";
 import { useAuth } from "@/hooks/useAuth";
 import { LinearGradient } from "expo-linear-gradient";
 import FollowButton from "@/components/VideoFeed/partial/FollowButton";
+import ReportScreen from "@/components/VideoFeed/ReportScreen";
 import { router } from "expo-router";
+import { captureException } from "@/utils/errorReporting";
 
 // Types
 interface Creator {
@@ -81,6 +87,7 @@ export const UserProfileModal = ({
   });
   const [followLoading, setFollowLoading] = useState(false);
   const [thankYouVisible, setThankYouVisible] = useState(false);
+  const [reportModalVisible, setReportModalVisible] = useState(false);
 
   // Animation values
   const [scaleAnim] = useState(new Animated.Value(0.95));
@@ -307,9 +314,9 @@ export const UserProfileModal = ({
     setIsProcessing(true);
     try {
       // Use the CreatorAPI to handle subscription
-      const success = await CreatorAPI.subscribeToPlan(userId, selectedPlan);
+      const result = await CreatorAPI.subscribeToPlan(userId, selectedPlan);
 
-      if (success) {
+      if (result.success) {
         setIsSubscribed(true);
         setShowPlans(false);
         setThankYouVisible(true);
@@ -318,8 +325,69 @@ export const UserProfileModal = ({
         setTimeout(() => {
           setThankYouVisible(false);
         }, 3000);
+      } else if (result.requiresAction) {
+        if (result.payment?.attemptId) {
+          Alert.alert(
+            "Payment Verification Required",
+            result.message ||
+              "This subscription payment needs additional verification before it can be completed.",
+            [
+              { text: "Later", style: "cancel" },
+              {
+                text: "Complete Now",
+                onPress: async () => {
+                  try {
+                    setIsProcessing(true);
+                    const confirmResult = await completePendingPayment({
+                      paymentAttemptId: result.payment!.attemptId!,
+                      clientSecret: result.payment?.clientSecret,
+                    });
+
+                    if (confirmResult.success) {
+                      setIsSubscribed(true);
+                      setShowPlans(false);
+                      setThankYouVisible(true);
+
+                      setTimeout(() => {
+                        setThankYouVisible(false);
+                      }, 3000);
+                    } else {
+                      Alert.alert(
+                        "Verification Pending",
+                        confirmResult.message ||
+                          "The subscription payment is still awaiting backend confirmation."
+                      );
+                    }
+                  } catch (confirmError) {
+                    captureException(confirmError, {
+                      tags: {
+                        component: "user-profile-modal",
+                        stage: "confirm-subscription-payment",
+                      },
+                      extra: {
+                        creatorId: userId,
+                        paymentAttemptId: result.payment?.attemptId,
+                      },
+                    });
+                    Alert.alert(
+                      "Confirmation Failed",
+                      "The subscription payment could not be confirmed right now."
+                    );
+                  } finally {
+                    setIsProcessing(false);
+                  }
+                },
+              },
+            ]
+          );
+        } else {
+          alert(
+            result.message ||
+              "This subscription payment needs additional verification before it can be completed."
+          );
+        }
       } else {
-        alert("Failed to subscribe. Please try again later.");
+        alert(result.message || "Failed to subscribe. Please try again later.");
       }
     } catch (err) {
       console.error("Error subscribing to plan:", err);
@@ -344,6 +412,33 @@ export const UserProfileModal = ({
     // In a real app, this would open the platform's native share dialog
     alert(`Profile link for @${username} copied to clipboard!`);
   };
+
+  const handleReportUser = useCallback(() => {
+    if (!isAuthenticated) {
+      Alert.alert("Login Required", "Please log in to report this user.");
+      return;
+    }
+
+    setReportModalVisible(true);
+  }, [isAuthenticated]);
+
+  const handleReportSubmit = useCallback(
+    async (reason: string) => {
+      try {
+        await SocialAPI.reportUser(userId, reason);
+        Alert.alert("Report Submitted", "The user report has been sent for review.");
+      } catch (error) {
+        captureException(error, {
+          tags: { component: "user-profile-modal", stage: "report-user" },
+          extra: { userId, reason },
+        });
+        Alert.alert("Report Failed", "Unable to submit this user report right now.");
+      } finally {
+        setReportModalVisible(false);
+      }
+    },
+    [userId]
+  );
 
   // Format numbers
   const formatNumber = (num: number) => {
@@ -706,6 +801,17 @@ export const UserProfileModal = ({
                   <Text style={styles.secondaryButtonText}>Share</Text>
                 </View>
               </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.secondaryButton}
+                onPress={handleReportUser}
+                activeOpacity={0.8}
+              >
+                <View style={styles.secondaryButtonContent}>
+                  <AlertTriangle size={15} color="#9CA3AF" />
+                  <Text style={styles.secondaryButtonText}>Report</Text>
+                </View>
+              </TouchableOpacity>
             </View>
 
             {/* View Full Profile */}
@@ -756,6 +862,17 @@ export const UserProfileModal = ({
           </Animated.View>
         </ScrollView>
       </View>
+      <Modal
+        animationType="slide"
+        transparent={false}
+        visible={reportModalVisible}
+        onRequestClose={() => setReportModalVisible(false)}
+      >
+        <ReportScreen
+          onClose={() => setReportModalVisible(false)}
+          onSubmit={handleReportSubmit}
+        />
+      </Modal>
     </CustomModal>
   );
 };

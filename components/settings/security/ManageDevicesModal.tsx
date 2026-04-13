@@ -2,7 +2,6 @@ import React, { useEffect, useRef, useCallback } from 'react';
 import { View, Text, Modal, TouchableOpacity, FlatList, ActivityIndicator, Alert, StyleSheet } from 'react-native';
 import { X, Smartphone, Trash2, Clock } from 'lucide-react-native';
 import { useSecurityDevices } from '@/hooks/useSecurityHooks';
-import { format } from 'date-fns';
 
 interface ManageDevicesModalProps {
     visible: boolean;
@@ -33,7 +32,14 @@ export const ManageDevicesModal = ({ visible, onClose }: ManageDevicesModalProps
     const formatDate = useCallback((dateString: string) => {
         if (!dateString) return 'N/A';
         try {
-            return format(new Date(dateString), 'MMM d, yyyy h:mm a');
+            return new Intl.DateTimeFormat('en-US', {
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric',
+                hour: 'numeric',
+                minute: '2-digit',
+                hour12: true,
+            }).format(new Date(dateString));
         } catch (error) {
             return 'Invalid date';
         }

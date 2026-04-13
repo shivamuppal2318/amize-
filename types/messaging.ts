@@ -1,358 +1,290 @@
-// types/messaging.ts - Unified messaging types
-export interface User {
-    id: string;
-    username: string;
-    profilePhotoUrl?: string;
-    isOnline?: boolean;
-    lastSeenAt?: string;
-}
+import type {
+    Conversation as SocketConversation,
+    Message as SocketMessage,
+    User as SocketUser,
+} from '@/lib/socket/socketEvents';
 
-// UNIFIED Message interface - no more dual fields
-export interface Message {
-    // Core message data
-    id: string;
-    content: string; // Single field for text content
-    timestamp: string; // UI-formatted timestamp
-    senderId: string;
-    receiverId: string;
-    conversationId: string;
-
-    // Message metadata
-    messageType: 'text' | 'image' | 'video' | 'file' | 'system';
-    status: 'sending' | 'sent' | 'delivered' | 'read' | 'failed';
-
-    // Optional fields
-    attachmentUrl?: string;
-    attachmentType?: string;
-    fileName?: string;
-    replyToId?: string;
-
-    // Backend timestamps (for sorting and processing)
-    createdAt: string;
-    updatedAt: string;
-
-    // Status flags
-    isDelivered: boolean;
-    deliveredAt?: string;
-    isRead: boolean;
-    readAt?: string;
-    isDeleted: boolean;
-    deletedAt?: string;
-
-    // UI helpers (computed properties)
-    isFromCurrentUser: boolean; // Replaces sender/sender_type
-    isFirstInGroup?: boolean;
-
-    // Populated relations
-    senderInfo?: User;
-    receiverInfo?: User;
-    replyTo?: Message & { senderInfo: User };
-}
-
-export interface Conversation {
-    // Core conversation data
-    id: string;
-    name: string; // Display name for UI
-    avatar: string; // Display avatar for UI
-    type: 'direct' | 'group';
-
-    // Last message info
-    lastMessage: string; // Formatted preview
-    lastMessageContent?: string; // Raw content
-    lastMessageAt?: string;
-    lastMessageSender?: string;
-
-    // UI data
-    timestamp: string; // Formatted timestamp
-    unreadCount: number;
-    isOnline: boolean; // Computed online status
-
-    // Metadata
-    title?: string;
-    description?: string;
-    imageUrl?: string;
-    participants: User[];
-
-    // Status flags
-    isActive: boolean;
-    isMuted?: boolean;
-    isPinned?: boolean;
-
-    // Backend timestamps
-    createdAt: string;
-    updatedAt: string;
-}
-
-// Connection state types
 export type ConnectionState =
-    | 'disconnected'
-    | 'connecting'
     | 'connected'
+    | 'connecting'
+    | 'disconnected'
     | 'reconnecting'
     | 'error';
 
 export interface ConnectionStatus {
     state: ConnectionState;
     isConnected: boolean;
-    lastConnectedAt?: string;
     reconnectAttempts: number;
+    lastConnectedAt?: string;
     error?: string;
 }
 
-// Typing user interface
-export interface TypingUser {
-    userId: string;
-    username: string;
-    conversationId: string;
-    startedAt?: string;
-}
+type ConnectionListener = (status: ConnectionStatus) => void;
 
-// Message transformation utilities
-export class MessageUtils {
-    static fromSocket(socketMessage: any, currentUserId: string): Message {
-        return {
-            id: socketMessage.id,
-            content: socketMessage.content,
-            timestamp: this.formatTimestamp(socketMessage.createdAt),
-            senderId: socketMessage.senderId,
-            receiverId: socketMessage.receiverId,
-            conversationId: socketMessage.conversationId,
+class ConnectionStateManager {
+    private status: ConnectionStatus = {
+        state: 'disconnected',
+        isConnected: false,
+        reconnectAttempts: 0,
+    };
 
-            messageType: socketMessage.messageType || 'text',
-            status: this.getMessageStatus(socketMessage),
-
-            attachmentUrl: socketMessage.attachmentUrl,
-            attachmentType: socketMessage.attachmentType,
-            fileName: socketMessage.fileName,
-            replyToId: socketMessage.replyToId,
-
-            createdAt: socketMessage.createdAt,
-            updatedAt: socketMessage.updatedAt,
-
-            isDelivered: socketMessage.isDelivered || false,
-            deliveredAt: socketMessage.deliveredAt,
-            isRead: socketMessage.isRead || false,
-            readAt: socketMessage.readAt,
-            isDeleted: socketMessage.isDeleted || false,
-            deletedAt: socketMessage.deletedAt,
-
-            isFromCurrentUser: socketMessage.senderId === currentUserId,
-
-            senderInfo: socketMessage.sender,
-            receiverInfo: socketMessage.receiver,
-            replyTo: socketMessage.replyTo && socketMessage.replyTo.sender
-                ? {
-                    ...this.fromSocket(socketMessage.replyTo, currentUserId),
-                    senderInfo: socketMessage.replyTo.sender
-                }
-                : undefined,
-        };
-    }
-
-    static formatTimestamp(date?: string | Date | null): string {
-        if (!date) return '';
-
-        try {
-            const messageDate = new Date(date);
-            if (isNaN(messageDate.getTime())) return '';
-
-            const now = new Date();
-            const today = now.toDateString();
-
-            if (messageDate.toDateString() === today) {
-                return messageDate.toLocaleTimeString([], {
-                    hour: '2-digit',
-                    minute: '2-digit'
-                });
-            }
-
-            const yesterday = new Date(now);
-            yesterday.setDate(yesterday.getDate() - 1);
-            if (messageDate.toDateString() === yesterday.toDateString()) {
-                return 'Yesterday';
-            }
-
-            const weekAgo = new Date(now);
-            weekAgo.setDate(weekAgo.getDate() - 7);
-            if (messageDate > weekAgo) {
-                return messageDate.toLocaleDateString([], { weekday: 'short' });
-            }
-
-            return messageDate.toLocaleDateString([], {
-                month: 'short',
-                day: 'numeric'
-            });
-        } catch (error) {
-            console.warn('Error formatting timestamp:', error);
-            return '';
-        }
-    }
-
-    private static getMessageStatus(socketMessage: any): Message['status'] {
-        if (socketMessage.isRead) return 'read';
-        if (socketMessage.isDelivered) return 'delivered';
-        return 'sent';
-    }
-}
-
-export class ConversationUtils {
-    static fromSocket(socketConv: any, currentUserId: string, onlineUsers: Set<string>): Conversation {
-        const otherParticipants = socketConv.participants.filter((p: User) => p.id !== currentUserId);
-        const primaryParticipant = otherParticipants[0];
-
-        // Determine display name
-        const name = socketConv.type === 'group'
-            ? socketConv.title || `Group (${socketConv.participants.length})`
-            : primaryParticipant?.username || 'Unknown User';
-
-        // Determine display avatar
-        const avatar = socketConv.type === 'group'
-            ? socketConv.imageUrl || 'https://via.placeholder.com/40?text=G'
-            : primaryParticipant?.profilePhotoUrl || 'https://via.placeholder.com/40';
-
-        // Determine online status
-        const isOnline = socketConv.type === 'direct'
-            ? onlineUsers.has(primaryParticipant?.id || '')
-            : otherParticipants.some((p: User) => onlineUsers.has(p.id));
-
-        // Format last message preview
-        const lastMessage = this.formatLastMessage(socketConv, currentUserId);
-
-        return {
-            id: socketConv.id,
-            name,
-            avatar,
-            type: socketConv.type,
-
-            lastMessage,
-            lastMessageContent: socketConv.lastMessageContent,
-            lastMessageAt: socketConv.lastMessageAt,
-            lastMessageSender: socketConv.lastMessageSender,
-
-            timestamp: MessageUtils.formatTimestamp(socketConv.lastMessageAt || socketConv.createdAt),
-            unreadCount: socketConv.unreadCount || 0,
-            isOnline,
-
-            title: socketConv.title,
-            description: socketConv.description,
-            imageUrl: socketConv.imageUrl,
-            participants: socketConv.participants.map((p: User) => ({
-                ...p,
-                isOnline: onlineUsers.has(p.id),
-            })),
-
-            isActive: socketConv.isActive !== false,
-            isMuted: socketConv.isMuted || false,
-            isPinned: socketConv.isPinned || false,
-
-            createdAt: socketConv.createdAt,
-            updatedAt: socketConv.updatedAt,
-        };
-    }
-
-    private static formatLastMessage(socketConv: any, currentUserId: string): string {
-        const lastMsg = socketConv.lastMessage || {};
-        const content = lastMsg.content || socketConv.lastMessageContent;
-
-        if (!content?.trim()) {
-            return 'No messages yet';
-        }
-
-        // Handle different message types
-        switch (lastMsg.messageType) {
-            case 'image': return '📷 Photo';
-            case 'video': return '🎥 Video';
-            case 'file': return lastMsg.fileName ? `📄 ${lastMsg.fileName}` : '📄 File';
-            case 'system': return content;
-            default:
-                // For group messages, add sender name
-                if (socketConv.type === 'group' && socketConv.lastMessageSender !== currentUserId) {
-                    const senderName = socketConv.participants
-                        .find((p: User) => p.id === socketConv.lastMessageSender)?.username || 'Someone';
-                    return `${senderName}: ${content}`;
-                }
-                return content;
-        }
-    }
-
-    static getOtherParticipants(conversation: Conversation, currentUserId: string): User[] {
-        return conversation.participants.filter(p => p.id !== currentUserId);
-    }
-
-    static getRecipientId(conversation: Conversation, currentUserId: string): string | null {
-        const others = this.getOtherParticipants(conversation, currentUserId);
-        return others[0]?.id || null;
-    }
-}
-
-// Centralized Connection State Manager
-export class ConnectionStateManager {
-    private state: ConnectionState = 'disconnected';
-    private listeners = new Set<(status: ConnectionStatus) => void>();
-    private reconnectAttempts = 0;
-    private lastConnectedAt?: string;
-    private error?: string;
+    private listeners = new Set<ConnectionListener>();
 
     getStatus(): ConnectionStatus {
-        return {
-            state: this.state,
-            isConnected: this.state === 'connected',
-            lastConnectedAt: this.lastConnectedAt,
-            reconnectAttempts: this.reconnectAttempts,
-            error: this.error,
-        };
+        return this.status;
     }
 
-    setState(newState: ConnectionState, error?: string) {
-        if (this.state === newState && this.error === error) return;
-
-        const previousState = this.state;
-        this.state = newState;
-        this.error = error;
-
-        // Update metadata based on state changes
-        if (newState === 'connected') {
-            this.lastConnectedAt = new Date().toISOString();
-            this.reconnectAttempts = 0;
-            this.error = undefined;
-        } else if (newState === 'reconnecting') {
-            this.reconnectAttempts++;
-        }
-
-        console.log(`[ConnectionState] ${previousState} -> ${newState}`, {
-            reconnectAttempts: this.reconnectAttempts,
-            error
-        });
-
-        // Notify all listeners
-        const status = this.getStatus();
-        this.listeners.forEach(listener => {
-            try {
-                listener(status);
-            } catch (err) {
-                console.error('[ConnectionState] Error in listener:', err);
-            }
-        });
-    }
-
-    subscribe(listener: (status: ConnectionStatus) => void): () => void {
+    subscribe(listener: ConnectionListener): () => void {
         this.listeners.add(listener);
-
-        // Immediately notify with current status
-        listener(this.getStatus());
-
         return () => {
             this.listeners.delete(listener);
         };
     }
 
-    reset() {
-        this.state = 'disconnected';
-        this.reconnectAttempts = 0;
-        this.lastConnectedAt = undefined;
-        this.error = undefined;
+    setState(state: ConnectionState, error?: string): void {
+        const reconnectAttempts =
+            state === 'reconnecting'
+                ? this.status.reconnectAttempts + 1
+                : state === 'connected'
+                  ? 0
+                  : this.status.reconnectAttempts;
+
+        this.status = {
+            state,
+            isConnected: state === 'connected',
+            reconnectAttempts,
+            lastConnectedAt:
+                state === 'connected'
+                    ? new Date().toISOString()
+                    : this.status.lastConnectedAt,
+            error,
+        };
+
+        this.listeners.forEach((listener) => listener(this.status));
+    }
+
+    reset(): void {
+        this.status = {
+            state: 'disconnected',
+            isConnected: false,
+            reconnectAttempts: 0,
+        };
+        this.listeners.forEach((listener) => listener(this.status));
     }
 }
 
-// Global connection state manager instance
 export const connectionStateManager = new ConnectionStateManager();
+
+export interface Participant extends SocketUser {
+    avatar?: string;
+}
+
+export interface TypingUser {
+    conversationId: string;
+    userId: string;
+    username: string;
+}
+
+export type MessageStatus = 'sending' | 'sent' | 'delivered' | 'read' | 'failed';
+
+export interface Message {
+    id: string;
+    content: string;
+    messageType: SocketMessage['messageType'];
+    attachmentUrl?: string;
+    attachmentType?: string;
+    fileName?: string;
+    senderId: string;
+    receiverId: string;
+    conversationId: string;
+    replyToId?: string;
+    sender?: Participant;
+    receiver?: Participant;
+    replyTo?: Message | null;
+    createdAt: string;
+    updatedAt: string;
+    timestamp: string;
+    status: MessageStatus;
+    isFromCurrentUser: boolean;
+    isDeleted?: boolean;
+}
+
+export interface Conversation {
+    id: string;
+    type: SocketConversation['type'];
+    name: string;
+    title?: string;
+    avatar?: string;
+    imageUrl?: string;
+    description?: string;
+    participants: Participant[];
+    lastMessage: string;
+    lastMessageContent?: string;
+    timestamp: string;
+    unreadCount: number;
+    isOnline: boolean;
+    isMuted?: boolean;
+    isPinned?: boolean;
+    isArchived?: boolean;
+    lastMessageId?: string;
+    lastMessageAt?: string;
+    lastMessageSender?: string;
+    isActive?: boolean;
+    createdAt?: string;
+    updatedAt?: string;
+}
+
+export const MessageUtils = {
+    formatTimestamp(timestamp?: string): string {
+        if (!timestamp) {
+            return 'now';
+        }
+
+        const date = new Date(timestamp);
+        if (Number.isNaN(date.getTime())) {
+            return 'now';
+        }
+
+        const diffInMs = Date.now() - date.getTime();
+        const diffInMinutes = Math.floor(diffInMs / (1000 * 60));
+        const diffInHours = Math.floor(diffInMs / (1000 * 60 * 60));
+        const diffInDays = Math.floor(diffInMs / (1000 * 60 * 60 * 24));
+
+        if (diffInMinutes < 1) return 'now';
+        if (diffInMinutes < 60) return `${diffInMinutes}m`;
+        if (diffInHours < 24) return `${diffInHours}h`;
+        if (diffInDays < 7) return `${diffInDays}d`;
+
+        return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+    },
+
+    fromSocket(message: SocketMessage, currentUserId: string): Message {
+        const status: MessageStatus = message.isRead
+            ? 'read'
+            : message.isDelivered
+              ? 'delivered'
+              : 'sent';
+
+        return {
+            id: message.id,
+            content: message.content,
+            messageType: message.messageType,
+            attachmentUrl: message.attachmentUrl,
+            attachmentType: message.attachmentType,
+            fileName: message.fileName,
+            senderId: message.senderId,
+            receiverId: message.receiverId,
+            conversationId: message.conversationId,
+            replyToId: message.replyToId,
+            sender: message.sender,
+            receiver: message.receiver,
+            replyTo: message.replyTo
+                ? MessageUtils.fromSocket(message.replyTo, currentUserId)
+                : null,
+            createdAt: message.createdAt,
+            updatedAt: message.updatedAt,
+            timestamp: MessageUtils.formatTimestamp(message.createdAt),
+            status,
+            isFromCurrentUser: message.senderId === currentUserId,
+            isDeleted: message.isDeleted,
+        };
+    },
+};
+
+export const ConversationUtils = {
+    getOtherParticipants(conversation: Conversation, currentUserId: string): Participant[] {
+        return conversation.participants.filter(
+            (participant) => participant.id !== currentUserId
+        );
+    },
+
+    getConversationName(conversation: Conversation, currentUserId: string): string {
+        if (conversation.type === 'group') {
+            return conversation.name;
+        }
+
+        const other = ConversationUtils.getOtherParticipants(conversation, currentUserId)[0];
+        return other?.username || conversation.name || 'Conversation';
+    },
+
+    getConversationAvatar(conversation: Conversation, currentUserId: string): string {
+        if (conversation.type === 'group') {
+            return conversation.avatar || conversation.participants[0]?.profilePhotoUrl || '';
+        }
+
+        const other = ConversationUtils.getOtherParticipants(conversation, currentUserId)[0];
+        return other?.profilePhotoUrl || other?.avatar || conversation.avatar || '';
+    },
+
+    isDirectConversation(conversation: Conversation): boolean {
+        return conversation.type === 'direct';
+    },
+
+    isGroupConversation(conversation: Conversation): boolean {
+        return conversation.type === 'group';
+    },
+
+    getParticipantCount(conversation: Conversation): number {
+        return conversation.participants.length;
+    },
+
+    getOnlineParticipantCount(
+        conversation: Conversation,
+        onlineUsers: Set<string>
+    ): number {
+        return conversation.participants.filter(
+            (participant) => participant.isOnline || onlineUsers.has(participant.id)
+        ).length;
+    },
+
+    getRecipientId(conversation: Conversation, currentUserId: string): string {
+        return ConversationUtils.getOtherParticipants(conversation, currentUserId)[0]?.id || '';
+    },
+
+    fromSocket(
+        conversation: SocketConversation,
+        currentUserId: string,
+        onlineUsers: Set<string> = new Set()
+    ): Conversation {
+        const participants = (conversation.participants || []).map((participant: SocketUser) => ({
+            ...participant,
+            avatar: participant.profilePhotoUrl,
+        }));
+        const otherParticipants = participants.filter(
+            (participant) => participant.id !== currentUserId
+        );
+        const isOnline = otherParticipants.some(
+            (participant) => participant.isOnline || onlineUsers.has(participant.id)
+        );
+
+        return {
+            id: conversation.id,
+            type: conversation.type,
+            name:
+                conversation.title ||
+                (conversation.type === 'group'
+                    ? 'Group Chat'
+                    : otherParticipants[0]?.username || 'Conversation'),
+            title: conversation.title,
+            avatar:
+                conversation.imageUrl ||
+                otherParticipants[0]?.profilePhotoUrl ||
+                '',
+            imageUrl: conversation.imageUrl,
+            description: conversation.description,
+            participants,
+            lastMessage:
+                conversation.lastMessageContent || 'Start a conversation',
+            lastMessageContent: conversation.lastMessageContent,
+            timestamp: MessageUtils.formatTimestamp(conversation.lastMessageAt),
+            unreadCount: 0,
+            isOnline,
+            lastMessageId: conversation.lastMessageId,
+            lastMessageAt: conversation.lastMessageAt,
+            lastMessageSender: conversation.lastMessageSender,
+            isActive: conversation.isActive,
+            createdAt: conversation.createdAt,
+            updatedAt: conversation.updatedAt,
+        };
+    },
+};

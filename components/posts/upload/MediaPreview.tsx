@@ -25,8 +25,8 @@ export default function MediaPreview({
   mediaItems,
   onMediaChange,
 }: MediaPreviewProps) {
-  const videoRefs = useRef<{ [key: number]: Video | null }>({});
-  const audioRefs = useRef<{ [key: number]: Audio.Sound | null }>({});
+  const videoRefs = useRef<Record<string, Video | null>>({});
+  const audioRefs = useRef<Record<string, Audio.Sound | null>>({});
   const mediaScrollViewRef = useRef<FlatList>(null);
 
   const [coverImageIndex, setCoverImageIndex] = useState(0);
@@ -56,7 +56,7 @@ export default function MediaPreview({
         { shouldPlay: true }
       );
 
-      audioRefs.current[index] = sound;
+      audioRefs.current[String(index)] = sound;
     } catch (e) {
       console.log("Audio play error:", e);
     }
@@ -99,7 +99,7 @@ export default function MediaPreview({
 
   // Toggle video play/pause
   const toggleVideoPlayback = async (index: number) => {
-    const videoRef = videoRefs.current[index];
+    const videoRef = videoRefs.current[String(index)];
     if (videoRef) {
       const isPlaying = playingVideos[index];
 
@@ -141,9 +141,9 @@ export default function MediaPreview({
             activeOpacity={0.9}
           >
             <Video
-              ref={(ref) => {
-                videoRefs.current[index] = ref;
-              }}
+                ref={(ref) => {
+                  videoRefs.current[String(index)] = ref;
+                }}
               source={{ uri: sanitizedUri }}
               style={styles.videoPlayer}
               resizeMode={ResizeMode.COVER}

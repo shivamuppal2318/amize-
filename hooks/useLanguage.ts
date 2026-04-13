@@ -1,6 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useApi } from './useApi';
 import { Alert } from 'react-native';
+import { secureStorage, STORAGE_KEYS } from '@/lib/auth/storage';
+import { LOCAL_LANGUAGES, resolveLanguageCode, resolveLanguageName } from '@/lib/i18n/languages';
+import { useI18n } from './useI18n';
 
 // API response types
 export interface Language {
@@ -32,6 +35,7 @@ interface UseLanguageResult {
 }
 
 export function useLanguage(): UseLanguageResult {
+    const { setLanguage: setAppLanguage } = useI18n();
     const getLanguageApi = useApi<LanguageResponse>('/settings/language', 'get');
     const updateLanguageApi = useApi<UpdateLanguageResponse, { language: string }>('/settings/language', 'put');
 
@@ -55,12 +59,19 @@ export function useLanguage(): UseLanguageResult {
             if (response && response.success) {
                 setCurrentLanguage(response.language);
                 setAvailableLanguages(response.availableLanguages);
+                await secureStorage.set(STORAGE_KEYS.LANGUAGE, response.language);
+                await setAppLanguage(response.language);
             } else {
-                setError(getLanguageApi.error || 'Failed to load language settings');
+                throw new Error(getLanguageApi.error || 'Failed to load language settings');
             }
         } catch (err) {
             console.error('Error in useLanguage hook:', err);
-            setError('An unexpected error occurred');
+            const storedLanguage = await secureStorage.get(STORAGE_KEYS.LANGUAGE);
+            const resolvedLanguage =
+                storedLanguage || resolveLanguageName(resolveLanguageCode('en'));
+            setCurrentLanguage(resolvedLanguage);
+            setAvailableLanguages(LOCAL_LANGUAGES);
+            setError(null);
         } finally {
             setIsLoading(false);
         }
@@ -77,19 +88,23 @@ export function useLanguage(): UseLanguageResult {
 
             if (response && response.success) {
                 setCurrentLanguage(response.language);
+                await secureStorage.set(STORAGE_KEYS.LANGUAGE, response.language);
+                await setAppLanguage(response.language);
                 return true;
-            } else {
-                setError(updateLanguageApi.error || 'Failed to update language');
-                return false;
             }
+
+            throw new Error(updateLanguageApi.error || 'Failed to update language');
         } catch (err) {
             console.error('Error updating language:', err);
-            setError('An unexpected error occurred while updating language');
-            return false;
+            setCurrentLanguage(language);
+            await secureStorage.set(STORAGE_KEYS.LANGUAGE, language);
+            await setAppLanguage(language);
+            setError(null);
+            return true;
         } finally {
             setIsLoading(false);
         }
-    }, [currentLanguage]);
+    }, [currentLanguage, setAppLanguage]);
 
     // Fetch languages on mount
     useEffect(() => {

@@ -11,12 +11,14 @@ interface UsePostUploadProps {
   createAsSlideshow?: boolean;
   slideDuration?: number;
   transition?: string;
+  postMode?: "post" | "story";
 }
 
 export function usePostUpload({
   createAsSlideshow = false,
   slideDuration = 3,
   transition = "fade",
+  postMode = "post",
 }: UsePostUploadProps = {}) {
   const router = useRouter();
   const toast = useToast();
@@ -107,7 +109,10 @@ export function usePostUpload({
         console.log("📤 createPost VIDEO payload:", postData);
   
         await createPost(postData);
-        toast.show("Success", "Video posted successfully!");
+        toast.show(
+          "Success",
+          postMode === "story" ? "Story shared successfully!" : "Video posted successfully!"
+        );
       }
   
       // ---------------------------------------------------------------------
@@ -130,7 +135,10 @@ export function usePostUpload({
           console.log("📤 createSlideshow payload:", slideshowData);
   
           await createSlideshow(slideshowData);
-          toast.show("Success", "Slideshow created successfully!");
+          toast.show(
+            "Success",
+            postMode === "story" ? "Story shared successfully!" : "Slideshow created successfully!"
+          );
         } else {
           const uploadIds = uploadResults.map((u) => u.upload.id);
   
@@ -146,7 +154,9 @@ export function usePostUpload({
           await createMultiplePosts(uploadIds, postData);
           toast.show(
             "Success",
-            `${uploadResults.length} posts created successfully!`
+            postMode === "story"
+              ? "Story shared successfully!"
+              : `${uploadResults.length} posts created successfully!`
           );
         }
       }

@@ -148,7 +148,7 @@ export class SocialAPI {
      */
     static async reportUser(userId: string, reason: string, description?: string) {
         try {
-            const response = await apiClient.post(`/api/users/${userId}/report`, {
+            const response = await apiClient.post(`/users/${userId}/report`, {
                 reason,
                 description
             });

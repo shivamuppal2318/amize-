@@ -7,7 +7,7 @@
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
     "skipLibCheck": true,
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     "paths": {
       "@/*": [
         "./*"
@@ -22,6 +22,7 @@
   "exclude": [
     "node_modules",
     "dist",
-    "build"
+    "build",
+    "amize-next-master"
   ]
 }

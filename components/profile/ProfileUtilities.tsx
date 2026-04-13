@@ -1,6 +1,6 @@
 // components/profile/ProfileUtilities.tsx
 
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { View, Text, StyleSheet, Animated, Easing, TouchableOpacity } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
@@ -61,8 +61,13 @@ interface AnimatedStatProps {
 export const AnimatedStat: React.FC<AnimatedStatProps> = ({ number, label, delay = 0 }) => {
     const countAnim = useRef(new Animated.Value(0)).current;
     const scaleAnim = useRef(new Animated.Value(0.8)).current;
+    const [displayValue, setDisplayValue] = useState(0);
 
     useEffect(() => {
+        const listenerId = countAnim.addListener(({ value }) => {
+            setDisplayValue(Math.round(value));
+        });
+
         Animated.parallel([
             Animated.timing(countAnim, {
                 toValue: number,
@@ -79,6 +84,10 @@ export const AnimatedStat: React.FC<AnimatedStatProps> = ({ number, label, delay
                 useNativeDriver: true,
             }),
         ]).start();
+
+        return () => {
+            countAnim.removeListener(listenerId);
+        };
     }, [number, delay]);
 
     return (
@@ -88,13 +97,7 @@ export const AnimatedStat: React.FC<AnimatedStatProps> = ({ number, label, delay
                 { transform: [{ scale: scaleAnim }] }
             ]}
         >
-            <Animated.Text style={styles.statNumber}>
-                {countAnim.interpolate({
-                    inputRange: [0, number],
-                    outputRange: [0, number],
-                    extrapolate: 'clamp',
-                }).__getValue().toFixed(0)}
-            </Animated.Text>
+            <Text style={styles.statNumber}>{displayValue.toFixed(0)}</Text>
             <Text style={styles.statLabel}>{label}</Text>
         </Animated.View>
     );
@@ -105,7 +108,7 @@ interface FloatingActionButtonProps {
     onPress: () => void;
     icon: React.ReactNode;
     label: string;
-    gradient?: string[];
+    gradient?: [string, string, ...string[]];
 }
 
 export const FloatingActionButton: React.FC<FloatingActionButtonProps> = ({

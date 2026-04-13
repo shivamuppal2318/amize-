@@ -27,6 +27,10 @@ class NotificationService {
     async initialize() {
         if (this.isConfigured) return;
 
+        if (Platform.OS === 'web') {
+            return false;
+        }
+
         try {
             // Request permissions
             const { status: existingStatus } = await Notifications.getPermissionsAsync();
@@ -83,6 +87,10 @@ class NotificationService {
     }
 
     async showNotification(notification: Notification) {
+        if (Platform.OS === 'web') {
+            return;
+        }
+
         if (!this.isConfigured) {
             const initialized = await this.initialize();
             if (!initialized) {
@@ -238,6 +246,10 @@ class NotificationService {
     setupNotificationHandlers(
         onNotificationTap: (notification: Notifications.NotificationResponse) => void
     ) {
+        if (Platform.OS === 'web') {
+            return () => {};
+        }
+
         // Handle notification tap when app is running
         const subscription = Notifications.addNotificationResponseReceivedListener(
             (response) => {
@@ -278,6 +290,10 @@ class NotificationService {
     }
 
     async updateBadgeCount(count: number) {
+        if (Platform.OS === 'web') {
+            return;
+        }
+
         try {
             await Notifications.setBadgeCountAsync(count);
             console.log('📱 [NotificationService] Badge count updated:', count);
@@ -287,6 +303,10 @@ class NotificationService {
     }
 
     async clearBadge() {
+        if (Platform.OS === 'web') {
+            return;
+        }
+
         try {
             await Notifications.setBadgeCountAsync(0);
             console.log('📱 [NotificationService] Badge cleared');
@@ -296,6 +316,10 @@ class NotificationService {
     }
 
     async checkPermissions(): Promise<boolean> {
+        if (Platform.OS === 'web') {
+            return false;
+        }
+
         try {
             const { status } = await Notifications.getPermissionsAsync();
             return status === 'granted';
@@ -306,6 +330,10 @@ class NotificationService {
     }
 
     async requestPermissions(): Promise<boolean> {
+        if (Platform.OS === 'web') {
+            return false;
+        }
+
         try {
             const { status } = await Notifications.requestPermissionsAsync();
             return status === 'granted';
@@ -316,6 +344,10 @@ class NotificationService {
     }
 
     async clearAllNotifications() {
+        if (Platform.OS === 'web') {
+            return;
+        }
+
         try {
             await Notifications.dismissAllNotificationsAsync();
             console.log('📱 [NotificationService] All notifications cleared');
@@ -325,6 +357,10 @@ class NotificationService {
     }
 
     async cancelNotification(notificationId: string) {
+        if (Platform.OS === 'web') {
+            return;
+        }
+
         try {
             await Notifications.cancelScheduledNotificationAsync(notificationId);
             console.log('📱 [NotificationService] Notification cancelled:', notificationId);

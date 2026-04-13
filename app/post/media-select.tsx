@@ -12,7 +12,7 @@ import {
     Platform,
     Alert
 } from 'react-native';
-import { useRouter, Stack } from 'expo-router';
+import { useRouter, Stack, useLocalSearchParams } from 'expo-router';
 import { CheckCircle, Video, Camera, RefreshCw } from 'lucide-react-native';
 import ActionButton from '@/components/shared/UI/ActionButton';
 import HeaderBar from '@/components/shared/UI/HeaderBar';
@@ -46,6 +46,9 @@ export default function MediaSelectScreen() {
     const router = useRouter();
     const toast = useToast();
     const { addMedia, resetMedia } = usePostingStore();
+    const { mode } = useLocalSearchParams<{ mode?: string }>();
+    const isStoryMode = mode === 'story';
+    const selectionLimit = isStoryMode ? 1 : MAX_SELECTION;
 
     const [selectedItems, setSelectedItems] = useState<MediaItem[]>([]);
     const [galleryItems, setGalleryItems] = useState<MediaLibrary.Asset[]>([]);
@@ -84,7 +87,7 @@ export default function MediaSelectScreen() {
         if (loading || (!hasNextPage && !refresh)) return;
     
         try {
-            setLoading(false);
+            setLoading(true);
     
             const options: MediaLibrary.AssetsOptions = {
                 mediaType: [MediaLibrary.MediaType.photo, MediaLibrary.MediaType.video],
@@ -182,11 +185,6 @@ export default function MediaSelectScreen() {
                 return;
             }
 
-            if (selectedItems.length >= MAX_SELECTION) {
-                toast.show('Selection Limit', `You can only select up to ${MAX_SELECTION} items`);
-                return;
-            }
-
             setLoading(true);
 
             let mediaUri = galleryItemURIs.get(asset.id) || '';
@@ -231,7 +229,28 @@ export default function MediaSelectScreen() {
                 assetId: asset.id
             };
 
-            setSelectedItems(prev => [...prev, newMediaItem]);
+            if (isStoryMode) {
+                setSelectedItems([newMediaItem]);
+                if (selectedItems.length > 0) {
+                    toast.show('Story Updated', 'Story mode keeps only the latest selected item');
+                }
+            } else {
+                if (selectedItems.length >= selectionLimit) {
+                    toast.show('Selection Limit', `You can only select up to ${selectionLimit} items`);
+                    return;
+                }
+
+                if (isStoryMode) {
+                    setSelectedItems([newMediaItem]);
+                } else {
+                    if (selectedItems.length >= selectionLimit) {
+                        toast.show('Selection Limit', `You can only select up to ${selectionLimit} items`);
+                        return;
+                    }
+
+                    setSelectedItems(prev => [...prev, newMediaItem]);
+                }
+            }
         } catch (error) {
             console.error('Error toggling gallery item:', error);
             toast.show('Error', 'Failed to select media item');
@@ -314,7 +333,10 @@ export default function MediaSelectScreen() {
                 });
             });
 
-            router.push('/post/edit');
+            router.push({
+                pathname: '/post/edit',
+                params: { mode: isStoryMode ? 'story' : 'post' },
+            });
         } catch (error) {
             console.error('Error proceeding to next screen:', error);
             toast.show('Error', 'Failed to process selected media');
@@ -458,7 +480,7 @@ export default function MediaSelectScreen() {
 
             {/* Header */}
             <HeaderBar
-                title="Select Media"
+                title={isStoryMode ? 'Select Story Media' : 'Select Media'}
                 onBackPress={() => router.back()}
                 rightElement={
                     selectedItems.length > 0 ? (
@@ -496,7 +518,7 @@ export default function MediaSelectScreen() {
                     <View style={styles.sectionHeader}>
                         <Text style={styles.sectionTitle}>
                             {selectedItems.length > 0
-                                ? `Select from Gallery (${selectedItems.length}/${MAX_SELECTION})`
+                                ? `Select from Gallery (${selectedItems.length}/${selectionLimit})`
                                 : 'Select from Gallery'
                             }
                         </Text>
@@ -581,7 +603,9 @@ export default function MediaSelectScreen() {
                     {capturedItems.length > 0 && (
                         <>
                             <Text style={styles.recentText}>
-                                Recently Captured ({capturedItems.length})
+                                {isStoryMode
+                                    ? 'Story Capture Preview'
+                                    : `Recently Captured (${capturedItems.length})`}
                             </Text>
                             <FlatList
                                 data={capturedItems.slice().reverse()}
@@ -600,11 +624,13 @@ export default function MediaSelectScreen() {
             <View style={styles.bottomBar}>
                 <Text style={styles.selectionText}>
                     {selectedItems.length > 0
-                        ? `Selected ${selectedItems.length} of ${MAX_SELECTION}`
+                        ? `Selected ${selectedItems.length} of ${selectionLimit}`
+                        : isStoryMode
+                        ? 'Select a single photo or video for your story'
                         : 'Tap items to select, tap again to deselect'}
                 </Text>
                 <ActionButton
-                    label="Next"
+                    label={isStoryMode ? 'Continue Story' : 'Next'}
                     onPress={handleNext}
                     disabled={selectedItems.length === 0}
                     loading={loading}

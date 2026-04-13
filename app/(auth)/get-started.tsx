@@ -1,8 +1,15 @@
 import React from 'react';
-import {View, Text, SafeAreaView, TouchableOpacity, Image, ScrollView} from 'react-native';
+import {View, Text, SafeAreaView, TouchableOpacity, Image, ScrollView, Alert, Platform} from 'react-native';
 import {router} from 'expo-router';
-import {ChevronLeft} from 'lucide-react-native';
 import {Button} from '@/components/ui/Button';
+import {
+  isAnyGoogleProviderConfigured,
+  isFacebookConfigured,
+} from '@/lib/auth/providerConfig';
+import {
+  canUseLocalDemoAuth,
+  LOCAL_DEMO_ACCOUNTS,
+} from '@/lib/auth/localDemoAuth';
 
 // @ts-ignore
 import DefaultImage from '@/assets/images/figma/Mobile inbox-bro 1.png';
@@ -13,13 +20,31 @@ import GoogleIcon from '@/assets/images/figma/google.png';
 // @ts-ignore
 import AppleIcon from '@/assets/images/figma/apple.png';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useI18n } from '@/hooks/useI18n';
+import { isDemoMode } from '@/lib/release/releaseConfig';
 
-const DEFAULT_IMAGE = Image.resolveAssetSource(DefaultImage).uri;
-const FACEBOOK_ICON = Image.resolveAssetSource(FacebookIcon).uri;
-const GOOGLE_ICON = Image.resolveAssetSource(GoogleIcon).uri;
-const APPLE_ICON = Image.resolveAssetSource(AppleIcon).uri;
+const DEFAULT_IMAGE = DefaultImage;
+const FACEBOOK_ICON = FacebookIcon;
+const GOOGLE_ICON = GoogleIcon;
+const APPLE_ICON = AppleIcon;
+
+const showProviderNotConfigured = (provider: 'Google' | 'Facebook') => {
+  Alert.alert(
+    `${provider} Login`,
+    `${provider} login is not configured for this build yet.`
+  );
+};
 
 export default function GetStartedScreen() {
+    const { t } = useI18n();
+    const demoMode = isDemoMode();
+    const showFacebookLogin = isFacebookConfigured;
+    const showGoogleLogin = isAnyGoogleProviderConfigured;
+    const showAppleLogin = Platform.OS === 'ios';
+    const showSocialLogin =
+      !demoMode && (showFacebookLogin || showGoogleLogin || showAppleLogin);
+    const localDemoEnabled = canUseLocalDemoAuth();
+
     const handleContinueWithEmail = () => {
         router.push('/(auth)/sign-up');
         // router.push('/account-setup/verify');
@@ -30,18 +55,51 @@ export default function GetStartedScreen() {
     };
 
     const handleFacebookLogin = () => {
-        // Handle Facebook login
-        console.log('Facebook login');
+        if (!isFacebookConfigured) {
+            showProviderNotConfigured('Facebook');
+            return;
+        }
+
+        router.push({
+            pathname: '/(auth)/sign-in',
+            params: {
+                autoProvider: 'facebook',
+            },
+        });
     };
 
     const handleGoogleLogin = () => {
-        // Handle Google login
-        console.log('Google login');
+        if (!isAnyGoogleProviderConfigured) {
+            showProviderNotConfigured('Google');
+            return;
+        }
+
+        router.push({
+            pathname: '/(auth)/sign-in',
+            params: {
+                autoProvider: 'google',
+            },
+        });
     };
 
     const handleAppleLogin = () => {
-        // Handle Apple login
-        console.log('Apple login');
+        router.push({
+            pathname: '/(auth)/sign-in',
+            params: {
+                autoProvider: 'apple',
+            },
+        });
+    };
+
+    const handleDemoLogin = (identifier: string, password: string) => {
+        router.push({
+            pathname: '/(auth)/sign-in',
+            params: {
+                prefillEmail: identifier,
+                prefillPassword: password,
+                autoSubmit: 'true',
+            },
+        });
     };
 
     return (
@@ -54,18 +112,7 @@ export default function GetStartedScreen() {
                         >
             <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
                 <View style={{ flex: 1, paddingHorizontal: 24 }}>
-                    {/* Back Button */}
-                    {/* <TouchableOpacity
-                        style={{ padding: 8, marginLeft: -8, marginTop: 16, alignSelf: 'flex-start' }}
-                        onPress={() => router.back()}
-                    >
-                        <ChevronLeft size={24} color="white" />
-                    </TouchableOpacity> */}
-
-                    {/* Content Container */}
                     <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: 40 }}>
-
-                        {/* Illustration Section */}
                         <View style={{ alignItems: 'center', marginBottom: 48 }}>
                             <View style={{
                                 width: 240,
@@ -77,7 +124,7 @@ export default function GetStartedScreen() {
                                 marginBottom: 32
                             }}>
                                 <Image
-                                    source={{uri: DEFAULT_IMAGE}}
+                                    source={DEFAULT_IMAGE}
                                     style={{width: 200, height: 200}}
                                     resizeMode="contain"
                                 />
@@ -91,134 +138,273 @@ export default function GetStartedScreen() {
                                 fontWeight: 'bold',
                                 textAlign: 'center'
                             }}>
-                                Let's you in
+                                {t('auth.getStarted.title')}
                             </Text>
+                            {demoMode ? (
+                                <View style={{
+                                    marginTop: 12,
+                                    paddingHorizontal: 14,
+                                    paddingVertical: 10,
+                                    borderRadius: 12,
+                                    borderWidth: 1,
+                                    borderColor: 'rgba(249, 115, 22, 0.35)',
+                                    backgroundColor: 'rgba(17, 24, 39, 0.75)'
+                                }}>
+                                    <Text style={{
+                                        color: '#FDBA74',
+                                        fontSize: 12,
+                                        fontWeight: '700',
+                                        fontFamily: 'Figtree',
+                                        textTransform: 'uppercase',
+                                        textAlign: 'center'
+                                    }}>
+                                        Demo build
+                                    </Text>
+                                    <Text style={{
+                                        color: '#FDE68A',
+                                        fontSize: 12,
+                                        marginTop: 4,
+                                        fontFamily: 'Figtree',
+                                        textAlign: 'center'
+                                    }}>
+                                        Social login is disabled. Use the demo accounts below.
+                                    </Text>
+                                </View>
+                            ) : null}
                         </View>
 
-                        {/* Social Login Section */}
-                        <View style={{ width: '100%', maxWidth: 400, marginBottom: 32 }}>
-                            {/* Facebook Button */}
-                            {/* <TouchableOpacity
-                                onPress={handleFacebookLogin}
-                                style={{
+                        {showSocialLogin && (
+                            <>
+                                <View style={{ width: '100%', maxWidth: 400, marginBottom: 32 }}>
+                                    {showFacebookLogin && (
+                                        <TouchableOpacity
+                                            onPress={handleFacebookLogin}
+                                            style={{
+                                                flexDirection: 'row',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                backgroundColor: '#1a1a2e',
+                                                borderRadius: 16,
+                                                paddingVertical: 16,
+                                                paddingHorizontal: 24,
+                                                marginBottom: 16,
+                                                borderWidth: 1,
+                                                borderColor: '#4B5563'
+                                            }}
+                                        >
+                                            <Image
+                                                source={FACEBOOK_ICON}
+                                                style={{width: 24, height: 24, marginRight: 12}}
+                                            />
+                                            <Text style={{
+                                                color: 'white',
+                                                fontSize: 16,
+                                                fontWeight: '500',
+                                                fontFamily: 'Figtree'
+                                            }}>
+                                                {t('auth.getStarted.continueFacebook')}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    )}
+
+                                    {showGoogleLogin && (
+                                        <TouchableOpacity
+                                            onPress={handleGoogleLogin}
+                                            style={{
+                                                flexDirection: 'row',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                backgroundColor: '#1a1a2e',
+                                                borderRadius: 16,
+                                                paddingVertical: 16,
+                                                paddingHorizontal: 24,
+                                                marginBottom: 16,
+                                                borderWidth: 1,
+                                                borderColor: '#4B5563'
+                                            }}
+                                        >
+                                            <Image
+                                                source={GOOGLE_ICON}
+                                                style={{width: 24, height: 24, marginRight: 12}}
+                                            />
+                                            <Text style={{
+                                                color: 'white',
+                                                fontSize: 16,
+                                                fontWeight: '500',
+                                                fontFamily: 'Figtree'
+                                            }}>
+                                                {t('auth.getStarted.continueGoogle')}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    )}
+
+                                    {showAppleLogin && (
+                                        <TouchableOpacity
+                                            onPress={handleAppleLogin}
+                                            style={{
+                                                flexDirection: 'row',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                backgroundColor: '#1a1a2e',
+                                                borderRadius: 16,
+                                                paddingVertical: 16,
+                                                paddingHorizontal: 24,
+                                                marginBottom: 16,
+                                                borderWidth: 1,
+                                                borderColor: '#4B5563'
+                                            }}
+                                        >
+                                            <Image
+                                                source={APPLE_ICON}
+                                                style={{width: 24, height: 24, marginRight: 12}}
+                                            />
+                                            <Text style={{
+                                                color: 'white',
+                                                fontSize: 16,
+                                                fontWeight: '500',
+                                                fontFamily: 'Figtree'
+                                            }}>
+                                                {t('auth.getStarted.continueApple')}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    )}
+                                </View>
+
+                                <View style={{
                                     flexDirection: 'row',
                                     alignItems: 'center',
-                                    justifyContent: 'center',
-                                    backgroundColor: '#1a1a2e',
-                                    borderRadius: 16,
-                                    paddingVertical: 16,
-                                    paddingHorizontal: 24,
-                                    marginBottom: 16,
-                                    borderWidth: 1,
-                                    borderColor: '#4B5563'
-                                }}
-                            >
-                                <Image
-                                    source={{uri: FACEBOOK_ICON}}
-                                    style={{width: 24, height: 24, marginRight: 12}}
-                                />
-                                <Text style={{
-                                    color: 'white',
-                                    fontSize: 16,
-                                    fontWeight: '500',
-                                    fontFamily: 'Figtree'
+                                    marginBottom: 32,
+                                    width: '100%',
+                                    maxWidth: 400
                                 }}>
-                                    Continue with Facebook
-                                </Text>
-                            </TouchableOpacity> */}
+                                    <View style={{ flex: 1, height: 1, backgroundColor: '#1a1a2e' }} />
+                                    <Text style={{
+                                        color: '#6B7280',
+                                        marginHorizontal: 16,
+                                        fontFamily: 'Figtree',
+                                        fontSize: 16
+                                    }}>
+                                        or
+                                    </Text>
+                                    <View style={{ flex: 1, height: 1, backgroundColor: '#1a1a2e' }} />
+                                </View>
+                            </>
+                        )}
 
-                            {/* Google Button */}
-                            {/* <TouchableOpacity
-                                onPress={handleGoogleLogin}
-                                style={{
-                                    flexDirection: 'row',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    backgroundColor: '#1a1a2e',
-                                    borderRadius: 16,
-                                    paddingVertical: 16,
-                                    paddingHorizontal: 24,
-                                    marginBottom: 16,
-                                    borderWidth: 1,
-                                    borderColor: '#4B5563'
-                                }}
-                            >
-                                <Image
-                                    source={{uri: GOOGLE_ICON}}
-                                    style={{width: 24, height: 24, marginRight: 12}}
-                                />
-                                <Text style={{
-                                    color: 'white',
-                                    fontSize: 16,
-                                    fontWeight: '500',
-                                    fontFamily: 'Figtree'
-                                }}>
-                                    Continue with Google
-                                </Text>
-                            </TouchableOpacity> */}
-
-                            {/* Apple Button */}
-                            {/* <TouchableOpacity
-                                onPress={handleAppleLogin}
-                                style={{
-                                    flexDirection: 'row',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    backgroundColor: '#1a1a2e',
-                                    borderRadius: 16,
-                                    paddingVertical: 16,
-                                    paddingHorizontal: 24,
-                                    marginBottom: 16,
-                                    borderWidth: 1,
-                                    borderColor: '#4B5563'
-                                }}
-                            >
-                                <Image
-                                    source={{uri: APPLE_ICON}}
-                                    style={{width: 24, height: 24, marginRight: 12}}
-                                />
-                                <Text style={{
-                                    color: 'white',
-                                    fontSize: 16,
-                                    fontWeight: '500',
-                                    fontFamily: 'Figtree'
-                                }}>
-                                    Continue with Apple
-                                </Text>
-                            </TouchableOpacity> */}
-                        </View>
-
-                        {/* Divider */}
-                        {/* <View style={{
-                            flexDirection: 'row',
-                            alignItems: 'center',
-                            marginBottom: 32,
-                            width: '100%',
-                            maxWidth: 400
-                        }}>
-                            <View style={{ flex: 1, height: 1, backgroundColor: '#1a1a2e' }} />
-                            <Text style={{
-                                color: '#6B7280',
-                                marginHorizontal: 16,
-                                fontFamily: 'Figtree',
-                                fontSize: 16
-                            }}>
-                                or
-                            </Text>
-                            <View style={{ flex: 1, height: 1, backgroundColor: '#1a1a2e' }} />
-                        </View> */}
-
-                        {/* Sign in with Email Button */}
                         <View style={{ width: '100%', maxWidth: 400, marginBottom: 32 }}>
                             <Button
-                                label="Sign in with password"
+                                label={t('auth.getStarted.signInPassword')}
                                 onPress={handleSignIn}
                                 variant="primary"
                                 fullWidth
                             />
                         </View>
 
-                        {/* Sign Up Link */}
+                        {localDemoEnabled && (
+                            <View
+                                style={{
+                                    width: '100%',
+                                    maxWidth: 400,
+                                    marginBottom: 32,
+                                    backgroundColor: 'rgba(255,255,255,0.06)',
+                                    borderRadius: 16,
+                                    borderWidth: 1,
+                                    borderColor: 'rgba(255,255,255,0.08)',
+                                    padding: 16,
+                                }}
+                            >
+                                <Text
+                                    style={{
+                                        color: 'white',
+                                        fontSize: 16,
+                                        fontWeight: '700',
+                                        fontFamily: 'Figtree',
+                                        marginBottom: 8,
+                                    }}
+                                >
+                                    Local Demo Login
+                                </Text>
+                                <Text
+                                    style={{
+                                        color: '#CBD5E1',
+                                        fontSize: 13,
+                                        lineHeight: 18,
+                                        fontFamily: 'Figtree',
+                                        marginBottom: 12,
+                                    }}
+                                >
+                                    Use these demo accounts without backend access.
+                                </Text>
+                                {LOCAL_DEMO_ACCOUNTS.map((account) => (
+                                    <View
+                                        key={account.label}
+                                        style={{
+                                            flexDirection: 'row',
+                                            alignItems: 'center',
+                                            justifyContent: 'space-between',
+                                            borderTopWidth: 1,
+                                            borderTopColor: 'rgba(255,255,255,0.06)',
+                                            paddingTop: 12,
+                                            marginTop: 12,
+                                        }}
+                                    >
+                                        <View style={{ flex: 1, paddingRight: 12 }}>
+                                            <Text
+                                                style={{
+                                                    color: 'white',
+                                                    fontSize: 14,
+                                                    fontWeight: '600',
+                                                    fontFamily: 'Figtree',
+                                                }}
+                                            >
+                                                {account.label}
+                                            </Text>
+                                            <Text
+                                                style={{
+                                                    color: '#9CA3AF',
+                                                    fontSize: 12,
+                                                    fontFamily: 'Figtree',
+                                                }}
+                                            >
+                                                {account.identifier}
+                                            </Text>
+                                            <Text
+                                                style={{
+                                                    color: '#9CA3AF',
+                                                    fontSize: 12,
+                                                    fontFamily: 'Figtree',
+                                                }}
+                                            >
+                                                {account.password}
+                                            </Text>
+                                        </View>
+                                        <TouchableOpacity
+                                            onPress={() =>
+                                                handleDemoLogin(account.identifier, account.password)
+                                            }
+                                            style={{
+                                                borderRadius: 12,
+                                                paddingHorizontal: 14,
+                                                paddingVertical: 10,
+                                                backgroundColor: '#1E4A72',
+                                            }}
+                                        >
+                                            <Text
+                                                style={{
+                                                    color: 'white',
+                                                    fontSize: 13,
+                                                    fontWeight: '700',
+                                                    fontFamily: 'Figtree',
+                                                }}
+                                            >
+                                                Use
+                                            </Text>
+                                        </TouchableOpacity>
+                                    </View>
+                                ))}
+                            </View>
+                        )}
+
                         <View style={{
                             flexDirection: 'row',
                             justifyContent: 'center',
@@ -229,7 +415,7 @@ export default function GetStartedScreen() {
                                 fontFamily: 'Figtree',
                                 fontSize: 16
                             }}>
-                                Don't have an account?
+                                {t('auth.signIn.noAccount')}
                             </Text>
                             <TouchableOpacity onPress={handleContinueWithEmail}>
                                 <Text style={{
@@ -239,7 +425,7 @@ export default function GetStartedScreen() {
                                     fontSize: 16,
                                     marginLeft: 4
                                 }}>
-                                    Sign up
+                                    {t('auth.getStarted.signUp')}
                                 </Text>
                             </TouchableOpacity>
                         </View>

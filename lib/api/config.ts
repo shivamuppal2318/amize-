@@ -32,6 +32,9 @@ export const API_CONFIG = {
 // Auth-specific endpoints
 export const AUTH_ENDPOINTS = {
     LOGIN: '/auth/login',
+    GOOGLE: '/auth/google',
+    FACEBOOK: '/auth/facebook',
+    APPLE: '/auth/apple',
     REGISTER: '/auth/register',
     REFRESH_TOKEN: '/auth/refresh-token',
     LOGOUT: '/auth/logout',
@@ -42,7 +45,7 @@ export const AUTH_ENDPOINTS = {
 // Video-specific endpoints
 export const VIDEO_ENDPOINTS = {
     VIDEOS: '/videos',
-    TRENDING: '/videos', //TODO - FIX '/videos/trending', ENDPOINT
+    TRENDING: '/videos/trending',
     VIDEO_BY_ID: (id: string) => `/videos/${id}`,
     LIKE: (id: string) => `/videos/${id}/like`,
     VIEW: (id: string) => `/videos/${id}/view`,
@@ -68,6 +71,16 @@ export const MESSAGE_ENDPOINTS = {
     USER_STATUS: '/users/status',
     USER_STATUS_BY_ID: (id: string) => `/users/${id}/status`,
     SOCKET_ENDPOINT: '/socket', // For initializing Socket.io server
+};
+
+// Live streaming endpoints
+export const LIVE_ENDPOINTS = {
+    SESSIONS: '/live/sessions',
+    SESSION_BY_ID: (id: string) => `/live/sessions/${id}`,
+    JOIN: (id: string) => `/live/sessions/${id}/join`,
+    LEAVE: (id: string) => `/live/sessions/${id}/leave`,
+    COMMENTS: (id: string) => `/live/sessions/${id}/comments`,
+    LIKE: (id: string) => `/live/sessions/${id}/like`,
 };
 
 // Environment-specific configurations

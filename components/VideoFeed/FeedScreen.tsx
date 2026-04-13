@@ -61,7 +61,7 @@ const createDebouncedFunction = <T extends (...args: any[]) => any>(
   func: T,
   delay: number
 ): ((...args: Parameters<T>) => void) => {
-  let timeoutId: number | null = null;
+  let timeoutId: ReturnType<typeof setTimeout> | null = null;
 
   return (...args: Parameters<T>) => {
     if (timeoutId) clearTimeout(timeoutId);
@@ -339,6 +339,7 @@ const FeedScreen: React.FC = () => {
   const isDragging = useSharedValue(false);
   const lastFocusedIndex = useRef<number>(-1);
   const navigationHandled = useRef(false);
+  const personalizedRecoveryFeed = useRef<FeedType | null>(null);
 
   // Scroll state management
   const scrollState = useRef({
@@ -504,6 +505,37 @@ const FeedScreen: React.FC = () => {
       };
     }, [])
   );
+
+  useEffect(() => {
+    const isPersonalizedFeed =
+      feedType === "following" || feedType === "subscribed";
+
+    if (
+      !isAuthenticated ||
+      !isPersonalizedFeed ||
+      videos.length > 0 ||
+      !error ||
+      loading ||
+      refreshing
+    ) {
+      if (!error || videos.length > 0 || !isAuthenticated || !isPersonalizedFeed) {
+        personalizedRecoveryFeed.current = null;
+      }
+      return;
+    }
+
+    if (personalizedRecoveryFeed.current === feedType) {
+      return;
+    }
+
+    personalizedRecoveryFeed.current = feedType;
+
+    const recoveryTimer = setTimeout(() => {
+      refresh();
+    }, 600);
+
+    return () => clearTimeout(recoveryTimer);
+  }, [isAuthenticated, feedType, videos.length, error, loading, refreshing, refresh]);
 
   // Enhanced focused video change handler
   useEffect(() => {
@@ -945,6 +977,10 @@ const FeedScreen: React.FC = () => {
 
   // Empty state handler (same logic as before)
   const renderEmpty = useCallback(() => {
+    const isAuthenticatedPersonalizedFeed =
+      isAuthenticated &&
+      (feedType === "following" || feedType === "subscribed");
+
     if (loading && videos.length === 0) {
       return (
         <View style={styles.emptyContainer}>
@@ -960,7 +996,7 @@ const FeedScreen: React.FC = () => {
       );
     }
 
-    if (error && videos.length === 0) {
+    if (error && videos.length === 0 && !isAuthenticatedPersonalizedFeed) {
       return (
         <View style={styles.emptyContainer}>
           <LinearGradient
@@ -991,8 +1027,9 @@ const FeedScreen: React.FC = () => {
 
       if (feedType === "following") {
         if (isAuthenticated) {
-          message =
-            "You're not following any creators yet. Discover amazing creators in the For You feed!";
+          message = error
+            ? "Your Following feed is still loading. Explore the For You feed while we reconnect it."
+            : "You're not following any creators yet. Discover amazing creators in the For You feed!";
           showAction = true;
           actionText = "Explore For You";
           actionHandler = () => handleTabPress("forYou");
@@ -1004,8 +1041,9 @@ const FeedScreen: React.FC = () => {
         }
       } else if (feedType === "subscribed") {
         if (isAuthenticated) {
-          message =
-            "No premium content available. Subscribe to creators to unlock exclusive videos!";
+          message = error
+            ? "Your Premium feed is still loading. Explore the For You feed while we reconnect it."
+            : "No premium content available. Subscribe to creators to unlock exclusive videos!";
           showAction = true;
           actionText = "Browse Creators";
           actionHandler = () => handleTabPress("forYou");
@@ -1492,7 +1530,6 @@ const errorStyles = StyleSheet.create({
       shadowRadius: 12,
     }),
     elevation: 12,
-    backdropFilter: "blur(10px)",
   },
   iconContainer: {
     marginRight: 12,

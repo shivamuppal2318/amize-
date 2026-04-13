@@ -9,7 +9,7 @@ import { useAuth } from '@/hooks/useAuth';
 // @ts-ignore
 import DefaultImage from '@/assets/images/figma/Enthusiastic-amico 1.png';
 
-const DEFAULT_IMAGE = Image.resolveAssetSource(DefaultImage).uri;
+const DEFAULT_IMAGE = DefaultImage;
 
 const StyledView = View
 
@@ -33,7 +33,7 @@ export default function OnboardingStep3() {
                         <StyledView className="w-64 h-64 rounded-full justify-center items-center">
                             <StyledView className="p-2 rounded-lg">
                                 <Image
-                                    source={{uri: DEFAULT_IMAGE }}
+                                    source={DEFAULT_IMAGE}
                                     style={{width: 230, height: 230}}
                                 />
                             </StyledView>

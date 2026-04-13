@@ -12,7 +12,7 @@ import {
   BackHandler,
   ScrollView,
 } from "react-native";
-import { CameraView, Camera } from "expo-camera";
+import { CameraView } from "expo-camera";
 import * as MediaLibrary from "expo-media-library";
 import * as FileSystem from "expo-file-system";
 import * as ImageManipulator from "expo-image-manipulator";
@@ -56,7 +56,7 @@ export default function CameraScreen() {
 
   const [cameraType, setCameraType] = useState<"front" | "back">("back");
   const [flashMode, setFlashMode] = useState<"off" | "on">("off");
-  const [mode, setMode] = useState<"photo" | "video">("photo");
+  const [mode, setMode] = useState<"picture" | "video">("picture");
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
   const [cameraReady, setCameraReady] = useState(false);
@@ -65,7 +65,7 @@ export default function CameraScreen() {
   const [soundVisibleModel, setSoundVisibleModel] = useState(false);
   const [selectedSongId, setSelectedSongId] = useState<any>();
   const [soundId, setSoundId] = useState<any>();
-  const [postSong, setPostSong] = useState<String>("");
+  const [postSong, setPostSong] = useState<string>("");
   const [songTitle, setSongTitle] = useState<string>("");
 
   const [isPlaying, setIsPlaying] = useState(false);
@@ -108,8 +108,8 @@ export default function CameraScreen() {
 
   const toggleFilterMenu = () => setShowFilters((prev) => !prev);
 
-  const cameraRef = useRef<Camera | null>(null);
-  const recordingTimerRef = useRef<NodeJS.Timer | null>(null);
+  const cameraRef = useRef<CameraView | null>(null);
+  const recordingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     resetMedia();
@@ -246,9 +246,9 @@ export default function CameraScreen() {
     };
   }, [isRecording]);
 
-  const getFileSize = async (fileUri: string) => {
+  const getFileSize = async (fileUri: string): Promise<number> => {
     const info = await FileSystem.getInfoAsync(fileUri);
-    return info.size;
+    return info.exists && "size" in info ? info.size ?? 0 : 0;
   };
 
   const getFilterColor = (filterName: string) => {
@@ -306,7 +306,7 @@ export default function CameraScreen() {
 
       const timestamp = new Date().getTime();
       const fileName = `photo_${timestamp}.jpg`;
-      const fileUri = `${FileSystem.cacheDirectory}${fileName}`;
+      const fileUri = `${(FileSystem as any).cacheDirectory ?? ""}${fileName}`;
       await FileSystem.copyAsync({ from: filteredPhoto.uri, to: fileUri });
 
       addMedia({
@@ -316,7 +316,7 @@ export default function CameraScreen() {
         height: photo.height,
         size: await getFileSize(fileUri),
         timestamp,
-        postSong: postSong,
+        postSong,
         selectedSongId: selectedSongId,
         soundId: soundId,
         songTitle: songTitle,
@@ -342,17 +342,15 @@ export default function CameraScreen() {
     try {
       await pauseMusic();
       setIsRecording(true);
+      setProcessingCapture(true);
       cameraRef.current
         .recordAsync({
           maxDuration: 60,
-          quality: "720p",
-          mute: false,
-          videoBitrate: 5000000,
         })
-        .then(async (video) => {
+        .then(async (video: any) => {
           const timestamp = new Date().getTime();
           const fileName = `video_${timestamp}.mp4`;
-          const fileUri = `${FileSystem.cacheDirectory}${fileName}`;
+          const fileUri = `${(FileSystem as any).cacheDirectory ?? ""}${fileName}`;
           await FileSystem.copyAsync({ from: video.uri, to: fileUri });
           addMedia({
             uri: fileUri,
@@ -362,21 +360,25 @@ export default function CameraScreen() {
             size: await getFileSize(fileUri),
             duration: video.duration,
             timestamp,
-            postSong: postSong,
+            postSong,
             selectedSongId: selectedSongId,
             soundId: soundId,
             songTitle: songTitle,
           });
           router.push("/post/edit");
         })
-        .catch((error) => {
+        .catch((error: any) => {
           console.error("Error processing recording:", error);
           toast.show("Error", "Failed to process video: " + error.message);
+        })
+        .finally(() => {
+          setProcessingCapture(false);
         });
     } catch (error: any) {
       console.error("Error starting recording:", error);
       toast.show("Error", "Failed to record video: " + error.message);
       setIsRecording(false);
+      setProcessingCapture(false);
     }
   };
 
@@ -394,7 +396,7 @@ export default function CameraScreen() {
 
   const handleCapture = () => {
     if (processingCapture) return;
-    if (mode === "photo") takePicture();
+    if (mode === "picture") takePicture();
     else if (isRecording) stopRecording();
     else startRecording();
   };
@@ -587,14 +589,14 @@ export default function CameraScreen() {
                 <TouchableOpacity
                   style={[
                     styles.modeButton,
-                    mode === "photo" && styles.activeMode,
+                    mode === "picture" && styles.activeMode,
                   ]}
-                  onPress={() => setMode("photo")}
+                  onPress={() => setMode("picture")}
                 >
                   <Text
                     style={[
                       styles.modeText,
-                      mode === "photo" && styles.activeModeText,
+                      mode === "picture" && styles.activeModeText,
                     ]}
                   >
                     Photo
@@ -683,7 +685,7 @@ export default function CameraScreen() {
       <SoundModal
         visible={soundVisibleModel}
         onClose={() => setSoundVisibleModel(false)}
-        onSoundSelect={handleSoundSelect}
+        onSelectSound={handleSoundSelect}
         setSelectedSongId={setSelectedSongId}
         setSoundId={setSoundId}
         setPostSong={setPostSong}

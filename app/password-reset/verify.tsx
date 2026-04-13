@@ -1,56 +1,87 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, SafeAreaView, TouchableOpacity, TextInput } from 'react-native';
-import { router } from 'expo-router';
+import React, { useEffect, useState } from 'react';
+import { View, Text, SafeAreaView, TouchableOpacity } from 'react-native';
+import { router, useLocalSearchParams } from 'expo-router';
 import { ChevronLeft } from 'lucide-react-native';
 import { Button } from '@/components/ui/Button';
 
-const StyledView = View
-
-const StyledSafeAreaView = SafeAreaView
-const StyledTouchableOpacity = TouchableOpacity
+const StyledView = View;
+const StyledSafeAreaView = SafeAreaView;
+const StyledTouchableOpacity = TouchableOpacity;
 
 export default function VerifyCodeScreen() {
+    const { method, target } = useLocalSearchParams<{
+        method?: string;
+        target?: string;
+    }>();
     const [code, setCode] = useState('');
     const [timer, setTimer] = useState(60);
     const [loading, setLoading] = useState(false);
+    const [error, setError] = useState('');
+
+    const deliveryMethod = method === 'email' ? 'email' : 'sms';
+    const deliveryTarget =
+        typeof target === 'string' && target.length > 0
+            ? target
+            : deliveryMethod === 'email'
+              ? '****@yourdomain.com'
+              : '+1 (555) ******99';
 
     useEffect(() => {
-        let interval: NodeJS.Timeout;
-        if (timer > 0) {
-            interval = setInterval(() => {
-                setTimer(prevTimer => prevTimer - 1);
-            }, 1000);
+        if (timer <= 0) {
+            return undefined;
         }
 
-        return () => {
-            if (interval) clearInterval(interval);
-        };
+        const interval = setInterval(() => {
+            setTimer((prevTimer) => prevTimer - 1);
+        }, 1000);
+
+        return () => clearInterval(interval);
     }, [timer]);
 
     const handleResendCode = () => {
         setTimer(60);
+        setError('');
     };
 
     const handleNumberPress = (number: string) => {
-        if (code.length < 4) {
-            setCode(code + number);
-        }
+        setCode((prevCode) => {
+            if (prevCode.length >= 4) {
+                return prevCode;
+            }
+
+            if (error) {
+                setError('');
+            }
+
+            return `${prevCode}${number}`;
+        });
     };
 
     const handleDeletePress = () => {
-        if (code.length > 0) {
-            setCode(code.slice(0, -1));
+        setCode((prevCode) => prevCode.slice(0, -1));
+        if (error) {
+            setError('');
         }
     };
 
     const handleContinue = () => {
-        if (code.length === 4) {
-            setLoading(true);
-            setTimeout(() => {
-                setLoading(false);
-                router.push('/password-reset/create-password');
-            }, 1000);
+        if (code.length !== 4) {
+            setError('Enter the 4-digit verification code.');
+            return;
         }
+
+        setLoading(true);
+
+        setTimeout(() => {
+            setLoading(false);
+            router.push({
+                pathname: '/password-reset/create-password',
+                params: {
+                    method: deliveryMethod,
+                    target: deliveryTarget,
+                },
+            });
+        }, 600);
     };
 
     return (
@@ -65,13 +96,13 @@ export default function VerifyCodeScreen() {
 
                 <StyledView className="mb-6">
                     <Text className="text-white text-2xl font-bold">
-                        Forget Password
+                        Verify Reset Code
                     </Text>
                 </StyledView>
 
                 <StyledView className="mb-6">
                     <Text className="text-gray-400 mb-6">
-                        Code has been sent to +1 (555) ******99
+                        Code has been sent by {deliveryMethod.toUpperCase()} to {deliveryTarget}
                     </Text>
 
                     <StyledView className="flex-row justify-center mb-6">
@@ -83,81 +114,60 @@ export default function VerifyCodeScreen() {
                                 }`}
                             >
                                 {index < code.length && (
-                                    <Text className="text-white text-lg font-bold">
-                                        {index === 2 ? '7' : '•'}
-                                    </Text>
+                                    <Text className="text-white text-lg font-bold">*</Text>
                                 )}
                             </StyledView>
                         ))}
                     </StyledView>
 
                     <StyledView className="flex-row justify-center mb-6">
-                        <Text className="text-gray-400 mr-1">Resend Code in</Text>
-                        <Text className="text-[#FF5A5F]">{timer}s</Text>
+                        <Text className="text-gray-400 mr-1">Resend code in</Text>
+                        {timer > 0 ? (
+                            <Text className="text-[#FF5A5F]">{timer}s</Text>
+                        ) : (
+                            <TouchableOpacity onPress={handleResendCode}>
+                                <Text className="text-[#FF5A5F] font-bold">Resend now</Text>
+                            </TouchableOpacity>
+                        )}
                     </StyledView>
+                    {!!error && (
+                        <Text className="text-[#FCA5A5] text-center mb-4">{error}</Text>
+                    )}
                 </StyledView>
 
-                {/* Number pad */}
                 <StyledView className="mb-6">
                     <StyledView className="flex-row justify-around mb-4">
-                        <TouchableOpacity
-                            className="w-16 h-16 bg-[#2A2A2A] rounded-lg items-center justify-center"
-                            onPress={() => handleNumberPress('1')}
-                        >
-                            <Text className="text-white text-2xl">1</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                            className="w-16 h-16 bg-[#2A2A2A] rounded-lg items-center justify-center"
-                            onPress={() => handleNumberPress('2')}
-                        >
-                            <Text className="text-white text-2xl">2</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                            className="w-16 h-16 bg-[#2A2A2A] rounded-lg items-center justify-center"
-                            onPress={() => handleNumberPress('3')}
-                        >
-                            <Text className="text-white text-2xl">3</Text>
-                        </TouchableOpacity>
+                        {['1', '2', '3'].map((value) => (
+                            <TouchableOpacity
+                                key={value}
+                                className="w-16 h-16 bg-[#2A2A2A] rounded-lg items-center justify-center"
+                                onPress={() => handleNumberPress(value)}
+                            >
+                                <Text className="text-white text-2xl">{value}</Text>
+                            </TouchableOpacity>
+                        ))}
                     </StyledView>
                     <StyledView className="flex-row justify-around mb-4">
-                        <TouchableOpacity
-                            className="w-16 h-16 bg-[#2A2A2A] rounded-lg items-center justify-center"
-                            onPress={() => handleNumberPress('4')}
-                        >
-                            <Text className="text-white text-2xl">4</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                            className="w-16 h-16 bg-[#2A2A2A] rounded-lg items-center justify-center"
-                            onPress={() => handleNumberPress('5')}
-                        >
-                            <Text className="text-white text-2xl">5</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                            className="w-16 h-16 bg-[#2A2A2A] rounded-lg items-center justify-center"
-                            onPress={() => handleNumberPress('6')}
-                        >
-                            <Text className="text-white text-2xl">6</Text>
-                        </TouchableOpacity>
+                        {['4', '5', '6'].map((value) => (
+                            <TouchableOpacity
+                                key={value}
+                                className="w-16 h-16 bg-[#2A2A2A] rounded-lg items-center justify-center"
+                                onPress={() => handleNumberPress(value)}
+                            >
+                                <Text className="text-white text-2xl">{value}</Text>
+                            </TouchableOpacity>
+                        ))}
                     </StyledView>
                     <StyledView className="flex-row justify-around mb-4">
-                        <TouchableOpacity
-                            className="w-16 h-16 bg-[#2A2A2A] rounded-lg items-center justify-center"
-                            onPress={() => handleNumberPress('7')}
-                        >
-                            <Text className="text-white text-2xl">7</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                            className="w-16 h-16 bg-[#2A2A2A] rounded-lg items-center justify-center"
-                            onPress={() => handleNumberPress('8')}
-                        >
-                            <Text className="text-white text-2xl">8</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                            className="w-16 h-16 bg-[#2A2A2A] rounded-lg items-center justify-center"
-                            onPress={() => handleNumberPress('9')}
-                        >
-                            <Text className="text-white text-2xl">9</Text>
-                        </TouchableOpacity>
+                        {['7', '8', '9'].map((value) => (
+                            <TouchableOpacity
+                                key={value}
+                                className="w-16 h-16 bg-[#2A2A2A] rounded-lg items-center justify-center"
+                                onPress={() => handleNumberPress(value)}
+                            >
+                                <Text className="text-white text-2xl">{value}</Text>
+                            </TouchableOpacity>
+                        ))}
                     </StyledView>
                     <StyledView className="flex-row justify-around">
                         <StyledView className="w-16 h-16" />
@@ -171,7 +181,7 @@ export default function VerifyCodeScreen() {
                             className="w-16 h-16 bg-[#2A2A2A] rounded-lg items-center justify-center"
                             onPress={handleDeletePress}
                         >
-                            <Text className="text-white text-2xl">⌫</Text>
+                            <Text className="text-white text-lg font-semibold">Del</Text>
                         </TouchableOpacity>
                     </StyledView>
                 </StyledView>

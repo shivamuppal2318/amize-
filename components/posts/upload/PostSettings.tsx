@@ -1,8 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
     Alert,
+    Modal,
     StyleSheet,
     Text,
+    TextInput,
     TouchableOpacity,
     View
 } from 'react-native';
@@ -98,14 +100,34 @@ export default function PostSettings({
                                          onToggleComments,
                                          onToggleDuets,
                                          onToggleStitch,
-                                         onHashtagPress,
-                                         onMentionPress
+                                     onHashtagPress,
+                                     onMentionPress
                                      }: PostSettingsProps) {
+    const [isLocationModalVisible, setIsLocationModalVisible] = useState(false);
+    const [pendingLocation, setPendingLocation] = useState(locationText || draftPost.location || '');
 
     // Get the current visibility setting label
     const getVisibilityLabel = () => {
         const option = VISIBILITY_OPTIONS.find(opt => opt.id === draftPost.visibility);
         return option ? option.label : 'Public';
+    };
+
+    const openLocationEditor = () => {
+        setPendingLocation(locationText || draftPost.location || '');
+        setIsLocationModalVisible(true);
+    };
+
+    const closeLocationEditor = () => {
+        setIsLocationModalVisible(false);
+        setPendingLocation(locationText || draftPost.location || '');
+    };
+
+    const saveLocation = () => {
+        const trimmedLocation = pendingLocation.trim();
+        if (trimmedLocation) {
+            onLocationUpdate(trimmedLocation);
+        }
+        setIsLocationModalVisible(false);
     };
 
     // Handle option press
@@ -118,23 +140,7 @@ export default function PostSettings({
                 onMentionPress?.();
                 break;
             case 'location':
-                Alert.prompt(
-                    'Enter Location',
-                    'Enter your location for this post',
-                    [
-                        { text: 'Cancel', style: 'cancel' },
-                        {
-                            text: 'Save',
-                            onPress: (location) => {
-                                if (location) {
-                                    onLocationUpdate(location);
-                                }
-                            }
-                        }
-                    ],
-                    'plain-text',
-                    locationText || ''
-                );
+                openLocationEditor();
                 break;
             case 'visibility':
                 onVisibilityPress();
@@ -154,52 +160,94 @@ export default function PostSettings({
     };
 
     return (
-        <View style={styles.optionsSection}>
-            {POST_OPTIONS.map((option) => (
-                <TouchableOpacity
-                    key={option.key}
-                    style={styles.optionItem}
-                    onPress={() => handleOptionPress(option)}
-                >
-                    <View style={styles.optionLeft}>
-                        {option.icon}
-                        <Text style={styles.optionLabel}>
-                            {option.key === 'visibility'
-                                ? `Visible to ${getVisibilityLabel()}`
-                                : option.key === 'location' && draftPost.location
-                                    ? draftPost.location
-                                    : option.label}
-                        </Text>
-                    </View>
+        <>
+            <View style={styles.optionsSection}>
+                {POST_OPTIONS.map((option) => (
+                    <TouchableOpacity
+                        key={option.key}
+                        style={styles.optionItem}
+                        onPress={() => handleOptionPress(option)}
+                    >
+                        <View style={styles.optionLeft}>
+                            {option.icon}
+                            <Text style={styles.optionLabel}>
+                                {option.key === 'visibility'
+                                    ? `Visible to ${getVisibilityLabel()}`
+                                    : option.key === 'location' && draftPost.location
+                                        ? draftPost.location
+                                        : option.label}
+                            </Text>
+                        </View>
 
-                    {option.hasChevron ? (
-                        <ChevronRight size={20} color="#777" />
-                    ) : (
-                        option.key === 'comments' || option.key === 'duets' || option.key === 'stitch' ? (
-                            <View style={styles.toggleContainer}>
-                                <View style={[
-                                    styles.toggleBar,
-                                    (
-                                        (option.key === 'comments' && draftPost.allowComments) ||
-                                        (option.key === 'duets' && draftPost.allowDuets) ||
-                                        (option.key === 'stitch' && draftPost.allowStitch)
-                                    ) && styles.toggleBarActive
-                                ]}>
+                        {option.hasChevron ? (
+                            <ChevronRight size={20} color="#777" />
+                        ) : (
+                            option.key === 'comments' || option.key === 'duets' || option.key === 'stitch' ? (
+                                <View style={styles.toggleContainer}>
                                     <View style={[
-                                        styles.toggleCircle,
+                                        styles.toggleBar,
                                         (
                                             (option.key === 'comments' && draftPost.allowComments) ||
                                             (option.key === 'duets' && draftPost.allowDuets) ||
                                             (option.key === 'stitch' && draftPost.allowStitch)
-                                        ) && styles.toggleCircleActive
-                                    ]} />
+                                        ) && styles.toggleBarActive
+                                    ]}>
+                                        <View style={[
+                                            styles.toggleCircle,
+                                            (
+                                                (option.key === 'comments' && draftPost.allowComments) ||
+                                                (option.key === 'duets' && draftPost.allowDuets) ||
+                                                (option.key === 'stitch' && draftPost.allowStitch)
+                                            ) && styles.toggleCircleActive
+                                        ]} />
+                                    </View>
                                 </View>
-                            </View>
-                        ) : null
-                    )}
-                </TouchableOpacity>
-            ))}
-        </View>
+                            ) : null
+                        )}
+                    </TouchableOpacity>
+                ))}
+            </View>
+
+            <Modal
+                visible={isLocationModalVisible}
+                transparent
+                animationType="fade"
+                onRequestClose={closeLocationEditor}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalCard}>
+                        <Text style={styles.modalTitle}>Enter Location</Text>
+                        <Text style={styles.modalDescription}>
+                            Add a location to help people discover this post.
+                        </Text>
+                        <TextInput
+                            value={pendingLocation}
+                            onChangeText={setPendingLocation}
+                            placeholder="City, venue, or area"
+                            placeholderTextColor="#777"
+                            style={styles.locationInput}
+                            autoFocus
+                            returnKeyType="done"
+                            onSubmitEditing={saveLocation}
+                        />
+                        <View style={styles.modalActions}>
+                            <TouchableOpacity
+                                style={[styles.modalButton, styles.modalButtonSecondary]}
+                                onPress={closeLocationEditor}
+                            >
+                                <Text style={styles.modalButtonSecondaryText}>Cancel</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={[styles.modalButton, styles.modalButtonPrimary]}
+                                onPress={saveLocation}
+                            >
+                                <Text style={styles.modalButtonPrimaryText}>Save</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
+        </>
     );
 }
 
@@ -249,5 +297,69 @@ const styles = StyleSheet.create({
     },
     toggleCircleActive: {
         alignSelf: 'flex-end',
+    },
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.7)',
+        justifyContent: 'center',
+        paddingHorizontal: 24,
+    },
+    modalCard: {
+        backgroundColor: '#1C1C1E',
+        borderRadius: 18,
+        padding: 20,
+        borderWidth: 1,
+        borderColor: '#333',
+    },
+    modalTitle: {
+        color: '#fff',
+        fontSize: 18,
+        fontWeight: '700',
+        marginBottom: 8,
+    },
+    modalDescription: {
+        color: '#A1A1AA',
+        fontSize: 14,
+        lineHeight: 20,
+        marginBottom: 16,
+    },
+    locationInput: {
+        backgroundColor: '#111',
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#333',
+        color: '#fff',
+        paddingHorizontal: 14,
+        paddingVertical: 12,
+        fontSize: 15,
+    },
+    modalActions: {
+        flexDirection: 'row',
+        justifyContent: 'flex-end',
+        marginTop: 18,
+    },
+    modalButton: {
+        minWidth: 92,
+        borderRadius: 12,
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        alignItems: 'center',
+        marginLeft: 10,
+    },
+    modalButtonSecondary: {
+        backgroundColor: '#2A2A2D',
+    },
+    modalButtonPrimary: {
+        backgroundColor: '#FF4D67',
+    },
+    modalButtonSecondaryText: {
+        color: '#fff',
+        fontSize: 14,
+        fontWeight: '600',
+    },
+    modalButtonPrimaryText: {
+        color: '#fff',
+        fontSize: 14,
+        fontWeight: '700',
     },
 });

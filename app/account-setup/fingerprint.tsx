@@ -1,25 +1,28 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, SafeAreaView, TouchableOpacity, ScrollView, Animated } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import {
+    View,
+    Text,
+    SafeAreaView,
+    TouchableOpacity,
+    ScrollView,
+    Animated,
+} from 'react-native';
 import { StatusBar } from 'react-native';
 import { router } from 'expo-router';
 import { ChevronLeft, Fingerprint, Check } from 'lucide-react-native';
 import { Button } from '@/components/ui/Button';
-import { useAuth } from '@/hooks/useAuth';
 import { useRegistration } from '@/context/RegistrationContext';
 
 export default function FingerprintScreen() {
-    const { updateUser } = useAuth();
     const [scanning, setScanning] = useState(false);
     const [scanComplete, setScanComplete] = useState(false);
     const { updateRegistrationData } = useRegistration();
 
-    // Animation values
-    const pulseAnim = new Animated.Value(1);
-    const fadeAnim = new Animated.Value(0.3);
+    const pulseAnim = useRef(new Animated.Value(1)).current;
+    const fadeAnim = useRef(new Animated.Value(0.3)).current;
 
     useEffect(() => {
         if (scanning) {
-            // Start pulse animation
             Animated.loop(
                 Animated.sequence([
                     Animated.timing(pulseAnim, {
@@ -35,7 +38,6 @@ export default function FingerprintScreen() {
                 ])
             ).start();
 
-            // Fade animation for the ring
             Animated.loop(
                 Animated.sequence([
                     Animated.timing(fadeAnim, {
@@ -54,18 +56,16 @@ export default function FingerprintScreen() {
             pulseAnim.setValue(1);
             fadeAnim.setValue(0.3);
         }
-    }, [scanning]);
+    }, [fadeAnim, pulseAnim, scanning]);
 
     const handleScanFingerprint = () => {
         setScanning(true);
 
-        // Simulate fingerprint scanning
         setTimeout(() => {
             setScanning(false);
             setScanComplete(true);
             updateRegistrationData({ useFingerprint: true });
 
-            // Auto continue after success
             setTimeout(() => {
                 router.push('/account-setup/success');
             }, 1500);
@@ -88,18 +88,17 @@ export default function FingerprintScreen() {
                 backgroundColor="transparent"
                 translucent
             />
-            <SafeAreaView
-                style={{ flex: 1, backgroundColor: '#1a1a2e' }}
-            >
+            <SafeAreaView style={{ flex: 1, backgroundColor: '#1a1a2e' }}>
                 <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
                     <View style={{ flex: 1, paddingHorizontal: 24 }}>
-                        {/* Header */}
-                        <View style={{
-                            flexDirection: 'row',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            paddingVertical: 16
-                        }}>
+                        <View
+                            style={{
+                                flexDirection: 'row',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                paddingVertical: 16,
+                            }}
+                        >
                             <TouchableOpacity
                                 style={{ padding: 8, marginLeft: -8 }}
                                 onPress={() => router.back()}
@@ -107,101 +106,116 @@ export default function FingerprintScreen() {
                                 <ChevronLeft size={24} color="white" />
                             </TouchableOpacity>
 
-                            <Text style={{
-                                color: 'white',
-                                fontSize: 18,
-                                fontWeight: '600',
-                                fontFamily: 'Figtree'
-                            }}>
+                            <Text
+                                style={{
+                                    color: 'white',
+                                    fontSize: 18,
+                                    fontWeight: '600',
+                                    fontFamily: 'Figtree',
+                                }}
+                            >
                                 Biometric Security
                             </Text>
 
                             <TouchableOpacity onPress={handleSkip}>
-                                <Text style={{
-                                    color: '#FF5A5F',
-                                    fontSize: 16,
-                                    fontWeight: '500',
-                                    fontFamily: 'Figtree'
-                                }}>
+                                <Text
+                                    style={{
+                                        color: '#FF5A5F',
+                                        fontSize: 16,
+                                        fontWeight: '500',
+                                        fontFamily: 'Figtree',
+                                    }}
+                                >
                                     Skip
                                 </Text>
                             </TouchableOpacity>
                         </View>
 
-                        {/* Content Container */}
-                        <View style={{ flex: 1, alignItems: 'center', paddingVertical: 20 }}>
-
-                            {/* Logo and Header Section */}
+                        <View
+                            style={{ flex: 1, alignItems: 'center', paddingVertical: 20 }}
+                        >
                             <View style={{ alignItems: 'center', marginBottom: 32 }}>
-                                {/* Security Icon */}
-                                <View style={{
-                                    width: 80,
-                                    height: 80,
-                                    borderRadius: 40,
-                                    backgroundColor: '#FF5A5F',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    marginBottom: 24
-                                }}>
+                                <View
+                                    style={{
+                                        width: 80,
+                                        height: 80,
+                                        borderRadius: 40,
+                                        backgroundColor: '#FF5A5F',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        marginBottom: 24,
+                                    }}
+                                >
                                     <Fingerprint size={40} color="white" />
                                 </View>
 
-                                {/* Title */}
-                                <Text style={{
-                                    fontFamily: 'Figtree',
-                                    color: 'white',
-                                    fontSize: 24,
-                                    fontWeight: 'bold',
-                                    marginBottom: 8,
-                                    textAlign: 'center'
-                                }}>
+                                <Text
+                                    style={{
+                                        fontFamily: 'Figtree',
+                                        color: 'white',
+                                        fontSize: 24,
+                                        fontWeight: 'bold',
+                                        marginBottom: 8,
+                                        textAlign: 'center',
+                                    }}
+                                >
                                     Set Your Fingerprint
                                 </Text>
 
-                                {/* Subtitle */}
-                                <Text style={{
-                                    color: '#9CA3AF',
-                                    fontSize: 16,
-                                    fontFamily: 'Figtree',
-                                    textAlign: 'center',
-                                    paddingHorizontal: 20,
-                                    lineHeight: 24
-                                }}>
-                                    Add a fingerprint to make your account more secure
+                                <Text
+                                    style={{
+                                        color: '#9CA3AF',
+                                        fontSize: 16,
+                                        fontFamily: 'Figtree',
+                                        textAlign: 'center',
+                                        paddingHorizontal: 20,
+                                        lineHeight: 24,
+                                    }}
+                                >
+                                    Add a fingerprint to make your account more secure.
                                 </Text>
                             </View>
 
-                            {/* Fingerprint Scanner */}
                             <View style={{ alignItems: 'center', marginBottom: 32 }}>
                                 <TouchableOpacity
-                                    onPress={!scanning && !scanComplete ? handleScanFingerprint : undefined}
+                                    onPress={
+                                        !scanning && !scanComplete
+                                            ? handleScanFingerprint
+                                            : undefined
+                                    }
                                     disabled={scanning || scanComplete}
                                     style={{ alignItems: 'center' }}
                                 >
-                                    {/* Outer Ring */}
-                                    <Animated.View style={{
-                                        width: 200,
-                                        height: 200,
-                                        borderRadius: 100,
-                                        borderWidth: 2,
-                                        borderColor: '#FF5A5F',
-                                        opacity: fadeAnim,
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        marginBottom: 24
-                                    }}>
-                                        {/* Inner Circle */}
-                                        <Animated.View style={{
-                                            width: 160,
-                                            height: 160,
-                                            borderRadius: 80,
-                                            backgroundColor: scanComplete ? '#10B981' : (scanning ? '#FF5A5F' : 'rgba(255, 90, 95, 0.1)'),
+                                    <Animated.View
+                                        style={{
+                                            width: 200,
+                                            height: 200,
+                                            borderRadius: 100,
+                                            borderWidth: 2,
+                                            borderColor: '#FF5A5F',
+                                            opacity: fadeAnim,
                                             alignItems: 'center',
                                             justifyContent: 'center',
-                                            transform: [{ scale: pulseAnim }],
-                                            borderWidth: scanning ? 0 : 2,
-                                            borderColor: '#FF5A5F'
-                                        }}>
+                                            marginBottom: 24,
+                                        }}
+                                    >
+                                        <Animated.View
+                                            style={{
+                                                width: 160,
+                                                height: 160,
+                                                borderRadius: 80,
+                                                backgroundColor: scanComplete
+                                                    ? '#10B981'
+                                                    : scanning
+                                                      ? '#FF5A5F'
+                                                      : 'rgba(255, 90, 95, 0.1)',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                transform: [{ scale: pulseAnim }],
+                                                borderWidth: scanning ? 0 : 2,
+                                                borderColor: '#FF5A5F',
+                                            }}
+                                        >
                                             {scanComplete ? (
                                                 <Check size={64} color="white" />
                                             ) : (
@@ -215,68 +229,84 @@ export default function FingerprintScreen() {
                                     </Animated.View>
                                 </TouchableOpacity>
 
-                                {/* Status Text */}
-                                <Text style={{
-                                    color: scanComplete ? '#10B981' : (scanning ? '#FF5A5F' : '#9CA3AF'),
-                                    fontSize: 16,
-                                    fontFamily: 'Figtree',
-                                    textAlign: 'center',
-                                    paddingHorizontal: 32,
-                                    lineHeight: 24
-                                }}>
+                                <Text
+                                    style={{
+                                        color: scanComplete
+                                            ? '#10B981'
+                                            : scanning
+                                              ? '#FF5A5F'
+                                              : '#9CA3AF',
+                                        fontSize: 16,
+                                        fontFamily: 'Figtree',
+                                        textAlign: 'center',
+                                        paddingHorizontal: 32,
+                                        lineHeight: 24,
+                                    }}
+                                >
                                     {scanComplete
-                                        ? '✓ Fingerprint added successfully!'
+                                        ? 'Fingerprint added successfully.'
                                         : scanning
-                                            ? 'Scanning fingerprint...'
-                                            : 'Tap to scan your fingerprint'
-                                    }
+                                          ? 'Scanning fingerprint...'
+                                          : 'Tap to scan your fingerprint'}
                                 </Text>
                             </View>
 
-                            {/* Security Notice */}
-                            <View style={{
-                                backgroundColor: '#1a1a2e',
-                                borderRadius: 12,
-                                padding: 16,
-                                marginBottom: 24,
-                                width: '100%',
-                                maxWidth: 400
-                            }}>
-                                <Text style={{
-                                    color: '#9CA3AF',
-                                    fontSize: 14,
-                                    fontFamily: 'Figtree',
-                                    textAlign: 'center',
-                                    lineHeight: 20
-                                }}>
-                                    🔒 Your fingerprint data is stored securely on your device and never shared
-                                </Text>
-                            </View>
-
-                            {/* Progress Steps */}
-                            {scanning && (
-                                <View style={{
-                                    backgroundColor: 'rgba(255, 90, 95, 0.1)',
+                            <View
+                                style={{
+                                    backgroundColor: '#1a1a2e',
                                     borderRadius: 12,
                                     padding: 16,
+                                    marginBottom: 24,
                                     width: '100%',
-                                    maxWidth: 400
-                                }}>
-                                    <Text style={{
-                                        color: '#FF5A5F',
+                                    maxWidth: 400,
+                                }}
+                            >
+                                <Text
+                                    style={{
+                                        color: '#9CA3AF',
                                         fontSize: 14,
                                         fontFamily: 'Figtree',
                                         textAlign: 'center',
-                                        fontWeight: '500'
-                                    }}>
+                                        lineHeight: 20,
+                                    }}
+                                >
+                                    Your fingerprint data is stored securely on your device and never shared.
+                                </Text>
+                            </View>
+
+                            {scanning && (
+                                <View
+                                    style={{
+                                        backgroundColor: 'rgba(255, 90, 95, 0.1)',
+                                        borderRadius: 12,
+                                        padding: 16,
+                                        width: '100%',
+                                        maxWidth: 400,
+                                    }}
+                                >
+                                    <Text
+                                        style={{
+                                            color: '#FF5A5F',
+                                            fontSize: 14,
+                                            fontFamily: 'Figtree',
+                                            textAlign: 'center',
+                                            fontWeight: '500',
+                                        }}
+                                    >
                                         Keep your finger on the sensor...
                                     </Text>
                                 </View>
                             )}
                         </View>
 
-                        {/* Continue Button */}
-                        <View style={{ paddingBottom: 32, width: '100%', maxWidth: 400, alignSelf: 'center' }}>
+                        <View
+                            style={{
+                                paddingBottom: 32,
+                                width: '100%',
+                                maxWidth: 400,
+                                alignSelf: 'center',
+                            }}
+                        >
                             {scanComplete ? (
                                 <Button
                                     label="Complete Setup"
@@ -286,7 +316,7 @@ export default function FingerprintScreen() {
                                 />
                             ) : (
                                 <Button
-                                    label={scanning ? "Scanning..." : "Scan Fingerprint"}
+                                    label={scanning ? 'Scanning...' : 'Scan Fingerprint'}
                                     onPress={handleScanFingerprint}
                                     variant="primary"
                                     fullWidth

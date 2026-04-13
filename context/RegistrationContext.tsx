@@ -5,6 +5,8 @@ import { RegisterRequest } from '@/lib/api/types';
 export interface RegistrationData {
     username?: string;
     email?: string;
+    phoneNumber?: string;
+    address?: string;
     password?: string;
     confirmPassword?: string;
     firstName?: string;
@@ -92,6 +94,8 @@ export const RegistrationProvider: React.FC<{children: React.ReactNode}> = ({ ch
         return {
             username: registrationData.username || '',
             email: registrationData.email || '',
+            phoneNumber: registrationData.phoneNumber || '',
+            address: registrationData.address || '',
             password: registrationData.password || '',
             confirmPassword: registrationData.confirmPassword || '',
             firstName: registrationData.firstName || '',

@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Modal, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
 import { MonitorUp, TvMinimalPlay } from "lucide-react-native";
+import { isLiveStreamingEnabled } from '@/lib/release/releaseConfig';
 
 interface CreateOptionModalProps {
     visible: boolean;
@@ -10,6 +11,7 @@ interface CreateOptionModalProps {
 
 const CreateOptionModal: React.FC<CreateOptionModalProps> = ({ visible, onClose }) => {
     const router = useRouter();
+    const liveEnabled = isLiveStreamingEnabled();
 
     const handlePostPress = () => {
         onClose();
@@ -43,17 +45,21 @@ const CreateOptionModal: React.FC<CreateOptionModalProps> = ({ visible, onClose 
                         </View>
                     </TouchableOpacity>
 
-                    <View style={styles.divider} />
+                    {liveEnabled && (
+                        <>
+                            <View style={styles.divider} />
 
-                    <TouchableOpacity
-                        style={styles.option}
-                        onPress={handleLivePress}
-                    >
-                        <Text style={styles.optionText}>Live</Text>
-                        <View>
-                            <TvMinimalPlay size={20} color="#fff" />
-                        </View>
-                    </TouchableOpacity>
+                            <TouchableOpacity
+                                style={styles.option}
+                                onPress={handleLivePress}
+                            >
+                                <Text style={styles.optionText}>Live</Text>
+                                <View>
+                                    <TvMinimalPlay size={20} color="#fff" />
+                                </View>
+                            </TouchableOpacity>
+                        </>
+                    )}
                 </View>
                 <View style={styles.triangle}></View>
             </Pressable>

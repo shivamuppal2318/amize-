@@ -582,7 +582,7 @@ export default function ManageAccountsScreen() {
                     icon={<Mail size={20} color="#9CA3AF" />}
                     label="Email"
                     value={user.email}
-                    onPress={() => Alert.alert('Email', 'Email cannot be changed directly. Please contact support.')}
+                    onPress={() => router.push('/settings/help-center/contact-us')}
                 />
 
                 <AccountItem

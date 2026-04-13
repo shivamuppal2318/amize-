@@ -32,6 +32,7 @@ import { useAuthModal } from "@/context/AuthModalContext";
 import { useAuth } from "@/hooks/useAuth";
 import { useVideoContext } from "@/context/VideoContext";
 import AuthPromptModal from "@/components/VideoFeed/partial/AuthPromptModal";
+import { captureException } from "@/utils/errorReporting";
 
 const { width, height } = Dimensions.get("window");
 
@@ -484,6 +485,24 @@ const VideoItem: React.FC<VideoItemProps> = ({
     [onShare]
   );
 
+  const handleReportSubmitApi = useCallback(
+    async (reason: string) => {
+      log(`Reporting video to backend: ${reason}`);
+
+      try {
+        await VideoService.reportVideo(item.id, reason);
+      } catch (error) {
+        captureException(error, {
+          tags: { component: "video-item", stage: "report-video" },
+          extra: { videoId: item.id, reason },
+        });
+      } finally {
+        setReportModalVisible(false);
+      }
+    },
+    [item.id, log]
+  );
+
   // Custom SVG Icons
   const LikeIcon = ({ color = "#FF5A5F" }: { color?: string }) => (
     <Svg width="24" height="24" viewBox="0 0 31 26" fill="none">
@@ -722,7 +741,7 @@ const VideoItem: React.FC<VideoItemProps> = ({
       >
         <ReportScreen
           onClose={() => setReportModalVisible(false)}
-          onSubmit={handleReportSubmit}
+          onSubmit={handleReportSubmitApi}
         />
       </Modal>
 

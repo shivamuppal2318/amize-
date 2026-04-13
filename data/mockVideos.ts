@@ -136,6 +136,7 @@
 
 import { VideoItemData } from '@/components/VideoFeed/VideoItem';
 import { ApiVideo } from '@/lib/api/types/video';
+import { MixedFeedItem } from '@/lib/api/types/video';
 import { adaptVideoForUI } from '@/lib/adapters/videoAdapter';
 
 // Mock API videos for testing without actual API
@@ -289,3 +290,11 @@ export const mockApiVideos: ApiVideo[] = [
 
 // Convert API format to UI format for the mock data
 export const mockVideos: VideoItemData[] = mockApiVideos.map(video => adaptVideoForUI(video));
+
+export const mockMixedFeed: MixedFeedItem[] = mockApiVideos.map((video, index) => ({
+    id: `mock-video-${video.id}`,
+    type: 'video',
+    aspectRatio: '9:16',
+    priority: 100 - index,
+    data: video,
+}));

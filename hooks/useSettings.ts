@@ -59,13 +59,14 @@ export function useSettings() {
         nestedKey: N,
         value: UserSettings[K][N]
     ) => {
+        const nestedSettings = settings[key] as Record<string, unknown>;
         const newSettings = {
             ...settings,
             [key]: {
-                ...settings[key],
+                ...nestedSettings,
                 [nestedKey]: value
             }
-        };
+        } as UserSettings;
         return await saveSettings(newSettings);
     };
 

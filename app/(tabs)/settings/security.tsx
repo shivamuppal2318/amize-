@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { SafeAreaView, View, Text, TouchableOpacity, Switch, Alert, ActivityIndicator } from 'react-native';
+import { SafeAreaView, View, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { router } from 'expo-router';
-import { ChevronLeft} from 'lucide-react-native';
+import { ChevronLeft, Bell, ShieldCheck } from 'lucide-react-native';
 import { SecurityMenuItem } from '@/components/settings/SecurityMenuItem';
 import { SecurityButton } from '@/components/settings/SecurityButton';
 import { useSecurityBiometrics, useSecurityPIN } from '@/hooks/useSecurityHooks';
+import { useSettings } from '@/hooks/useSettings';
 import { ChangePasswordModal } from '@/components/settings/security/ChangePasswordModal';
 import { ChangePINModal } from '@/components/settings/security/ChangePINModal';
 import { ManageDevicesModal } from '@/components/settings/security/ManageDevicesModal';
@@ -14,6 +15,7 @@ export default function SecurityScreen() {
     // Security API hooks
     const { settings: biometricSettings, updateBiometricSettings, loading: biometricLoading } = useSecurityBiometrics();
     const { hasPIN, loading: pinLoading } = useSecurityPIN();
+    const { settings, loading: settingsLoading, updateNestedSetting } = useSettings();
 
     // Modal states
     const [modalStates, setModalStates] = useState({
@@ -37,6 +39,10 @@ export default function SecurityScreen() {
         await updateBiometricSettings('useFingerprint', value);
     };
 
+    const handleToggleRememberMe = async (value: boolean) => {
+        await updateNestedSetting('security', 'rememberMe', value);
+    };
+
     // Open modal handlers
     const openModal = (modalName: keyof typeof modalStates) => {
         setModalStates(prev => ({ ...prev, [modalName]: true }));
@@ -48,7 +54,7 @@ export default function SecurityScreen() {
     };
 
     // Loading state
-    if (biometricLoading && pinLoading) {
+    if (settingsLoading || (biometricLoading && pinLoading)) {
         return (
             <SafeAreaView className="flex-1 bg-[#1a1a2e] items-center justify-center">
                 <ActivityIndicator size="large" color="#FF4D67" />
@@ -78,10 +84,8 @@ export default function SecurityScreen() {
 
                     <SecurityMenuItem
                         label="Security Alerts"
-                        value="On"
-                        onPress={() => {
-                            Alert.alert('Security Alerts', 'Security alerts are enabled. You will receive notifications for suspicious activity.');
-                        }}
+                        value={settings.notifications.push ? 'On' : 'Off'}
+                        onPress={() => router.push('/settings/notifications')}
                     />
 
                     <SecurityMenuItem
@@ -139,6 +143,31 @@ export default function SecurityScreen() {
                                 <View
                                     className={`w-5 h-5 rounded-full bg-white ${
                                         biometricSettings.useFingerprint ? 'ml-auto' : 'mr-auto'
+                                    }`}
+                                />
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+
+                    {/* Remember Me Toggle */}
+                    <View className="flex-row items-center justify-between py-5">
+                        <View className="flex-row items-center">
+                            <ShieldCheck size={20} color="white" />
+                            <Text className="text-white text-lg ml-3">
+                                Remember Me
+                            </Text>
+                        </View>
+                        <View className={`w-12 h-6 rounded-full ${
+                            settings.security.rememberMe ? 'bg-[#FF4D67]' : 'bg-gray-600'
+                        } justify-center px-1`}>
+                            <TouchableOpacity
+                                className="w-full h-full"
+                                onPress={() => handleToggleRememberMe(!settings.security.rememberMe)}
+                                disabled={settingsLoading}
+                            >
+                                <View
+                                    className={`w-5 h-5 rounded-full bg-white ${
+                                        settings.security.rememberMe ? 'ml-auto' : 'mr-auto'
                                     }`}
                                 />
                             </TouchableOpacity>

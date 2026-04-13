@@ -108,7 +108,7 @@ export default function HelpCenterScreen() {
                         <Search size={18} color="#9CA3AF" />
                         <TextInput
                             style={styles.searchInput}
-                            placeholder="Ariana"
+                            placeholder="Search help articles"
                             placeholderTextColor="#9CA3AF"
                             value={searchQuery}
                             onChangeText={setSearchQuery}

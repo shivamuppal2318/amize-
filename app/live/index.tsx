@@ -1,33 +1,106 @@
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
+    ActivityIndicator,
+    Alert,
     View,
     Text,
     StyleSheet,
     SafeAreaView,
-    TouchableOpacity,
     TextInput,
-    Switch
+    Switch,
+    TouchableOpacity,
 } from 'react-native';
 import { useRouter, Stack } from 'expo-router';
-import { ArrowLeft, Radio, Users, Sparkles, Globe, Lock } from 'lucide-react-native';
+import { Radio, Users, Sparkles, Globe, Lock } from 'lucide-react-native';
 import ActionButton from '@/components/shared/UI/ActionButton';
 import HeaderBar from '@/components/shared/UI/HeaderBar';
+import { ConfigAPI, LiveTransportConfig } from '@/lib/api/configService';
+import { isLiveStreamingEnabled } from '@/lib/release/releaseConfig';
+import { captureException } from '@/utils/errorReporting';
 
 export default function LiveSetupScreen() {
     const router = useRouter();
+    const liveEnabled = isLiveStreamingEnabled();
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
     const [isPublic, setIsPublic] = useState(true);
     const [enableComments, setEnableComments] = useState(true);
+    const [beautyFilterEnabled, setBeautyFilterEnabled] = useState(false);
+    const [restrictComments, setRestrictComments] = useState(false);
+    const [transportConfig, setTransportConfig] = useState<LiveTransportConfig | null>(null);
+    const [loadingTransport, setLoadingTransport] = useState(true);
+
+    const loadTransportConfig = useCallback(async () => {
+        setLoadingTransport(true);
+
+        try {
+            const config = await ConfigAPI.getLiveTransportConfig();
+            setTransportConfig(config);
+        } catch (error) {
+            captureException(error, {
+                tags: { screen: 'live-setup', stage: 'load-transport-config' },
+            });
+            setTransportConfig(null);
+        } finally {
+            setLoadingTransport(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        loadTransportConfig();
+    }, [loadTransportConfig]);
 
     const handleBack = () => {
         router.back();
     };
 
     const handleStartLive = () => {
-        // In a real app, this would start the live stream
-        router.push('/live/streaming');
+        if (loadingTransport) {
+            return;
+        }
+
+        router.push({
+            pathname: '/live/streaming',
+            params: {
+                title: title.trim() || 'Live Session',
+                description: description.trim() || 'No description added',
+                visibility: isPublic ? 'public' : 'private',
+                comments: enableComments ? 'enabled' : 'disabled',
+                beauty: beautyFilterEnabled ? 'on' : 'off',
+                moderation: restrictComments ? 'restricted' : 'open',
+            },
+        });
     };
+
+    const liveTransportReady = transportConfig?.configured ?? false;
+    const startLabel = liveTransportReady ? 'Start Live Session' : 'Start Live Preview';
+
+    if (!liveEnabled) {
+        return (
+            <SafeAreaView style={styles.container}>
+                <Stack.Screen
+                    options={{
+                        headerShown: false,
+                    }}
+                />
+
+                <HeaderBar title="Go Live" onBackPress={handleBack} />
+
+                <View style={styles.disabledContainer}>
+                    <Radio size={48} color="#555" />
+                    <Text style={styles.disabledTitle}>Live is disabled for this build</Text>
+                    <Text style={styles.disabledText}>
+                        This build keeps live streaming hidden until production transport and review settings are ready.
+                    </Text>
+                    <ActionButton
+                        label="Back to Create"
+                        onPress={handleBack}
+                        fullWidth
+                    />
+                </View>
+            </SafeAreaView>
+        );
+    }
 
     return (
         <SafeAreaView style={styles.container}>
@@ -37,19 +110,52 @@ export default function LiveSetupScreen() {
                 }}
             />
 
-            <HeaderBar
-                title="Go Live"
-                onBackPress={handleBack}
-            />
+            <HeaderBar title="Go Live" onBackPress={handleBack} />
 
             <View style={styles.content}>
-                {/* Live Preview */}
-                <View style={styles.previewContainer}>
-                    <Radio size={48} color="#555" />
-                    <Text style={styles.previewText}>Live Preview</Text>
+                <View style={styles.noticeCard}>
+                    <Text style={styles.noticeTitle}>Backend-Aware Start</Text>
+                    <Text style={styles.noticeText}>
+                        {loadingTransport
+                            ? 'Checking live transport readiness...'
+                            : liveTransportReady
+                            ? 'Live transport is configured. This screen will create a backend live session and expose host transport credentials.'
+                            : 'Live transport is not configured for production. Starting now will still open the live screen, but it should be treated as preview/fallback mode.'}
+                    </Text>
+                    {loadingTransport ? (
+                        <View style={styles.transportStatusRow}>
+                            <ActivityIndicator size="small" color="#FFFFFF" />
+                            <Text style={styles.transportStatusText}>Loading transport config</Text>
+                        </View>
+                    ) : transportConfig ? (
+                        <View style={styles.transportDetails}>
+                            <Text style={styles.transportStatusText}>
+                                Provider: {transportConfig.provider}
+                            </Text>
+                            <Text style={styles.transportStatusText}>
+                                Ingest: {transportConfig.ingestProtocol.toUpperCase()} via {transportConfig.ingestUrl}
+                            </Text>
+                            <Text style={styles.transportStatusText}>
+                                Playback: {transportConfig.playbackProtocol.toUpperCase()} via {transportConfig.playbackBaseUrl}
+                            </Text>
+                        </View>
+                    ) : (
+                        <TouchableOpacity onPress={loadTransportConfig} disabled={loadingTransport}>
+                            <Text style={styles.transportStatusText}>
+                                Transport config unavailable. Tap to retry.
+                            </Text>
+                        </TouchableOpacity>
+                    )}
                 </View>
 
-                {/* Live Stream Details */}
+                <View style={styles.previewContainer}>
+                    <Radio size={48} color="#555" />
+                    <Text style={styles.previewText}>Live room preview</Text>
+                    <Text style={styles.previewSubtext}>
+                        Your stream title and settings will carry into the preview screen.
+                    </Text>
+                </View>
+
                 <View style={styles.detailsContainer}>
                     <View style={styles.inputGroup}>
                         <Text style={styles.label}>Title</Text>
@@ -59,6 +165,7 @@ export default function LiveSetupScreen() {
                             placeholderTextColor="#777"
                             value={title}
                             onChangeText={setTitle}
+                            maxLength={80}
                         />
                     </View>
 
@@ -72,11 +179,11 @@ export default function LiveSetupScreen() {
                             numberOfLines={4}
                             value={description}
                             onChangeText={setDescription}
+                            maxLength={180}
                         />
                     </View>
                 </View>
 
-                {/* Stream Settings */}
                 <View style={styles.settingsContainer}>
                     <Text style={styles.sectionTitle}>Stream Settings</Text>
 
@@ -112,6 +219,8 @@ export default function LiveSetupScreen() {
                             <Text style={styles.settingText}>Beauty Filter</Text>
                         </View>
                         <Switch
+                            value={beautyFilterEnabled}
+                            onValueChange={setBeautyFilterEnabled}
                             trackColor={{ false: '#444', true: '#FFB800' }}
                             thumbColor="#fff"
                         />
@@ -123,6 +232,8 @@ export default function LiveSetupScreen() {
                             <Text style={styles.settingText}>Restrict Comments</Text>
                         </View>
                         <Switch
+                            value={restrictComments}
+                            onValueChange={setRestrictComments}
                             trackColor={{ false: '#444', true: '#FF4D67' }}
                             thumbColor="#fff"
                         />
@@ -130,10 +241,9 @@ export default function LiveSetupScreen() {
                 </View>
             </View>
 
-            {/* Start Live Button */}
             <View style={styles.bottomBar}>
                 <ActionButton
-                    label="Go Live Now"
+                    label={startLabel}
                     onPress={handleStartLive}
                     fullWidth
                 />
@@ -151,6 +261,39 @@ const styles = StyleSheet.create({
         flex: 1,
         padding: 16,
     },
+    noticeCard: {
+        backgroundColor: 'rgba(255, 77, 103, 0.12)',
+        borderWidth: 1,
+        borderColor: 'rgba(255, 77, 103, 0.35)',
+        borderRadius: 12,
+        padding: 14,
+        marginBottom: 16,
+    },
+    noticeTitle: {
+        color: '#fff',
+        fontSize: 15,
+        fontWeight: '700',
+        marginBottom: 6,
+    },
+    noticeText: {
+        color: '#D1D5DB',
+        fontSize: 13,
+        lineHeight: 18,
+    },
+    transportStatusRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginTop: 12,
+    },
+    transportDetails: {
+        marginTop: 12,
+    },
+    transportStatusText: {
+        color: '#E5E7EB',
+        fontSize: 12,
+        lineHeight: 18,
+        marginTop: 4,
+    },
     previewContainer: {
         height: 200,
         backgroundColor: '#222',
@@ -158,10 +301,39 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         marginBottom: 20,
+        paddingHorizontal: 20,
     },
     previewText: {
-        color: '#777',
+        color: '#fff',
         marginTop: 8,
+        fontSize: 16,
+        fontWeight: '600',
+    },
+    previewSubtext: {
+        color: '#9CA3AF',
+        marginTop: 6,
+        textAlign: 'center',
+        fontSize: 13,
+    },
+    disabledContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingHorizontal: 24,
+        gap: 16,
+    },
+    disabledTitle: {
+        color: '#fff',
+        fontSize: 22,
+        fontWeight: '700',
+        textAlign: 'center',
+    },
+    disabledText: {
+        color: '#9CA3AF',
+        fontSize: 15,
+        lineHeight: 22,
+        textAlign: 'center',
+        marginBottom: 8,
     },
     detailsContainer: {
         marginBottom: 20,
@@ -192,7 +364,7 @@ const styles = StyleSheet.create({
     sectionTitle: {
         color: '#fff',
         fontSize: 18,
-        fontWeight: 'bold',
+        fontWeight: '700',
         marginBottom: 16,
     },
     settingItem: {

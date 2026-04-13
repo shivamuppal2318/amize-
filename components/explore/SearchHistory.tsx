@@ -366,7 +366,7 @@ export const SearchSuggestions: React.FC<SearchSuggestionsProps> = ({
 
     // Auto-hide functionality
     useEffect(() => {
-        let hideTimeout: number
+        let hideTimeout: ReturnType<typeof setTimeout> | undefined;
 
         if (visible && query && autoHideDelay > 0) {
             // Reset opacity when visible

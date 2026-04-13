@@ -5,6 +5,9 @@ import {
   LoginRequest,
   RegisterRequest,
   AuthResponse,
+  FacebookLoginRequest,
+  GoogleLoginRequest,
+  AppleLoginRequest,
   RefreshTokenRequest,
   RefreshTokenResponse,
   VerifyCodeRequest,
@@ -15,7 +18,7 @@ import { getDeviceId } from "@/lib/utils/deviceInfo";
 import { API_URL } from "../settings/constants";
 
 export const authApi = {
-  // Login with email and password
+  // Login with email or phone number and password
   login: async (data: LoginRequest): Promise<AuthResponse> => {
     console.log("Login data:", data);
     try {
@@ -25,6 +28,63 @@ export const authApi = {
       return response.data;
     } catch (error) {
       console.error("Login error:", error);
+      throw error;
+    }
+  },
+
+  googleLogin: async (data: GoogleLoginRequest): Promise<AuthResponse> => {
+    try {
+      const response = await axios.post(
+        API_CONFIG.BASE_URL + AUTH_ENDPOINTS.GOOGLE,
+        data,
+        {
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      return response.data;
+    } catch (error) {
+      console.error("Google login error:", error);
+      throw error;
+    }
+  },
+
+  facebookLogin: async (data: FacebookLoginRequest): Promise<AuthResponse> => {
+    try {
+      const response = await axios.post(
+        API_CONFIG.BASE_URL + AUTH_ENDPOINTS.FACEBOOK,
+        data,
+        {
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      return response.data;
+    } catch (error) {
+      console.error("Facebook login error:", error);
+      throw error;
+    }
+  },
+
+  appleLogin: async (data: AppleLoginRequest): Promise<AuthResponse> => {
+    try {
+      const response = await axios.post(
+        API_CONFIG.BASE_URL + AUTH_ENDPOINTS.APPLE,
+        data,
+        {
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      return response.data;
+    } catch (error) {
+      console.error("Apple login error:", error);
       throw error;
     }
   },
@@ -61,8 +121,8 @@ export const authApi = {
   },
 
   // Resend verification code
-  resendCode: async (email: string): Promise<ResendCodeResponse> => {
-    const response = await client.post(AUTH_ENDPOINTS.RESEND_CODE, { email });
+  resendCode: async (identifier: string): Promise<ResendCodeResponse> => {
+    const response = await client.post(AUTH_ENDPOINTS.RESEND_CODE, { identifier });
     return response.data;
   },
 

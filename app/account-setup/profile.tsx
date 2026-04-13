@@ -1,17 +1,17 @@
-import React, { useState } from "react";
-import { View, Text, TouchableOpacity, Image, ScrollView } from "react-native";
+import React, { useMemo, useState, useEffect } from "react";
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  Image,
+  ScrollView,
+  Alert,
+} from "react-native";
 import { router } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "react-native";
-import {
-  ChevronLeft,
-  User,
-  Mail,
-  Phone,
-  MapPin,
-  Camera,
-  Plus,
-} from "lucide-react-native";
+import * as ImagePicker from "expo-image-picker";
+import { ChevronLeft, User, Mail, Phone, MapPin, Plus } from "lucide-react-native";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { useAuth } from "@/hooks/useAuth";
@@ -19,44 +19,139 @@ import { useRegistration } from "@/context/RegistrationContext";
 import { LinearGradient } from "expo-linear-gradient";
 
 export default function ProfileScreen() {
-  const { register, updateUser, user } = useAuth();
+  const { register, loading } = useAuth();
+  const { registrationData, updateRegistrationData } = useRegistration();
 
-  const [fullName, setFullName] = useState(user?.fullName || "");
-  const [email, setEmail] = useState(user?.email || "");
-  const [phoneNumber, setPhoneNumber] = useState(user?.phoneNumber || "");
-  const [address, setAddress] = useState("");
-  const [profileImage, setProfileImage] = useState<string | null>(null);
-  const { updateRegistrationData, getRegistrationRequest } = useRegistration();
+  const initialFullName = useMemo(() => {
+    const names = [registrationData.firstName, registrationData.lastName]
+      .filter(Boolean)
+      .join(" ")
+      .trim();
+    return names;
+  }, [registrationData.firstName, registrationData.lastName]);
+
+  const [fullName, setFullName] = useState(initialFullName);
+  const [email, setEmail] = useState(registrationData.email || "");
+  const [phoneNumber, setPhoneNumber] = useState(
+    registrationData.phoneNumber || ""
+  );
+  const [address, setAddress] = useState(registrationData.address || "");
+  const [profileImage, setProfileImage] = useState<string | null>(
+    registrationData.profilePhotoUrl || null
+  );
+  const [submitting, setSubmitting] = useState(false);
+
+  const isRemoteUrl = (value: string | null) =>
+    !!value && /^https?:\/\//i.test(value);
+
+  useEffect(() => {
+    if (!registrationData.username || !registrationData.password) {
+      router.replace("/(auth)/sign-up");
+      return;
+    }
+
+    if (!registrationData.dateOfBirth) {
+      router.replace("/account-setup/birthday");
+    }
+  }, [registrationData.username, registrationData.password, registrationData.dateOfBirth]);
+
+  const isEmailValid = /\S+@\S+\.\S+/.test(email.trim());
+  const nameParts = fullName.trim().split(/\s+/).filter(Boolean);
+  const firstName = nameParts[0] || "";
+  const lastName = nameParts.slice(1).join(" ");
+  const isFormValid =
+    firstName.length >= 2 && lastName.length >= 2 && isEmailValid;
 
   const handleContinue = async () => {
-    const updatedData = {
-      ...getRegistrationRequest(),
-      firstName: fullName.split(" ")[0] || "",
-      lastName: fullName.split(" ")[1] || "",
+    if (!isFormValid) {
+      Alert.alert(
+        "Incomplete Profile",
+        "Enter your full name and a valid email address to continue."
+      );
+      return;
+    }
+
+    const trimmedEmail = email.trim();
+    const registrationRequest = {
+      username: registrationData.username || "",
+      email: trimmedEmail,
+      phoneNumber: phoneNumber.trim() || undefined,
+      address: address.trim() || undefined,
+      password: registrationData.password || "",
+      confirmPassword: registrationData.confirmPassword || "",
+      firstName,
+      lastName,
+      gender: registrationData.gender,
+      dateOfBirth: registrationData.dateOfBirth,
+      interests: registrationData.interests,
+      profilePhotoUrl: isRemoteUrl(profileImage) ? profileImage || undefined : undefined,
     };
 
-    console.log("Updated registration data with full name:", fullName);
-    console.log("Data:-----------", updatedData);
-
-    const result = await register(updatedData);
-    console.log("SuccessScreen: Registration API response:", result);
-
-    router.replace({
-      pathname: "/account-setup/verify",
-      params: { updatedData: JSON.stringify(updatedData) },
+    updateRegistrationData({
+      email: trimmedEmail,
+      phoneNumber: phoneNumber.trim() || undefined,
+      address: address.trim() || undefined,
+      firstName,
+      lastName,
+      profilePhotoUrl: isRemoteUrl(profileImage) ? profileImage || undefined : undefined,
     });
+
+    try {
+      setSubmitting(true);
+      const result = await register(registrationRequest);
+
+      if (!result.success) {
+        Alert.alert(
+          "Registration Failed",
+          result.message || "Unable to start account verification right now."
+        );
+        return;
+      }
+
+      router.replace("/account-setup/verify");
+    } catch (error) {
+      Alert.alert("Error", "An unexpected error occurred. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const handleSkip = () => {
     router.push("/account-setup/pin");
   };
 
-  const handleImagePicker = () => {
-    // TODO: Implement image picker functionality
-    console.log("Open image picker");
-  };
+  const handleImagePicker = async () => {
+    try {
+      const permission =
+        await ImagePicker.requestMediaLibraryPermissionsAsync();
 
-  const isFormValid = fullName.trim() !== "" && email.trim() !== "";
+      if (permission.status !== "granted") {
+        Alert.alert(
+          "Permission Required",
+          "Allow photo library access to add a profile picture."
+        );
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: "images",
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets?.length) {
+        const selectedUri = result.assets[0].uri;
+        setProfileImage(selectedUri);
+        updateRegistrationData({ profilePhotoUrl: selectedUri });
+      }
+    } catch (error) {
+      Alert.alert(
+        "Photo Error",
+        "Unable to open the image picker right now. Please try again."
+      );
+    }
+  };
 
   return (
     <>
@@ -78,7 +173,6 @@ export default function ProfileScreen() {
         >
           <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
             <View style={{ flex: 1, paddingHorizontal: 24 }}>
-              {/* Header */}
               <View
                 style={{
                   flexDirection: "row",
@@ -119,12 +213,10 @@ export default function ProfileScreen() {
                 </TouchableOpacity>
               </View>
 
-              {/* Content Container */}
               <View
                 style={{ flex: 1, alignItems: "center", paddingVertical: 20 }}
               >
-                {/* Profile Picture Section */}
-                {/* <View style={{ alignItems: "center", marginBottom: 32 }}>
+                <View style={{ alignItems: "center", marginBottom: 32 }}>
                   <TouchableOpacity
                     onPress={handleImagePicker}
                     style={{
@@ -181,43 +273,21 @@ export default function ProfileScreen() {
                   >
                     Tap to add photo
                   </Text>
-                </View> */}
+                </View>
 
-                {/* Progress Indicator */}
                 <View style={{ paddingHorizontal: 32, marginBottom: 24 }}>
                   <View style={{ flexDirection: "row", gap: 8 }}>
-                    <View
-                      style={{
-                        flex: 1,
-                        height: 8,
-                        backgroundColor: "#FF5A5F",
-                        borderRadius: 4,
-                      }}
-                    />
-                    <View
-                      style={{
-                        flex: 1,
-                        height: 8,
-                        backgroundColor: "#FF5A5F",
-                        borderRadius: 4,
-                      }}
-                    />
-                    <View
-                      style={{
-                        flex: 1,
-                        height: 8,
-                        backgroundColor: "#FF5A5F",
-                        borderRadius: 4,
-                      }}
-                    />
-                    <View
-                      style={{
-                        flex: 1,
-                        height: 8,
-                        backgroundColor: "#FF5A5F",
-                        borderRadius: 4,
-                      }}
-                    />
+                    {[0, 1, 2, 3].map((index) => (
+                      <View
+                        key={index}
+                        style={{
+                          flex: 1,
+                          height: 8,
+                          backgroundColor: "#FF5A5F",
+                          borderRadius: 4,
+                        }}
+                      />
+                    ))}
                   </View>
                   <Text
                     style={{
@@ -232,7 +302,6 @@ export default function ProfileScreen() {
                   </Text>
                 </View>
 
-                {/* Form Section */}
                 <View style={{ width: "100%", maxWidth: 400 }}>
                   <Input
                     label="Full Name"
@@ -240,6 +309,11 @@ export default function ProfileScreen() {
                     value={fullName}
                     onChangeText={setFullName}
                     icon={<User size={20} color="#9CA3AF" />}
+                    error={
+                      fullName.trim().length > 0 && !isFormValid
+                        ? "Enter first and last name"
+                        : ""
+                    }
                   />
 
                   <Input
@@ -248,7 +322,13 @@ export default function ProfileScreen() {
                     value={email}
                     onChangeText={setEmail}
                     keyboardType="email-address"
+                    autoCapitalize="none"
                     icon={<Mail size={20} color="#9CA3AF" />}
+                    error={
+                      email.trim().length > 0 && !isEmailValid
+                        ? "Enter a valid email address"
+                        : ""
+                    }
                   />
 
                   <Input
@@ -269,7 +349,6 @@ export default function ProfileScreen() {
                   />
                 </View>
 
-                {/* Form Status */}
                 {isFormValid && (
                   <View style={{ marginTop: 16, marginBottom: 8 }}>
                     <Text
@@ -280,13 +359,12 @@ export default function ProfileScreen() {
                         fontFamily: "Figtree",
                       }}
                     >
-                      Profile ready to complete
+                      Profile ready to verify
                     </Text>
                   </View>
                 )}
               </View>
 
-              {/* Continue Button */}
               <View
                 style={{
                   paddingBottom: 32,
@@ -296,11 +374,12 @@ export default function ProfileScreen() {
                 }}
               >
                 <Button
-                  label="Complete Profile"
+                  label="Continue to Verification"
                   onPress={handleContinue}
                   variant="primary"
                   fullWidth
-                  disabled={!isFormValid}
+                  loading={loading || submitting}
+                  disabled={!isFormValid || loading || submitting}
                 />
               </View>
             </View>

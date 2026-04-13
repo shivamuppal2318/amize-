@@ -28,7 +28,6 @@ export default function PasswordSuccessScreen() {
                     status="success"
                     title="Congratulations!"
                     message="Your account is ready to use. You will be redirected to the login page in a few seconds."
-                    className="mb-8"
                 />
 
                 <StyledView className="w-full mt-auto">

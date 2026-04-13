@@ -7,7 +7,7 @@ import { ProgressDots } from '@/components/ui/ProgressDots';
 // @ts-ignore
 import DefaultImage from '@/assets/images/figma/Media player-rafiki 1.png';
 
-const DEFAULT_IMAGE = Image.resolveAssetSource(DefaultImage).uri;
+const DEFAULT_IMAGE = DefaultImage;
 
 const StyledView = View
 
@@ -27,7 +27,7 @@ export default function OnboardingStep1() {
                         <StyledView className="w-64 h-64 rounded-full justify-center items-center">
                             <StyledView className="p-2 rounded-lg">
                                 <Image
-                                    source={{uri: DEFAULT_IMAGE }}
+                                    source={DEFAULT_IMAGE}
                                     style={{width: 300, height: 300}}
                                     />
                             </StyledView>

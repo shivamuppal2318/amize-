@@ -78,21 +78,32 @@ const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
     const [tempFilters, setTempFilters] = useState<FilterOptions>(filters);
 
     // Filter options
-    const contentTypes = [
+    const contentTypes: Array<{
+        value: FilterOptions['contentType'];
+        label: string;
+        icon?: React.ReactNode;
+    }> = [
         { value: 'all', label: 'All Content', icon: <Filter size={16} color="#666" /> },
         { value: 'videos', label: 'Videos', icon: <Play size={16} color="#666" /> },
         { value: 'users', label: 'Users', icon: <Users size={16} color="#666" /> },
         { value: 'sounds', label: 'Sounds', icon: <Music size={16} color="#666" /> },
     ];
 
-    const sortOptions = [
+    const sortOptions: Array<{
+        value: FilterOptions['sortBy'];
+        label: string;
+        icon?: React.ReactNode;
+    }> = [
         { value: 'relevance', label: 'Most Relevant', icon: <Filter size={16} color="#666" /> },
         { value: 'recent', label: 'Most Recent', icon: <Clock size={16} color="#666" /> },
         { value: 'popular', label: 'Most Popular', icon: <Heart size={16} color="#666" /> },
         { value: 'trending', label: 'Trending', icon: <Eye size={16} color="#666" /> },
     ];
 
-    const timeRanges = [
+    const timeRanges: Array<{
+        value: FilterOptions['timeRange'];
+        label: string;
+    }> = [
         { value: 'all', label: 'All Time' },
         { value: 'hour', label: 'Past Hour' },
         { value: 'day', label: 'Past Day' },
@@ -100,14 +111,21 @@ const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
         { value: 'month', label: 'Past Month' },
     ];
 
-    const durations = [
+    const durations: Array<{
+        value: FilterOptions['duration'];
+        label: string;
+    }> = [
         { value: 'all', label: 'Any Duration' },
         { value: 'short', label: 'Short (< 15s)' },
         { value: 'medium', label: 'Medium (15s - 60s)' },
         { value: 'long', label: 'Long (> 60s)' },
     ];
 
-    const verificationOptions = [
+    const verificationOptions: Array<{
+        value: FilterOptions['verified'];
+        label: string;
+        icon?: React.ReactNode;
+    }> = [
         { value: 'all', label: 'All Users' },
         { value: 'verified', label: 'Verified Only', icon: <Crown size={16} color="#FFD700" /> },
         { value: 'unverified', label: 'Unverified Only' },

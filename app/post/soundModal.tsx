@@ -15,6 +15,7 @@ import {
 import axios, { AxiosError } from "axios";
 import { Search, Play, Pause } from "lucide-react-native";
 import { Audio } from "expo-av";
+import { API_URL } from "@/lib/settings/constants";
 
 const { width, height } = Dimensions.get("window");
 
@@ -278,7 +279,7 @@ export default function SoundModal({
 
     try {
       const response = await axios.get<SoundsApiResponse>(
-        "https://amize-next.onrender.com/api/sound",
+        `${API_URL}/sound`,
         {
           timeout: 10000,
           headers: {

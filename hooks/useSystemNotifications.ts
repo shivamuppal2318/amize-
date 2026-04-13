@@ -26,6 +26,10 @@ export const useSystemNotifications = (options: UseSystemNotificationsOptions = 
 
     // Initialize notification service
     useEffect(() => {
+        if (Platform.OS === 'web') {
+            return;
+        }
+
         if (isAuthenticated && !isInitialized.current) {
             console.log('📱 [useSystemNotifications] Initializing notification service...');
 
@@ -144,6 +148,7 @@ export const useSystemNotifications = (options: UseSystemNotificationsOptions = 
 
     // Setup notification response handlers
     useEffect(() => {
+        if (Platform.OS === 'web') return;
         if (!isAuthenticated || !isInitialized.current) return;
 
         console.log('📱 [useSystemNotifications] Setting up notification handlers...');
@@ -179,6 +184,7 @@ export const useSystemNotifications = (options: UseSystemNotificationsOptions = 
 
     // Update badge count when unread count changes
     useEffect(() => {
+        if (Platform.OS === 'web') return;
         if (!enableBadgeCount || !isInitialized.current) return;
 
         console.log('📱 [useSystemNotifications] Updating badge count:', unreadCount);
@@ -191,6 +197,7 @@ export const useSystemNotifications = (options: UseSystemNotificationsOptions = 
 
     // ✅ NEW: Handle app state changes for better notification management
     useEffect(() => {
+        if (Platform.OS === 'web') return;
         if (!isAuthenticated || !isInitialized.current) return;
 
         // Listen for when the app comes to foreground
@@ -238,6 +245,6 @@ export const useSystemNotifications = (options: UseSystemNotificationsOptions = 
 
         // Platform info
         platform: Platform.OS,
-        supportsInitialNotification: Platform.OS !== 'ios', // iOS doesn't support getLastNotificationResponseAsync
+        supportsInitialNotification: Platform.OS !== 'ios' && Platform.OS !== 'web',
     };
 };

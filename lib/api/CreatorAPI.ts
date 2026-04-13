@@ -39,6 +39,148 @@ export interface UserSubscription {
     autoRenew: boolean;
 }
 
+export interface SubscriptionPaymentRecord {
+    id: string;
+    amount: number;
+    currency: string;
+    status: string;
+    createdAt: string;
+}
+
+export interface UserSubscriptionRecord {
+    id: string;
+    creatorId?: string;
+    creator?: {
+        id: string;
+        username: string;
+        profilePhotoUrl?: string | null;
+        fullName?: string | null;
+    };
+    creatorName?: string;
+    creatorUsername?: string;
+    planId?: string;
+    plan?: {
+        id: string;
+        name: string;
+        price: number;
+        currency: string;
+        intervalType: string;
+    };
+    planName?: string;
+    amount?: number;
+    currency?: string;
+    status?: string;
+    autoRenew?: boolean;
+    startDate?: string;
+    endDate?: string | null;
+    SubscriptionPayment?: SubscriptionPaymentRecord[];
+}
+
+export interface UserSubscriptionsResponse {
+    success: boolean;
+    subscriptions: UserSubscriptionRecord[];
+    stats: {
+        total: number;
+        active: number;
+        spending: number;
+        currency?: string;
+        period?: string;
+    };
+}
+
+export interface SubscriberRecord {
+    id: string;
+    status: string;
+    autoRenew: boolean;
+    startDate: string;
+    endDate: string | null;
+    subscriber?: {
+        id: string;
+        username: string;
+        profilePhotoUrl?: string | null;
+        fullName?: string | null;
+    };
+    plan?: {
+        id: string;
+        name: string;
+        price: number;
+        currency: string;
+        intervalType: string;
+    };
+    SubscriptionPayment?: SubscriptionPaymentRecord[];
+}
+
+export interface RefundSubscriptionPaymentResult {
+    success: boolean;
+    message: string;
+    refund?: {
+        id: string;
+        amount: number;
+        currency: string;
+        originalPaymentId: string;
+        transactionId: string;
+        reason: string;
+        status?: string;
+        createdAt: string;
+    };
+    subscription?: {
+        id: string;
+        status: string;
+        message: string;
+    };
+}
+
+export interface CreatorSubscriberResponse {
+    success: boolean;
+    subscriptions: SubscriberRecord[];
+    stats: {
+        total: number;
+        active: number;
+        revenue: number;
+        currency?: string;
+        period?: string;
+    };
+}
+
+export interface CreatorAnalyticsResponse {
+    success: boolean;
+    creator: {
+        id: string;
+        username: string;
+        fullName?: string | null;
+        creatorCategory?: string | null;
+        isEligibleForCreator: boolean;
+        monetizationEnabled: boolean;
+    };
+    overview: {
+        periodDays: number;
+        activeSubscribers: number;
+        revenue: number;
+        currency: string;
+        totalViews: number;
+        totalLikes: number;
+        totalComments: number;
+        totalShares: number;
+        averageWatchTime: number;
+        averageCompletionRate: number;
+    };
+    topVideos: Array<{
+        id: string;
+        title: string | null;
+        thumbnailUrl: string | null;
+        createdAt: string;
+        views: number;
+        likes: number;
+        comments: number;
+        shares: number;
+    }>;
+    recentPayments: Array<{
+        amount: number;
+        currency: string;
+        createdAt: string;
+    }>;
+}
+
 export interface FollowStats {
     followers: number;
     following: number;
@@ -65,6 +207,22 @@ export interface CreatorPlansResponse {
     recentContent: RecentVideo[];
 }
 
+export interface PaymentIntentState {
+    attemptId?: string;
+    provider: string;
+    providerName?: string;
+    status: 'succeeded' | 'requires_action';
+    transactionId: string;
+    clientSecret?: string;
+}
+
+export interface SubscriptionActionResult {
+    success: boolean;
+    requiresAction?: boolean;
+    message?: string;
+    payment?: PaymentIntentState;
+}
+
 export interface UserStatusResponse {
     success: boolean;
     creator: {
@@ -73,12 +231,32 @@ export interface UserStatusResponse {
         creatorVerified: boolean;
         monetizationEnabled: boolean;
         creatorCategory: string | null;
+        stripeConnect?: {
+            accountId: string | null;
+            chargesEnabled: boolean;
+            payoutsEnabled: boolean;
+            detailsSubmitted: boolean;
+            onboardedAt?: string | null;
+        };
         username?: string;
         stats: {
             subscribers: number;
             totalContent: number;
         };
         subscriptionPlans?: SubscriptionPlan[];
+    };
+}
+
+export interface CreatorConnectStatusResponse {
+    success: boolean;
+    connect: {
+        provider: string;
+        accountId: string | null;
+        onboardingUrl?: string;
+        chargesEnabled: boolean;
+        payoutsEnabled: boolean;
+        detailsSubmitted: boolean;
+        onboardedAt?: string | null;
     };
 }
 
@@ -254,29 +432,48 @@ export const CreatorAPI = {
     /**
      * Subscribe to a creator's plan
      */
-    subscribeToPlan: async (creatorId: string, planId: string): Promise<boolean> => {
+    subscribeToPlan: async (
+        creatorId: string,
+        planId: string,
+        paymentMethodId?: string
+    ): Promise<SubscriptionActionResult> => {
         try {
             const response = await apiClient.post('/subscriptions', {
                 creatorId,
                 planId,
-                paymentMethodId: 'pm_card_visa', // In a real app, this would come from the payment form
+                ...(paymentMethodId ? { paymentMethodId } : {}),
             });
-            return response.data.success;
+
+            return {
+                success: !!response.data.success,
+                requiresAction: !!response.data.requiresAction,
+                message: response.data.message,
+                payment: response.data.payment,
+            };
         } catch (error) {
             console.error('Error subscribing to plan:', error);
-            return false;
+            return {
+                success: false,
+                message: 'Failed to subscribe to creator plan',
+            };
         }
     },
 
     /**
      * Get a user's active subscriptions
      */
-    getUserSubscriptions: async (userId: string): Promise<any> => {
+    getUserSubscriptions: async (
+        userId: string,
+        options?: {
+            status?: 'active' | 'canceled' | 'expired' | 'all';
+            mode?: 'subscribing' | 'subscribers';
+        }
+    ): Promise<UserSubscriptionsResponse> => {
         try {
             const response = await apiClient.get(`/users/${userId}/subscriptions`, {
                 params: {
-                    status: 'active',
-                    mode: 'subscribing'
+                    status: options?.status || 'active',
+                    mode: options?.mode || 'subscribing'
                 }
             });
             return response.data;
@@ -295,6 +492,70 @@ export const CreatorAPI = {
     },
 
     /**
+     * Get creator subscriber roster and revenue summary
+     */
+    getCreatorSubscribers: async (userId: string): Promise<CreatorSubscriberResponse> => {
+        try {
+            const response = await apiClient.get(`/users/${userId}/subscriptions`, {
+                params: {
+                    status: 'all',
+                    mode: 'subscribers',
+                },
+            });
+            return response.data;
+        } catch (error) {
+            console.error('Error fetching creator subscribers:', error);
+            return {
+                success: false,
+                subscriptions: [],
+                stats: {
+                    total: 0,
+                    active: 0,
+                    revenue: 0,
+                    currency: 'USD',
+                },
+            };
+        }
+    },
+
+    /**
+     * Get creator analytics summary
+     */
+    getCreatorAnalytics: async (userId: string): Promise<CreatorAnalyticsResponse> => {
+        try {
+            const response = await apiClient.get(`/users/${userId}/creator-analytics`);
+            return response.data;
+        } catch (error) {
+            console.error('Error fetching creator analytics:', error);
+            return {
+                success: false,
+                creator: {
+                    id: userId,
+                    username: 'creator',
+                    fullName: null,
+                    creatorCategory: null,
+                    isEligibleForCreator: false,
+                    monetizationEnabled: false,
+                },
+                overview: {
+                    periodDays: 30,
+                    activeSubscribers: 0,
+                    revenue: 0,
+                    currency: 'USD',
+                    totalViews: 0,
+                    totalLikes: 0,
+                    totalComments: 0,
+                    totalShares: 0,
+                    averageWatchTime: 0,
+                    averageCompletionRate: 0,
+                },
+                topVideos: [],
+                recentPayments: [],
+            };
+        }
+    },
+
+    /**
      * Cancel a subscription
      */
     cancelSubscription: async (subscriptionId: string): Promise<boolean> => {
@@ -305,5 +566,75 @@ export const CreatorAPI = {
             console.error('Error canceling subscription:', error);
             return false;
         }
-    }
+    },
+
+    refundSubscriptionPayment: async (
+        paymentId: string,
+        options?: {
+            reason?: string;
+            amount?: number;
+            cancelSubscription?: boolean;
+        }
+    ): Promise<RefundSubscriptionPaymentResult> => {
+        try {
+            const response = await apiClient.post(
+                `/subscription-payments/${paymentId}/refund`,
+                {
+                    reason: options?.reason || "Creator-issued refund",
+                    amount: options?.amount,
+                    cancelSubscription: options?.cancelSubscription ?? false,
+                }
+            );
+
+            return response.data;
+        } catch (error: any) {
+            console.error('Error refunding subscription payment:', error);
+            return {
+                success: false,
+                message:
+                    error?.response?.data?.message ||
+                    'Failed to refund subscription payment',
+            };
+        }
+    },
+
+    getCreatorConnectStatus: async (): Promise<CreatorConnectStatusResponse> => {
+        try {
+            const response = await apiClient.get('/creators/connect');
+            return response.data;
+        } catch (error) {
+            console.error('Error fetching creator connect status:', error);
+            return {
+                success: false,
+                connect: {
+                    provider: 'unknown',
+                    accountId: null,
+                    chargesEnabled: false,
+                    payoutsEnabled: false,
+                    detailsSubmitted: false,
+                    onboardedAt: null,
+                },
+            };
+        }
+    },
+
+    createCreatorConnectOnboarding: async (): Promise<CreatorConnectStatusResponse> => {
+        try {
+            const response = await apiClient.post('/creators/connect');
+            return response.data;
+        } catch (error: any) {
+            console.error('Error creating creator connect onboarding:', error);
+            return {
+                success: false,
+                connect: {
+                    provider: 'unknown',
+                    accountId: null,
+                    chargesEnabled: false,
+                    payoutsEnabled: false,
+                    detailsSubmitted: false,
+                    onboardedAt: null,
+                },
+            };
+        }
+    },
 };

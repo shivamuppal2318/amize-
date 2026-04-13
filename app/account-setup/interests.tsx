@@ -29,7 +29,7 @@ import { useRegistration } from '@/context/RegistrationContext';
 
 // @ts-ignore
 import AmizeLogo from '@/assets/images/amize.png';
-const AMIZE_LOGO = Image.resolveAssetSource(AmizeLogo).uri;
+const AMIZE_LOGO = AmizeLogo;
 
 const interests = [
     {
@@ -213,7 +213,7 @@ export default function InterestsScreen() {
                                     marginBottom: 24
                                 }}>
                                     <Image
-                                        source={{ uri: AMIZE_LOGO }}
+                                        source={AMIZE_LOGO}
                                         style={{ width: 80, height: 80, borderRadius: 40 }}
                                         resizeMode="contain"
                                     />

@@ -24,10 +24,10 @@ import { LinearGradient } from 'expo-linear-gradient';
 const { width } = Dimensions.get('window');
 
 // Define the tabs
-const TABS = ['Top', 'Users', 'Videos', 'Sounds', 'Live', 'Hashtag'];
+const TABS = ['Top', 'Users', 'Videos', 'Sounds'];
 
 // Define the types of content
-type Tab = 'Top' | 'Users' | 'Videos' | 'Sounds' | 'Live' | 'Hashtag';
+type Tab = 'Top' | 'Users' | 'Videos' | 'Sounds';
 
 interface SearchResultsProps {
     initialQuery?: string;
@@ -558,24 +558,6 @@ const SearchResultsScreen: React.FC<SearchResultsProps> = ({initialQuery = '', o
         );
     };
 
-    // Render live search results
-    const renderLiveResults = () => {
-        return (
-            <View style={styles.emptyResultsContainer}>
-                <Text style={styles.emptyResultsText}>Live search is not implemented yet</Text>
-            </View>
-        );
-    };
-
-    // Render hashtag search results
-    const renderHashtagResults = () => {
-        return (
-            <View style={styles.emptyResultsContainer}>
-                <Text style={styles.emptyResultsText}>Hashtag search is not implemented yet</Text>
-            </View>
-        );
-    };
-
     // Render content based on active tab
     const renderContent = () => {
         if (query.length === 0) {
@@ -591,10 +573,6 @@ const SearchResultsScreen: React.FC<SearchResultsProps> = ({initialQuery = '', o
                 return renderVideosResults();
             case 'Sounds':
                 return renderSoundsResults();
-            case 'Live':
-                return renderLiveResults();
-            case 'Hashtag':
-                return renderHashtagResults();
             default:
                 return renderTopResults();
         }

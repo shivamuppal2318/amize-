@@ -1,16 +1,19 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Alert,
   KeyboardAvoidingView,
+  NativeSyntheticEvent,
   Platform,
   SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
+  TextInputSelectionChangeEventData,
   TouchableOpacity,
   View,
 } from "react-native";
-import { Stack, useRouter } from "expo-router";
+import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import ActionButton from "@/components/shared/UI/ActionButton";
 import HeaderBar from "@/components/shared/UI/HeaderBar";
 import { usePostingStore } from "@/stores/postingStore";
@@ -34,6 +37,8 @@ import { StatusBar } from "react-native";
 export default function EditPostScreen() {
   const router = useRouter();
   const toast = useToast();
+  const { mode } = useLocalSearchParams<{ mode?: string }>();
+  const isStoryMode = mode === "story";
 
   // Get state from store
   const {
@@ -55,17 +60,24 @@ export default function EditPostScreen() {
   const [showVisibilityOptions, setShowVisibilityOptions] = useState(false);
   const [showSlideshowOptions, setShowSlideshowOptions] = useState(false);
   const [locationText, setLocationText] = useState(draftPost.location || "");
+  const [captionSelection, setCaptionSelection] = useState({
+    start: draftPost.caption.length,
+    end: draftPost.caption.length,
+  });
+  const captionInputRef = useRef<TextInput>(null);
 
   // Slideshow options
   const [createAsSlideshow, setCreateAsSlideshow] = useState(false);
   const [slideDuration, setSlideDuration] = useState(3);
   const [transition, setTransition] = useState("fade");
+  const storyDefaultsAppliedRef = useRef(false);
 
   // Use the custom upload hook
   const { submitPost, isSubmitting } = usePostUpload({
     createAsSlideshow,
     slideDuration,
     transition,
+    postMode: isStoryMode ? "story" : "post",
   });
 
   // Check if we have media to edit
@@ -74,6 +86,36 @@ export default function EditPostScreen() {
       toast.show("Error", "No media selected for editing");
     }
   }, [mediaItems]);
+
+  useEffect(() => {
+    if (!isStoryMode || storyDefaultsAppliedRef.current) {
+      return;
+    }
+
+    storyDefaultsAppliedRef.current = true;
+    updateVisibility("followers");
+
+    if (draftPost.allowComments) {
+      toggleComments();
+    }
+
+    if (draftPost.allowDuets) {
+      toggleDuets();
+    }
+
+    if (draftPost.allowStitch) {
+      toggleStitch();
+    }
+  }, [
+    draftPost.allowComments,
+    draftPost.allowDuets,
+    draftPost.allowStitch,
+    isStoryMode,
+    toggleComments,
+    toggleDuets,
+    toggleStitch,
+    updateVisibility,
+  ]);
 
   // Handle back button press
   const handleBack = () => {
@@ -116,14 +158,42 @@ export default function EditPostScreen() {
     setLocationText(location);
   };
 
-  // Handle hashtag press (placeholder)
-  const handleHashtagPress = () => {
-    toast.show("Coming Soon", "Hashtag selection will be available soon");
+  const handleCaptionSelectionChange = (
+    event: NativeSyntheticEvent<TextInputSelectionChangeEventData>
+  ) => {
+    setCaptionSelection(event.nativeEvent.selection);
   };
 
-  // Handle mention press (placeholder)
+  const insertCaptionToken = (token: "#" | "@") => {
+    const caption = draftPost.caption || "";
+    const start = captionSelection.start ?? caption.length;
+    const end = captionSelection.end ?? caption.length;
+    const prefix = caption.slice(0, start);
+    const suffix = caption.slice(end);
+    const needsLeadingSpace =
+      prefix.length > 0 && !/\s$/.test(prefix) ? " " : "";
+    const nextCaption = `${prefix}${needsLeadingSpace}${token}${suffix}`;
+    const nextCursorPosition = (prefix + needsLeadingSpace + token).length;
+
+    updateCaption(nextCaption);
+    setCaptionSelection({
+      start: nextCursorPosition,
+      end: nextCursorPosition,
+    });
+
+    requestAnimationFrame(() => {
+      captionInputRef.current?.focus();
+    });
+  };
+
+  const handleHashtagPress = () => {
+    insertCaptionToken("#");
+    toast.show("Hashtag Added", "Continue typing your hashtag");
+  };
+
   const handleMentionPress = () => {
-    toast.show("Coming Soon", "Mention selection will be available soon");
+    insertCaptionToken("@");
+    toast.show("Mention Added", "Continue typing the username");
   };
 
   return (
@@ -143,7 +213,7 @@ export default function EditPostScreen() {
 
         {/* Header */}
         <HeaderBar
-          title="New Post"
+          title={isStoryMode ? "New Story" : "New Post"}
           onBackPress={handleBack}
           rightElement={
             <TouchableOpacity
@@ -156,7 +226,7 @@ export default function EditPostScreen() {
                   (isUploading || isSubmitting) && styles.disabledText,
                 ]}
               >
-                Post
+                {isStoryMode ? "Share" : "Post"}
               </Text>
             </TouchableOpacity>
           }
@@ -172,20 +242,25 @@ export default function EditPostScreen() {
             <MediaPreview mediaItems={mediaItems} />
 
             {/* Slideshow Options (for multiple photos) */}
-            <SlideshowOptions
-              mediaItems={mediaItems}
-              createAsSlideshow={createAsSlideshow}
-              slideDuration={slideDuration}
-              transition={transition}
-              onToggleSlideshow={setCreateAsSlideshow}
-              onDurationChange={setSlideDuration}
-              onTransitionPress={() => setShowSlideshowOptions(true)}
-            />
+            {!isStoryMode ? (
+              <SlideshowOptions
+                mediaItems={mediaItems}
+                createAsSlideshow={createAsSlideshow}
+                slideDuration={slideDuration}
+                transition={transition}
+                onToggleSlideshow={setCreateAsSlideshow}
+                onDurationChange={setSlideDuration}
+                onTransitionPress={() => setShowSlideshowOptions(true)}
+              />
+            ) : null}
 
             {/* Caption Input */}
             <CaptionInput
               value={draftPost.caption}
               onChangeText={updateCaption}
+              selection={captionSelection}
+              onSelectionChange={handleCaptionSelectionChange}
+              inputRef={captionInputRef}
             />
 
             {/* Post Settings */}
@@ -202,10 +277,12 @@ export default function EditPostScreen() {
             />
 
             {/* Share to social platforms */}
-            <SocialSharing
-              crossPostSettings={draftPost.crossPost}
-              onTogglePlatform={toggleCrossPost}
-            />
+            {!isStoryMode ? (
+              <SocialSharing
+                crossPostSettings={draftPost.crossPost}
+                onTogglePlatform={toggleCrossPost}
+              />
+            ) : null}
           </ScrollView>
         </KeyboardAvoidingView>
 
@@ -215,6 +292,8 @@ export default function EditPostScreen() {
             label={
               isSubmitting
                 ? "Uploading..."
+                : isStoryMode
+                ? "Share Story"
                 : createAsSlideshow
                 ? "Create Slideshow"
                 : "Post Now"
@@ -236,12 +315,14 @@ export default function EditPostScreen() {
           }
         />
 
-        <SlideshowTransitionPicker
-          visible={showSlideshowOptions}
-          currentTransition={transition}
-          onClose={() => setShowSlideshowOptions(false)}
-          onSelect={setTransition}
-        />
+        {!isStoryMode ? (
+          <SlideshowTransitionPicker
+            visible={showSlideshowOptions}
+            currentTransition={transition}
+            onClose={() => setShowSlideshowOptions(false)}
+            onSelect={setTransition}
+          />
+        ) : null}
 
         <UploadProgress
           visible={isUploading}

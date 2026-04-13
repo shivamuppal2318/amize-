@@ -1,7 +1,11 @@
-export const sanitizeMediaUri = (uri: string): string => {
-    // Handle iOS-specific URI issues (remove fragments after #)
-    if (uri.includes('#')) {
-        return uri.split('#')[0];
+export function sanitizeMediaUri(uri: string): string {
+    if (!uri) {
+        return '';
     }
-    return uri;
-};
+
+    if (uri.startsWith('file://') || uri.startsWith('content://') || uri.startsWith('http')) {
+        return uri;
+    }
+
+    return `file://${uri}`;
+}

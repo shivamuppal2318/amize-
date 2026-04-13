@@ -65,9 +65,9 @@ interface VideoContextValue {
 
     // Cache operations
     addToCache: (video: ApiVideo | VideoItemData) => void;
-    removeFromCache: (videoId: string) => void;
-    clearCache: () => void;
-    clearOldCache: () => void;
+    removeFromCache: (videoId: string) => Promise<void>;
+    clearCache: () => Promise<void>;
+    clearOldCache: () => Promise<void>;
 
     // Video operations
     getVideo: (videoId: string) => Promise<VideoItemData | null>;
@@ -88,7 +88,7 @@ interface VideoContextValue {
 
     // Utility
     getCacheInfo: () => Promise<CacheMetadata>;
-    optimizeCache: () => void;
+    optimizeCache: () => Promise<void>;
 }
 
 const VideoContext = createContext<VideoContextValue | undefined>(undefined);
@@ -120,7 +120,7 @@ export const VideoProvider: React.FC<{children: React.ReactNode}> = ({ children 
     const processingQueue = useRef<boolean>(false);
 
     // Cache directory
-    const cacheDirectory = `${FileSystem.documentDirectory}videocache/`;
+    const cacheDirectory = `${(FileSystem as any).documentDirectory ?? ""}videocache/`;
 
     // Static logging function to avoid recreation
     const log = useRef((message: string, ...args: any[]) => {
@@ -128,7 +128,7 @@ export const VideoProvider: React.FC<{children: React.ReactNode}> = ({ children 
     }).current;
 
     // Debounced persist function with stable reference
-    const debouncedPersist = useRef<() => void>();
+    const debouncedPersist = useRef<() => void>(() => {});
 
     // Initialize debounced persist function
     useEffect(() => {
@@ -403,7 +403,7 @@ export const VideoProvider: React.FC<{children: React.ReactNode}> = ({ children 
 
     // Remove from cache
     const removeFromCache = useCallback((videoId: string) => {
-        queueOperation(async () => {
+        return queueOperation(async () => {
             const cacheItem = cacheDetails.current[videoId];
             if (cacheItem?.localPath) {
                 await FileSystem.deleteAsync(cacheItem.localPath, { idempotent: true });
@@ -436,7 +436,7 @@ export const VideoProvider: React.FC<{children: React.ReactNode}> = ({ children 
 
     // Clear cache
     const clearCache = useCallback(() => {
-        queueOperation(async () => {
+        return queueOperation(async () => {
             Object.values(retryTimers.current).forEach(timer => clearTimeout(timer));
             retryTimers.current = {};
             activeDownloads.current.clear();
@@ -458,7 +458,7 @@ export const VideoProvider: React.FC<{children: React.ReactNode}> = ({ children 
 
     // Optimize cache
     const optimizeCache = useCallback(() => {
-        queueOperation(async () => {
+        return queueOperation(async () => {
             const items = Object.entries(cacheDetails.current);
             items.sort((a, b) => a[1].lastAccessTime - b[1].lastAccessTime);
             const itemsToRemove = items.slice(0, items.length - MAX_CACHE_SIZE + 5);
@@ -488,7 +488,7 @@ export const VideoProvider: React.FC<{children: React.ReactNode}> = ({ children 
         const maxAge = 7 * 24 * 60 * 60 * 1000; // 7 days
         const now = Date.now();
 
-        queueOperation(async () => {
+        return queueOperation(async () => {
             for (const [videoId, item] of Object.entries(cacheDetails.current)) {
                 if (now - item.lastAccessTime > maxAge) {
                     if (item.localPath) {

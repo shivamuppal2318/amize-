@@ -15,7 +15,6 @@ import {
 } from "react-native";
 import { useLocalSearchParams, router } from "expo-router";
 import { useAuth } from "@/hooks/useAuth";
-import * as SecureStore from "expo-secure-store";
 // import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   Lock,
@@ -44,6 +43,7 @@ import {
 import { LinearGradient } from "expo-linear-gradient";
 import apiClient from "@/lib/api/client";
 import { getTokens } from "@/lib/auth/tokens";
+import { mockApiVideos } from "@/data/mockVideos";
 
 const { width } = Dimensions.get("window");
 const ITEM_WIDTH = (width - 18) / 3;
@@ -97,6 +97,56 @@ export interface Video {
   };
 }
 
+const buildMockProfileData = (profileId?: string) => {
+  const fallbackVideos: Video[] = mockApiVideos.map((video) => ({
+    id: video.id,
+    title: video.title || "",
+    description: video.description,
+    thumbnailUrl: video.thumbnailUrl,
+    videoUrl: video.videoUrl,
+    duration: video.duration,
+    isPublic: video.isPublic,
+    createdAt: video.createdAt,
+    user: {
+      id: profileId || video.user.id,
+      username: video.user.username,
+      profilePhotoUrl: video.user.profilePhotoUrl || undefined,
+      creatorVerified: video.user.creatorVerified,
+    },
+    _count: {
+      likes: video.likesCount,
+      comments: video.commentsCount,
+      views: video.viewsCount,
+    },
+  }));
+
+  const baseUser = mockApiVideos[0]?.user;
+  const mockUser: User = {
+    id: profileId || baseUser?.id || "demo-user",
+    username: baseUser?.username || "demo_user",
+    fullName: baseUser?.fullName || "Demo Creator",
+    bio: "Creator in demo mode. Live data will appear once the backend is connected.",
+    profilePhotoUrl: baseUser?.profilePhotoUrl || undefined,
+    creatorVerified: baseUser?.creatorVerified || false,
+    creatorCategory: "Lifestyle",
+    role: "user",
+    isEligibleForCreator: true,
+    location: "Mumbai, IN",
+    joinedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 365).toISOString(),
+    _count: {
+      videos: fallbackVideos.length,
+      following: 128,
+      followers: 12400,
+    },
+  };
+
+  return {
+    user: mockUser,
+    videos: fallbackVideos,
+    likes: fallbackVideos.slice(0, Math.min(6, fallbackVideos.length)),
+  };
+};
+
 export default function ProfilePage() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [loading, setLoading] = useState(true);
@@ -120,6 +170,20 @@ export default function ProfilePage() {
   const profileImageScale = useRef(new Animated.Value(0.8)).current;
   const statsOpacity = useRef(new Animated.Value(0)).current;
 
+  const applyMockProfile = useCallback(
+    (reason: string) => {
+      const mockData = buildMockProfileData(id);
+      console.warn(`[Profile] Using mock profile (${reason})`);
+      setUser(mockData.user);
+      setVideos(mockData.videos);
+      setLikes(mockData.likes);
+      setIsOwnProfile(false);
+      setIsFollowing(false);
+      setError(null);
+    },
+    [id]
+  );
+
   const fetchUserProfile = useCallback(async () => {
     try {
       setLoading(true);
@@ -128,21 +192,21 @@ export default function ProfilePage() {
       console.log(await getTokens());
       const response = await apiClient.get(`/users/${id}`);
 
-      if (response.data.success) {
+      if (response.data.success && response.data?.user) {
         console.log("profile data:::::::::", response?.data?.user);
         setUser(response.data?.user);
         setIsOwnProfile(response.data.isOwnProfile);
         setIsFollowing(response.data.isFollowing);
       } else {
-        setError(response.data.message || "Failed to load profile");
+        applyMockProfile("no data");
       }
     } catch (err) {
       console.error("Error fetching profile:", err);
-      setError("Failed to load profile. Please try again.");
+      applyMockProfile("request failed");
     } finally {
       setLoading(false);
     }
-  }, [id]);
+  }, [id, applyMockProfile]);
 
   const fetchTabContent = useCallback(
     async (tab: TabType) => {
@@ -254,6 +318,8 @@ export default function ProfilePage() {
       }
     } catch (err) {
       console.error("Error fetching videos:", err);
+      const mockData = buildMockProfileData(id);
+      setVideos(mockData.videos);
     }
   }, [id]);
 
@@ -272,6 +338,8 @@ export default function ProfilePage() {
       }
     } catch (err) {
       console.error("Error fetching videos:", err);
+      const mockData = buildMockProfileData(id);
+      setLikes(mockData.likes);
     }
   }, [activeTab]);
 
@@ -568,7 +636,7 @@ export default function ProfilePage() {
   };
 
   const renderVideoItem = ({ item, index }: { item: Video; index: number }) => (
-    <VideoItem item={item} index={index} onPress={handleVideoPress} />
+    <VideoItem item={item} index={index} onPress={() => handleVideoPress(index)} />
   );
 
   const renderTabButton = (

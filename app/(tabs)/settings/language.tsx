@@ -2,9 +2,11 @@ import React from 'react';
 import { SafeAreaView, ScrollView, View, Text, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { router } from 'expo-router';
 import { useLanguage, Language } from '@/hooks/useLanguage';
+import { useI18n } from '@/hooks/useI18n';
 import { SettingsHeader } from '@/components/settings/SettingsHeader';
 
 export default function LanguageScreen() {
+    const { t } = useI18n();
     const {
         currentLanguage,
         suggestedLanguages,
@@ -57,7 +59,7 @@ export default function LanguageScreen() {
 
     return (
         <SafeAreaView className="flex-1 bg-[#1a1a2e]">
-            <SettingsHeader title="Language" onBackPress={handleBack} />
+            <SettingsHeader title={t('settings.language.title')} onBackPress={handleBack} />
 
             {isLoading && (
                 <View className="absolute inset-0 flex items-center justify-center bg-black/50 z-10">
@@ -75,7 +77,7 @@ export default function LanguageScreen() {
                 {suggestedLanguages.length > 0 && (
                     <View className="mb-6">
                         <Text className="text-white text-lg font-semibold mb-3">
-                            Suggested
+                            {t('settings.language.suggested')}
                         </Text>
                         {suggestedLanguages.map(renderLanguageOption)}
                     </View>
@@ -84,7 +86,7 @@ export default function LanguageScreen() {
                 {otherLanguages.length > 0 && (
                     <View className="mb-6">
                         <Text className="text-white text-lg font-semibold mb-3">
-                            Language
+                            {t('settings.language.other')}
                         </Text>
                         {otherLanguages.map(renderLanguageOption)}
                     </View>

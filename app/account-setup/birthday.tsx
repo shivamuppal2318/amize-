@@ -15,11 +15,11 @@ import { useAuth } from "@/hooks/useAuth";
 import DefaultImage from "@/assets/images/figma/cake.png";
 import { useRegistration } from "@/context/RegistrationContext";
 
-const DEFAULT_IMAGE = Image.resolveAssetSource(DefaultImage).uri;
+const DEFAULT_IMAGE = DefaultImage;
 // @ts-ignore
 import AmizeLogo from "@/assets/images/amize.png";
 import { LinearGradient } from "expo-linear-gradient";
-const AMIZE_LOGO = Image.resolveAssetSource(AmizeLogo).uri;
+const AMIZE_LOGO = AmizeLogo;
 
 const months = [
   "January",
@@ -191,7 +191,7 @@ export default function BirthdayScreen() {
                     }}
                   >
                     <Image
-                      source={{ uri: AMIZE_LOGO }}
+                      source={AMIZE_LOGO}
                       style={{ width: 80, height: 80, borderRadius: 40 }}
                       resizeMode="contain"
                     />
@@ -215,7 +215,7 @@ export default function BirthdayScreen() {
                 {/* Cake Illustration */}
                 <View style={{ marginBottom: 32 }}>
                   <Image
-                    source={{ uri: DEFAULT_IMAGE }}
+                    source={DEFAULT_IMAGE}
                     style={{ width: 150, height: 150 }}
                     resizeMode="contain"
                   />

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -11,14 +11,8 @@ import {
   StyleSheet,
 } from "react-native";
 import { StatusBar } from "react-native";
-import { router, useLocalSearchParams } from "expo-router";
-import {
-  ChevronLeft,
-  Mail,
-  Shield,
-  CheckCircle,
-  Clock,
-} from "lucide-react-native";
+import { router } from "expo-router";
+import { ChevronLeft, Mail, Phone, Shield, CheckCircle, Clock } from "lucide-react-native";
 import { Button } from "@/components/ui/Button";
 import { useAuth } from "@/hooks/useAuth";
 import { useRegistration } from "@/context/RegistrationContext";
@@ -26,84 +20,52 @@ import { useRegistration } from "@/context/RegistrationContext";
 // @ts-ignore
 import AmizeLogo from "@/assets/images/amize.png";
 import { LinearGradient } from "expo-linear-gradient";
-const AMIZE_LOGO = Image.resolveAssetSource(AmizeLogo).uri;
 
-type RegistrationData = {
-  firstName: string;
-  lastName: string;
-  username: string;
-  email: string;
-  password: string;
-  confirmPassword: string;
-  bio?: string;
-  gender?: string;
-  dateOfBirth?: string;
-  interests?: string[];
-  profilePhotoUrl?: string;
-  deviceId?: string;
-  deviceInfo?: any;
-};
+const AMIZE_LOGO = AmizeLogo;
 
 export default function VerifyScreen() {
-  const { updatedData } = useLocalSearchParams<{ updatedData?: string }>();
-  const parsed_User_Data = updatedData
-    ? (JSON.parse(updatedData) as RegistrationData)
-    : null;
+  const { verifyCode, resendVerificationCode, completeSignupFlow } = useAuth();
+  const { registrationData } = useRegistration();
 
-  const { verifyCode, resendVerificationCode, user, logout } = useAuth();
-  const { registrationData, updateRegistrationData, getRegistrationRequest } =
-    useRegistration();
-
-  const [code, setCode] = useState<string>("");
-  const [verifying, setVerifying] = useState<boolean>(false);
-  const [resending, setResending] = useState<boolean>(false);
-  const [timer, setTimer] = useState<number>(60);
-  const [inputValues, setInputValues] = useState<string[]>([
-    "",
-    "",
-    "",
-    "",
-    "",
-    "",
-  ]);
+  const [code, setCode] = useState("");
+  const [verifying, setVerifying] = useState(false);
+  const [resending, setResending] = useState(false);
+  const [timer, setTimer] = useState(60);
+  const [inputValues, setInputValues] = useState(["", "", "", "", "", ""]);
   const inputRefs = useRef<(TextInput | null)[]>([]);
 
-  const userEmail =
-    parsed_User_Data?.email || registrationData.email || user?.email;
-  // const userEmail = "abhisheks@pearlorganisation.com";
-  // const userEmail = "pranjal@pearlorganisation.com";
+  const verificationTarget = registrationData.email || registrationData.phoneNumber || "";
+  const isEmailTarget = Boolean(registrationData.email);
 
-  // Set up resend timer
   useEffect(() => {
-    if (timer > 0) {
-      const interval = setInterval(() => {
-        setTimer((prevTimer) => prevTimer - 1);
-      }, 1000);
-      return () => clearInterval(interval);
+    if (timer <= 0) {
+      return undefined;
     }
+
+    const interval = setInterval(() => {
+      setTimer((prevTimer) => prevTimer - 1);
+    }, 1000);
+
+    return () => clearInterval(interval);
   }, [timer]);
 
-  // Handle code input
   const handleInputChange = (text: string, index: number) => {
-    // Check if this might be a paste operation (text longer than 1 character)
     if (text.length > 1) {
       handleCodePaste(text);
       return;
     }
 
-    // Allow only digits
-    if (!/^\d*$/.test(text)) return;
+    if (!/^\d*$/.test(text)) {
+      return;
+    }
 
-    // Update input values
     const newInputValues = [...inputValues];
     newInputValues[index] = text;
     setInputValues(newInputValues);
 
-    // Combine all inputs to form the complete code
     const fullCode = newInputValues.join("");
     setCode(fullCode);
 
-    // Move focus to next input or previous input based on whether text was entered or deleted
     if (text.length === 1 && index < 5) {
       inputRefs.current[index + 1]?.focus();
     } else if (text.length === 0 && index > 0) {
@@ -111,24 +73,26 @@ export default function VerifyScreen() {
     }
   };
 
-  // Handle code paste
   const handleCodePaste = (pastedText: string) => {
-    // Clean the pasted text to include only digits
     const cleanedText = pastedText.replace(/[^0-9]/g, "").slice(0, 6);
 
     if (cleanedText.length === 6) {
-      // Fill all inputs
       const chars = cleanedText.split("");
       setInputValues(chars);
       setCode(cleanedText);
-
-      // Focus the last input
       inputRefs.current[5]?.focus();
     }
   };
 
-  // Handle verification
   const handleVerify = async () => {
+    if (!verificationTarget) {
+      Alert.alert(
+        "Missing Contact",
+        "Your signup contact is missing. Go back and complete the profile step again."
+      );
+      return;
+    }
+
     if (code.length !== 6) {
       Alert.alert(
         "Invalid Code",
@@ -137,69 +101,55 @@ export default function VerifyScreen() {
       return;
     }
 
-    // setVerifying(true);
-
     try {
-      console.log("Verifying code for email:", userEmail, "Code:", code);
+      setVerifying(true);
+      const result = await verifyCode(verificationTarget, code);
 
-      const result = await verifyCode(userEmail ? userEmail : "", code);
-      console.log("Verification result:", result);
-
-      if (result.success) {
-        // Navigate to main app after successful verification
-        router.replace("/(tabs)");
-      } else {
+      if (!result.success) {
         Alert.alert(
           "Verification Failed",
           result.message || "Invalid verification code. Please try again."
         );
-        // Clear inputs on failed verification
-        // setInputValues(['', '', '', '', '', '']);
-        // setCode('');
-        // inputRefs.current[0]?.focus();
+        return;
       }
+
+      await completeSignupFlow();
+      router.replace("/(tabs)");
     } catch (error) {
       Alert.alert("Error", "An unexpected error occurred. Please try again.");
-      console.log("Verification error:", error);
     } finally {
-      // setVerifying(false);
+      setVerifying(false);
     }
   };
 
-  // Handle resend
   const handleResend = async () => {
-    if (timer > 0) return;
-
-    setResending(true);
+    if (timer > 0 || !verificationTarget) {
+      return;
+    }
 
     try {
-      const result = await resendVerificationCode(userEmail ? userEmail : "");
+      setResending(true);
+      const result = await resendVerificationCode(verificationTarget);
 
-      if (result.success) {
-        // Reset timer
-        setTimer(60);
-
-        // Reset code inputs
-        setInputValues(["", "", "", "", "", ""]);
-        setCode("");
-
-        // Focus first input
-        inputRefs.current[0]?.focus();
-
-        Alert.alert(
-          "Code Sent",
-          "A new verification code has been sent to your email."
-        );
-      } else {
+      if (!result.success) {
         Alert.alert(
           "Error",
-          result.message ||
-            "Failed to resend verification code. Please try again."
+          result.message || "Failed to resend verification code. Please try again."
         );
+        return;
       }
+
+      setTimer(60);
+      setInputValues(["", "", "", "", "", ""]);
+      setCode("");
+      inputRefs.current[0]?.focus();
+
+      Alert.alert(
+        "Code Sent",
+        `A new verification code has been sent to your ${isEmailTarget ? "email" : "phone"}.`
+      );
     } catch (error) {
       Alert.alert("Error", "An unexpected error occurred. Please try again.");
-      console.error("Resend error:", error);
     } finally {
       setResending(false);
     }
@@ -227,53 +177,50 @@ export default function VerifyScreen() {
         >
           <ScrollView contentContainerStyle={styles.scrollContainer}>
             <View style={styles.content}>
-              {/* Header */}
               <View style={styles.header}>
                 <TouchableOpacity
                   style={styles.backButton}
-                  onPress={async () => {
-                    console.log("Navigating back to Get Started");
-                    await logout();
-                    await router.replace("/(auth)/get-started");
-                  }}
+                  onPress={() => router.back()}
                 >
                   <ChevronLeft size={24} color="white" />
                 </TouchableOpacity>
 
-                <Text style={styles.headerTitle}>Email Verification</Text>
+                <Text style={styles.headerTitle}>Account Verification</Text>
 
                 <View style={styles.headerSpacer} />
               </View>
 
-              {/* Content Container */}
               <View style={styles.mainContent}>
-                {/* Logo and Header Section */}
                 <View style={styles.logoSection}>
-                  {/* Logo */}
                   <View style={styles.logoContainer}>
                     <Image
-                      source={{ uri: AMIZE_LOGO }}
+                      source={AMIZE_LOGO}
                       style={styles.logo}
                       resizeMode="contain"
                     />
                   </View>
 
-                  {/* Title */}
-                  <Text style={styles.title}>Check Your Email</Text>
+                  <Text style={styles.title}>
+                    {isEmailTarget ? "Check Your Email" : "Check Your Phone"}
+                  </Text>
 
-                  {/* Subtitle */}
                   <View style={styles.subtitleContainer}>
                     <Text style={styles.subtitle}>
-                      We've sent a 6-digit verification code to
+                      We have sent a 6-digit verification code to
                     </Text>
                     <View style={styles.emailContainer}>
-                      <Mail size={16} color="#fff" style={styles.emailIcon} />
-                      <Text style={styles.emailText}>{userEmail}</Text>
+                      {isEmailTarget ? (
+                        <Mail size={16} color="#fff" style={styles.emailIcon} />
+                      ) : (
+                        <Phone size={16} color="#fff" style={styles.emailIcon} />
+                      )}
+                      <Text style={styles.emailText}>
+                        {verificationTarget || "No contact found"}
+                      </Text>
                     </View>
                   </View>
                 </View>
 
-                {/* Verification Code Input */}
                 <View style={styles.codeSection}>
                   <View style={styles.codeInputContainer}>
                     {[0, 1, 2, 3, 4, 5].map((index) => (
@@ -304,7 +251,6 @@ export default function VerifyScreen() {
                     ))}
                   </View>
 
-                  {/* Code Success Indicator */}
                   {code.length === 6 && (
                     <View style={styles.successIndicator}>
                       <CheckCircle size={16} color="#10B981" />
@@ -315,10 +261,9 @@ export default function VerifyScreen() {
                   )}
                 </View>
 
-                {/* Resend Section */}
                 <View style={styles.resendSection}>
                   <Text style={styles.resendPrompt}>
-                    Didn't receive the code?
+                    Did not receive the code?
                   </Text>
 
                   {timer > 0 ? (
@@ -342,20 +287,17 @@ export default function VerifyScreen() {
                   )}
                 </View>
 
-                {/* Security Notice */}
                 <View style={styles.securityNotice}>
                   <Shield size={20} color="#9CA3AF" />
                   <Text style={styles.securityText}>
-                    This step helps us verify your identity and secure your
-                    account
+                    This step verifies your identity before you enter the app.
                   </Text>
                 </View>
               </View>
 
-              {/* Verify Button */}
               <View style={styles.buttonContainer}>
                 <Button
-                  label={verifying ? "Verifying..." : "Verify Email"}
+                  label={verifying ? "Verifying..." : "Verify Account"}
                   onPress={handleVerify}
                   variant="primary"
                   fullWidth
@@ -465,7 +407,6 @@ const styles = StyleSheet.create({
     marginRight: 6,
   },
   emailText: {
-    // color: "#FF5A5F",
     color: "#fff",
     fontSize: 16,
     fontFamily: "Figtree",
@@ -476,14 +417,6 @@ const styles = StyleSheet.create({
     maxWidth: 400,
     alignItems: "center",
     marginBottom: 32,
-  },
-  codeLabel: {
-    color: "#9CA3AF",
-    fontSize: 16,
-    fontFamily: "Figtree",
-    fontWeight: "500",
-    marginBottom: 20,
-    textAlign: "center",
   },
   codeInputContainer: {
     flexDirection: "row",
@@ -561,7 +494,6 @@ const styles = StyleSheet.create({
     borderRadius: 16,
   },
   resendButtonText: {
-    // color: "#FF5A5F",
     color: "#fff",
     fontSize: 16,
     fontFamily: "Figtree",

@@ -5,7 +5,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 //@ts-ignore
 import DefaultImage from '@/assets/images/amize.png';
 
-const DEFAULT_IMAGE = Image.resolveAssetSource(DefaultImage).uri;
+const DEFAULT_IMAGE = DefaultImage;
 
 const COLORS = {
     background: '#1a1a2e',
@@ -145,7 +145,7 @@ export default function SplashScreen() {
                         >
                             <View style={styles.logoImageContainer}>
                                 <Image
-                                    source={{ uri: DEFAULT_IMAGE }}
+                                    source={DEFAULT_IMAGE}
                                     style={styles.logoImage}
                                     resizeMode="contain"
                                 />

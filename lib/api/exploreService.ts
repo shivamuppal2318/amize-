@@ -1,6 +1,7 @@
 import apiClient from './client';
 import { isTokenAuthenticated } from "@/lib/auth/tokens";
 import { MixedFeedItem } from "@/lib/api/types/video";
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Original types (keep for backward compatibility)
 export interface SearchUser {
@@ -153,6 +154,68 @@ export interface ApiExploreResponse {
     };
 }
 
+type StoredSearchHistoryItem = {
+    id: string;
+    query: string;
+    timestamp: number;
+    resultCount?: number;
+    type?: 'search' | 'trending';
+};
+
+const SEARCH_HISTORY_KEY = '@search_history';
+const MAX_SEARCH_HISTORY_ITEMS = 50;
+
+const loadStoredSearchHistory = async (): Promise<StoredSearchHistoryItem[]> => {
+    const rawHistory = await AsyncStorage.getItem(SEARCH_HISTORY_KEY);
+
+    if (!rawHistory) {
+        return [];
+    }
+
+    try {
+        const parsedHistory = JSON.parse(rawHistory) as StoredSearchHistoryItem[];
+        return Array.isArray(parsedHistory) ? parsedHistory : [];
+    } catch (error) {
+        console.warn('Failed to parse stored search history:', error);
+        return [];
+    }
+};
+
+const saveStoredSearchHistory = async (
+    history: StoredSearchHistoryItem[]
+): Promise<void> => {
+    await AsyncStorage.setItem(SEARCH_HISTORY_KEY, JSON.stringify(history));
+};
+
+const addSearchQueryToHistory = async (
+    query: string,
+    resultCount?: number
+): Promise<void> => {
+    const trimmedQuery = query.trim().toLowerCase();
+
+    if (!trimmedQuery) {
+        return;
+    }
+
+    const existingHistory = await loadStoredSearchHistory();
+    const filteredHistory = existingHistory.filter(
+        (item) => item.query.toLowerCase() !== trimmedQuery
+    );
+
+    const nextHistory: StoredSearchHistoryItem[] = [
+        {
+            id: `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+            query: trimmedQuery,
+            timestamp: Date.now(),
+            resultCount,
+            type: 'search' as const,
+        },
+        ...filteredHistory,
+    ].slice(0, MAX_SEARCH_HISTORY_ITEMS);
+
+    await saveStoredSearchHistory(nextHistory);
+};
+
 /**
  * Enhanced Search and Explore Service with Mixed Feed Support
  */
@@ -235,6 +298,12 @@ const SearchService = {
 
         try {
             const response = await apiClient.get<ApiSearchResponse>(`/search?${searchParams.toString()}`);
+            const totalResults = response.data.results.total;
+
+            addSearchQueryToHistory(params.q, totalResults).catch((error) => {
+                console.warn('Failed to persist search history:', error);
+            });
+
             return response.data.results;
         } catch (error) {
             console.error('Search failed:', error);
@@ -478,35 +547,35 @@ const SearchService = {
         };
     })(),
 
-    // Get search history (placeholder - would need backend implementation)
+    // Get search history from local storage for mobile/web persistence
     getSearchHistory: async (): Promise<string[]> => {
-        const isAuth = await SearchService.isAuthenticated();
-        if (!isAuth) {
-            return [];
-        }
-
         try {
-            // This would need a backend endpoint to store/retrieve search history
-            return [];
+            const history = await loadStoredSearchHistory();
+            return history
+                .sort((a, b) => b.timestamp - a.timestamp)
+                .map((item) => item.query);
         } catch (error) {
             console.warn('Failed to get search history:', error);
             return [];
         }
     },
 
-    // Clear search history (placeholder)
+    // Clear locally stored search history
     clearSearchHistory: async (): Promise<boolean> => {
-        const isAuth = await SearchService.isAuthenticated();
-        if (!isAuth) {
-            return false;
-        }
-
         try {
-            // This would need a backend endpoint to clear search history
+            await AsyncStorage.removeItem(SEARCH_HISTORY_KEY);
             return true;
         } catch (error) {
             console.warn('Failed to clear search history:', error);
             return false;
+        }
+    },
+
+    saveSearchHistoryEntry: async (query: string, resultCount?: number): Promise<void> => {
+        try {
+            await addSearchQueryToHistory(query, resultCount);
+        } catch (error) {
+            console.warn('Failed to save search history:', error);
         }
     },
 

@@ -30,6 +30,8 @@ export const setErrorHandler = (handler: ErrorHandler) => {
 const PUBLIC_ENDPOINTS = [
   "/videos",
   "/videos/trending",
+  "/explore/nearby",
+  "/discovery/topics",
   "/auth/login",
   "/auth/register",
   "/auth/verify-code",
@@ -102,6 +104,21 @@ const isExpected401 = (url: string, method: string): boolean => {
   return false;
 };
 
+const isSuspendedAccountError = (status?: number, data?: any): boolean => {
+  if (status !== 403) {
+    return false;
+  }
+
+  const message =
+    typeof data?.message === "string" ? data.message.toLowerCase() : "";
+
+  return (
+    message.includes("inactive or suspended") ||
+    message.includes("account is inactive") ||
+    message.includes("suspended")
+  );
+};
+
 // Create axios instance with default config
 const apiClient = axios.create({
   baseURL: API_CONFIG.BASE_URL,
@@ -155,6 +172,19 @@ export const responseInterceptor = async (error: AxiosError) => {
   const status = error.response?.status;
   const url = originalRequest.url || "";
   const method = originalRequest.method || "GET";
+  const errorData = error.response?.data as any;
+
+  if (isSuspendedAccountError(status, errorData) && originalRequest.expectsAuth) {
+    await clearAuthData();
+
+    if (errorHandler?.showAuthError) {
+      errorHandler.showAuthError(
+        "Your account is inactive or suspended. Please contact support if you think this is a mistake."
+      );
+    }
+
+    return Promise.reject(error);
+  }
 
   // Handle 401 Unauthorized errors
   if (status === 401) {
@@ -225,8 +255,6 @@ export const responseInterceptor = async (error: AxiosError) => {
 
   // Handle all other API errors with enhanced error handling
   if (errorHandler && status !== 401) {
-    const errorData = error.response?.data as any;
-
     // Don't show errors for certain non-critical endpoints
     const shouldSuppressError =
       url.includes("/analytics") || // Analytics might fail gracefully

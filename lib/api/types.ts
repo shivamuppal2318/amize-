@@ -7,7 +7,7 @@ export interface DeviceInfo {
 }
 
 export interface LoginRequest {
-    email: string;
+    identifier: string;
     password: string;
     deviceId?: string;
     deviceInfo?: DeviceInfo;
@@ -16,6 +16,8 @@ export interface LoginRequest {
 export interface RegisterRequest {
     username: string;
     email: string;
+    phoneNumber?: string;
+    address?: string;
     password: string;
     confirmPassword: string;
     firstName?: string;
@@ -31,6 +33,23 @@ export interface RegisterRequest {
 
 export interface RefreshTokenRequest {
     refreshToken: string;
+}
+
+export interface GoogleLoginRequest {
+    idToken: string;
+}
+
+export interface FacebookLoginRequest {
+    accessToken: string;
+}
+
+export interface AppleLoginRequest {
+    identityToken: string;
+    userIdentifier?: string;
+    email?: string;
+    fullName?: string;
+    firstName?: string;
+    lastName?: string;
 }
 
 // Response Types
@@ -97,7 +116,7 @@ export interface VerifyCodeResponse {
 }
 
 export interface VerifyCodeRequest {
-    email: string;
+    identifier: string;
     code: string;
 }
 
@@ -133,7 +152,10 @@ export interface AuthContextValue {
     loading: boolean;
     hasCompletedOnboarding: boolean;
     isInSignupFlow: boolean;
-    login: (email: string, password: string) => Promise<LoginResult>;
+    login: (identifier: string, password: string) => Promise<LoginResult>;
+    loginWithGoogle: (idToken: string) => Promise<LoginResult>;
+    loginWithFacebook: (accessToken: string) => Promise<LoginResult>;
+    loginWithApple: (data: AppleLoginRequest) => Promise<LoginResult>;
     register: (userData: RegisterRequest) => Promise<RegisterResult>;
     logout: () => Promise<void>;
     updateUser: (data: Partial<User>) => void;
@@ -141,7 +163,7 @@ export interface AuthContextValue {
     removeInterest: (interest: string) => void;
     setOnboardingComplete: () => Promise<void>;
     completeSignupFlow: () => Promise<void>;
-    verifyCode: (email: string, code: string) => Promise<VerifyCodeResponse>;
-    resendVerificationCode: (email: string) => Promise<ResendCodeResponse>;
+    verifyCode: (identifier: string, code: string) => Promise<VerifyCodeResponse>;
+    resendVerificationCode: (identifier: string) => Promise<ResendCodeResponse>;
     startSignupFlow: () => Promise<void>;
 }

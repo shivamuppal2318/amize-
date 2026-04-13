@@ -5,9 +5,9 @@ import * as MediaLibrary from 'expo-media-library';
 import { Linking, Platform, Alert } from 'react-native';
 
 export const useCameraPermissions = () => {
-    const [cameraPermission, setCameraPermission] = useState(null);
-    const [microphonePermission, setMicrophonePermission] = useState(null);
-    const [mediaLibraryPermission, setMediaLibraryPermission] = useState(null);
+    const [cameraPermission, setCameraPermission] = useState<boolean | null>(null);
+    const [microphonePermission, setMicrophonePermission] = useState<boolean | null>(null);
+    const [mediaLibraryPermission, setMediaLibraryPermission] = useState<boolean | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
     // Check if all required permissions are granted

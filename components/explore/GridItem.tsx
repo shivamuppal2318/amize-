@@ -22,6 +22,8 @@ import {
 import { useVideoPlayer, VideoView, VideoSource } from 'expo-video';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MixedFeedItem } from "@/lib/api/types/video";
+import { isDemoMode } from "@/lib/release/releaseConfig";
+import { canUseLocalDemoAuth } from "@/lib/auth/localDemoAuth";
 
 interface GridItemProps {
     item: MixedFeedItem;
@@ -40,6 +42,7 @@ const GridItem: React.FC<GridItemProps> = memo(({
                                                     onUserPress,
                                                     onSoundPress,
                                                 }) => {
+    const demoMode = isDemoMode() || canUseLocalDemoAuth();
     // State
     const [isLoading, setIsLoading] = useState(true);
     const [isPlaying, setIsPlaying] = useState(false);
@@ -179,6 +182,87 @@ const GridItem: React.FC<GridItemProps> = memo(({
                     )}
 
                     {/* Minimal info overlay */}
+                    <View style={styles.videoOverlay}>
+                        {video.title && (
+                            <Text style={styles.videoTitle} numberOfLines={1}>
+                                {video.title}
+                            </Text>
+                        )}
+
+                        <View style={styles.videoMeta}>
+                            <TouchableOpacity
+                                style={styles.creatorInfo}
+                                onPress={() => onUserPress(video.user)}
+                            >
+                                <Text style={styles.creatorName} numberOfLines={1}>
+                                    {video.user.fullName || video.user.username}
+                                </Text>
+                                {video.user.creatorVerified && (
+                                    <View style={styles.verifiedBadge}>
+                                        <Check size={8} color="white" />
+                                    </View>
+                                )}
+                            </TouchableOpacity>
+
+                            <View style={styles.videoStats}>
+                                <View style={styles.statItem}>
+                                    <Eye size={8} color="#DDD" />
+                                    <Text style={styles.statText}>{formatNumber(video.viewsCount)}</Text>
+                                </View>
+                            </View>
+                        </View>
+                    </View>
+                </TouchableOpacity>
+            </Animated.View>
+        );
+    };
+
+    const DemoVideoItem = ({ video }: { video: any }) => {
+        const thumbnail = getImageUrl(video.thumbnailUrl || video.poster, 'video');
+
+        const handleOpenVideo = useCallback(() => {
+            onVideoPress(video);
+        }, [video]);
+
+        return (
+            <Animated.View
+                style={[
+                    styles.itemContainer,
+                    { width, height, transform: [{ scale: scaleAnim }], opacity: opacityAnim }
+                ]}
+            >
+                <TouchableOpacity
+                    style={styles.videoTouchable}
+                    onPress={handleOpenVideo}
+                    activeOpacity={0.95}
+                >
+                    <Image
+                        source={{ uri: thumbnail }}
+                        style={styles.videoThumbnail}
+                        resizeMode="cover"
+                        onLoadEnd={() => setIsLoading(false)}
+                    />
+
+                    {isLoading && (
+                        <View style={styles.loaderContainer}>
+                            <ActivityIndicator size="small" color="#FF5A5F" />
+                        </View>
+                    )}
+
+                    <LinearGradient
+                        colors={['transparent', 'rgba(0,0,0,0.8)']}
+                        locations={[0.6, 1]}
+                        style={styles.gradientOverlay}
+                    />
+
+                    {video.duration && (
+                        <View style={styles.durationBadge}>
+                            <Text style={styles.durationText}>
+                                {Math.floor(video.duration / 60)}:{String(Math.floor(video.duration % 60)).padStart(2, '0')}
+                            </Text>
+                        </View>
+                    )}
+
                     <View style={styles.videoOverlay}>
                         {video.title && (
                             <Text style={styles.videoTitle} numberOfLines={1}>
@@ -417,7 +501,7 @@ const GridItem: React.FC<GridItemProps> = memo(({
     // Render based on item type
     switch (item.type) {
         case 'video':
-            return <VideoItem video={item.data} />;
+            return demoMode ? <DemoVideoItem video={item.data} /> : <VideoItem video={item.data} />;
         case 'user':
             return <UserItem user={item.data} />;
         case 'sound':

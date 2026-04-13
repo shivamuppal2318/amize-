@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { SafeAreaView, ScrollView, View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import { SafeAreaView, ScrollView, View, Text, TouchableOpacity, StyleSheet, Alert, Linking } from 'react-native';
 import { router } from 'expo-router';
 import {
     ArrowLeft,
@@ -11,7 +11,7 @@ import {
     Instagram
 } from 'lucide-react-native';
 import { CustomTabNavigation } from '@/components/settings/CustomTabNavigation';
-import { CONTACT_METHODS } from '@/lib/settings/constants';
+import { CONTACT_METHODS, CONTACT_METHOD_LINKS } from '@/lib/settings/constants';
 import { LinearGradient } from 'expo-linear-gradient';
 
 export default function ContactUsScreen() {
@@ -28,13 +28,36 @@ export default function ContactUsScreen() {
         setActiveTab(tab);
     };
 
-    const handleContactMethod = (methodId: string) => {
-        // TODO !!-- LINKS
-        Alert.alert(
-            'Contact Support',
-            `You would be redirected to ${methodId}`,
-            [{ text: 'OK' }]
-        );
+    const handleContactMethod = async (methodId: string) => {
+        const targetUrl = CONTACT_METHOD_LINKS[methodId];
+
+        if (!targetUrl) {
+            Alert.alert(
+                'Contact Support',
+                'This contact method is not configured yet.'
+            );
+            return;
+        }
+
+        try {
+            const supported = await Linking.canOpenURL(targetUrl);
+
+            if (!supported) {
+                Alert.alert(
+                    'Contact Support',
+                    'This contact link cannot be opened on this device right now.'
+                );
+                return;
+            }
+
+            await Linking.openURL(targetUrl);
+        } catch (error) {
+            console.error('Error opening contact link:', error);
+            Alert.alert(
+                'Contact Support',
+                'Unable to open this contact method right now.'
+            );
+        }
     };
 
     // Map contact method IDs to their respective icons

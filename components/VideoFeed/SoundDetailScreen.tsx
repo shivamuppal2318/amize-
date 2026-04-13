@@ -27,7 +27,7 @@ import React from 'react';
 
     // @ts-ignore
     import DefaultImage from '@/assets/images/figma/Mobile inbox-bro 1.png';
-    const DEFAULT_IMAGE = Image.resolveAssetSource(DefaultImage).uri;
+    const DEFAULT_IMAGE = DefaultImage;
 
     const SoundDetailScreen: React.FC<SoundDetailScreenProps> = ({
         onClose,
@@ -132,7 +132,7 @@ import React from 'react';
                         <View style={styles.artistInfoContainer}>
                             <View style={styles.artistInfo}>
                                 <Image
-                                    source={{uri: DEFAULT_IMAGE}}
+                                    source={DEFAULT_IMAGE}
                                     style={styles.artistImage}
                                     defaultSource={{ uri: soundData.profileImage }}
                                 />

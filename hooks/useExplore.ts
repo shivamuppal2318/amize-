@@ -11,6 +11,8 @@ import SearchService, {
     MixedFeedResponse,
 } from '@/lib/api/exploreService';
 import { MixedFeedItem } from "@/lib/api/types/video";
+import { isDemoMode } from "@/lib/release/releaseConfig";
+import { mockMixedFeed } from "@/data/mockVideos";
 
 interface UseExploreOptions {
     initialQuery?: string;
@@ -162,6 +164,15 @@ export const useExplore = (options: UseExploreOptions = {}): UseExploreReturn =>
         // Skip if not mounted
         if (!isMounted.current) return;
 
+        if (isDemoMode()) {
+            setMixedFeed(mockMixedFeed);
+            setMixedFeedHasMore(false);
+            setMixedFeedOffset(mockMixedFeed.length);
+            setMixedFeedLoading(false);
+            setRefreshing(false);
+            return;
+        }
+
         // Check if we're already loading or throttled
         if (!refresh && state.inProgress) {
             debouncedLog("Load more already in progress, skipping");
@@ -237,14 +248,17 @@ export const useExplore = (options: UseExploreOptions = {}): UseExploreReturn =>
             if (isMounted.current) {
                 // Only update if the query hasn't changed during request
                 if (currentQuery === searchQuery) {
+                    const hasFeed = response.feed && response.feed.length > 0;
+                    const feedToUse = hasFeed ? response.feed : mockMixedFeed;
+
                     if (refresh || currentOffset === 0) {
-                        setMixedFeed(response.feed);
+                        setMixedFeed(feedToUse);
                     } else {
-                        setMixedFeed(prev => [...prev, ...response.feed]);
+                        setMixedFeed(prev => [...prev, ...feedToUse]);
                     }
 
-                    setMixedFeedHasMore(response.pagination.hasMore);
-                    setMixedFeedOffset(currentOffset + response.feed.length);
+                    setMixedFeedHasMore(hasFeed ? response.pagination.hasMore : false);
+                    setMixedFeedOffset(currentOffset + feedToUse.length);
 
                     // Update load more state
                     state.lastSuccessfulQuery = currentQuery;
@@ -264,7 +278,9 @@ export const useExplore = (options: UseExploreOptions = {}): UseExploreReturn =>
                     state.retryCount = 0;
                 }
 
+                setMixedFeed(mockMixedFeed);
                 setMixedFeedHasMore(false);
+                setMixedFeedOffset(mockMixedFeed.length);
             }
         } finally {
             if (isMounted.current) {

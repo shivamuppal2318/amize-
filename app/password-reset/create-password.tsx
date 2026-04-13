@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { View, Text, SafeAreaView, TouchableOpacity } from 'react-native';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { ChevronLeft, Lock } from 'lucide-react-native';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -11,11 +11,23 @@ const StyledSafeAreaView = SafeAreaView
 const StyledTouchableOpacity = TouchableOpacity
 
 export default function CreatePasswordScreen() {
+    const { method, target } = useLocalSearchParams<{
+        method?: string;
+        target?: string;
+    }>();
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [rememberMe, setRememberMe] = useState(false);
     const [errors, setErrors] = useState({ password: '', confirmPassword: '' });
     const [loading, setLoading] = useState(false);
+
+    const resetTarget = useMemo(() => {
+        if (typeof target === 'string' && target.length > 0) {
+            return target;
+        }
+
+        return method === 'email' ? '****@yourdomain.com' : '+1 (555) ******99';
+    }, [method, target]);
 
     const validateForm = () => {
         let isValid = true;
@@ -67,9 +79,13 @@ export default function CreatePasswordScreen() {
                     </Text>
                 </StyledView>
 
+                <Text className="text-gray-400 mb-6">
+                    Resetting password for {resetTarget}
+                </Text>
+
                 <StyledView className="mb-6">
                     <Input
-                        placeholder="Password"
+                        placeholder="New password"
                         value={password}
                         onChangeText={setPassword}
                         secureTextEntry
@@ -77,7 +93,7 @@ export default function CreatePasswordScreen() {
                         error={errors.password}
                     />
                     <Input
-                        placeholder="Password"
+                        placeholder="Confirm new password"
                         value={confirmPassword}
                         onChangeText={setConfirmPassword}
                         secureTextEntry

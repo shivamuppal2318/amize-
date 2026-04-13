@@ -32,49 +32,18 @@ export default function ForgotPasswordScreen() {
 
                 <StyledView className="flex-1 items-center justify-center">
                     <StyledView className="w-64 h-64 justify-center items-center mb-6">
-                        {/* Person pointing to form illustration - would be replaced with actual illustration */}
                         <StyledView className="w-48 h-48 bg-[#1E1E1E] rounded-full justify-center items-center">
                             <Text className="text-[#FF5A5F] text-6xl">?</Text>
                         </StyledView>
                     </StyledView>
 
                     <Text className="text-gray-400 text-center mb-8">
-                        Select which contact details should we use to reset your password
+                        We will guide you through selecting a reset method and verifying your account before you create a new password.
                     </Text>
                 </StyledView>
 
-                <StyledView className="mb-6">
-                    <TouchableOpacity
-                        className="flex-row items-center bg-[#2A2A2A] rounded-xl p-4 mb-4 border border-transparent"
-                        onPress={() => {
-                        }}
-                    >
-                        <StyledView className="w-12 h-12 bg-[#1E1E1E] rounded-full items-center justify-center mr-4">
-                            <Text className="text-[#FF5A5F] text-xl">SMS</Text>
-                        </StyledView>
-                        <StyledView className="flex-1">
-                            <Text className="text-gray-400 text-sm">via SMS</Text>
-                            <Text className="text-white font-medium">+1 (555) ******99</Text>
-                        </StyledView>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                        className="flex-row items-center bg-[#2A2A2A] rounded-xl p-4 border border-transparent"
-                        onPress={() => {
-                        }}
-                    >
-                        <StyledView className="w-12 h-12 bg-[#1E1E1E] rounded-full items-center justify-center mr-4">
-                            <Text className="text-[#FF5A5F] text-xl">@</Text>
-                        </StyledView>
-                        <StyledView className="flex-1">
-                            <Text className="text-gray-400 text-sm">via Email</Text>
-                            <Text className="text-white font-medium">****@yourdomain.com</Text>
-                        </StyledView>
-                    </TouchableOpacity>
-                </StyledView>
-
                 <Button
-                    label="Continue"
+                    label="Choose Reset Method"
                     onPress={handleContinue}
                     variant="primary"
                     fullWidth

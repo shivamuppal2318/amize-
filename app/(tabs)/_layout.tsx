@@ -11,6 +11,7 @@ import Svg, { Path, SvgProps } from "react-native-svg";
 import CreateOptionModal from "@/components/create/CreateOptionModal";
 import { useAuth } from "@/hooks/useAuth";
 import { useAuthModal } from "@/context/AuthModalContext";
+import { VideoProvider } from "@/context/VideoContext";
 import {
   SafeAreaView,
   useSafeAreaInsets,
@@ -142,153 +143,156 @@ export default function TabLayout() {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, marginTop: -40 }}>
-      <Tabs
-        screenOptions={{
-          headerShown: false,
-          tabBarStyle: {
-            backgroundColor: "#1E4A72",
-            borderTopWidth: 0,
-            elevation: 0,
-            height: 40 + insets.bottom,
-            paddingTop: 5,
-          },
-          tabBarActiveTintColor: "#fff",
-          tabBarInactiveTintColor: "#888",
-          tabBarShowLabel: false,
-        }}
-        tabBar={({ navigation, state, descriptors }) => (
-          <View
-            style={[
-              styles.tabBar,
-              {
-                height: 50 + Math.max(insets.bottom, 5),
-              },
-            ]}
-          >
-            {state.routes
-              .filter((route) =>
-                ["index", "explore", "create", "inbox", "profile"].includes(
-                  route.name
+    <VideoProvider>
+      <SafeAreaView style={{ flex: 1, marginTop: -40 }}>
+        <Tabs
+          screenOptions={{
+            headerShown: false,
+            tabBarStyle: {
+              backgroundColor: "#1E4A72",
+              borderTopWidth: 0,
+              elevation: 0,
+              height: 40 + insets.bottom,
+              paddingTop: 5,
+            },
+            tabBarActiveTintColor: "#fff",
+            tabBarInactiveTintColor: "#888",
+            tabBarShowLabel: false,
+          }}
+          tabBar={({ navigation, state, descriptors }) => (
+            <View
+              style={[
+                styles.tabBar,
+                {
+                  height: 50 + Math.max(insets.bottom, 5),
+                },
+              ]}
+            >
+              {state.routes
+                .filter((route) =>
+                  ["index", "explore", "create", "inbox", "profile"].includes(
+                    route.name
+                  )
                 )
-              )
-              .map((route, index) => {
-                const { options } = descriptors[route.key];
-                const label =
-                  typeof options.tabBarLabel === "string"
-                    ? options.tabBarLabel
-                    : options.title || route.name;
-                const isFocused = state.index === index;
+                .map((route, index) => {
+                  const { options } = descriptors[route.key];
+                  const label =
+                    typeof options.tabBarLabel === "string"
+                      ? options.tabBarLabel
+                      : options.title || route.name;
+                  const isFocused = state.index === index;
 
-                let onPress = () => {
-                  const event = navigation.emit({
-                    type: "tabPress",
-                    target: route.key,
-                    canPreventDefault: true,
-                  });
+                  let onPress = () => {
+                    const event = navigation.emit({
+                      type: "tabPress",
+                      target: route.key,
+                      canPreventDefault: true,
+                    });
 
-                  if (!isFocused && !event.defaultPrevented) {
-                    navigation.navigate(route.name);
-                  }
-                };
-
-                if (route.name === "create") {
-                  onPress = () => {
-                    if (!isAuthenticated) {
-                      showAuthModal("create_content");
-                      return;
-                    }
-                    setModalVisible(!modalVisible);
-                  };
-                }
-
-                if (route.name === "profile") {
-                  onPress = () => {
-                    if (isAuthenticated && user) {
-                      navigation.navigate("profile", {
-                        screen: "[id]",
-                        params: { id: user.id },
-                      });
-                    } else {
-                      showAuthModal("access_profile");
+                    if (!isFocused && !event.defaultPrevented) {
+                      navigation.navigate(route.name);
                     }
                   };
-                }
 
-                if (route.name === "inbox") {
-                  onPress = () => {
-                    if (isAuthenticated) {
-                      const event = navigation.emit({
-                        type: "tabPress",
-                        target: route.key,
-                        canPreventDefault: true,
-                      });
-
-                      if (!isFocused && !event.defaultPrevented) {
-                        navigation.navigate(route.name);
+                  if (route.name === "create") {
+                    onPress = () => {
+                      if (!isAuthenticated) {
+                        showAuthModal("create_content");
+                        return;
                       }
-                    } else {
-                      showAuthModal("access_messages");
-                    }
-                  };
-                }
+                      setModalVisible(!modalVisible);
+                    };
+                  }
 
-                let icon;
-                if (route.name === "index") {
-                  icon = <HomeIcon color={isFocused ? "#74A9D9" : "#fff"} />;
-                } else if (route.name === "explore") {
-                  icon = (
-                    <DiscoverIcon color={isFocused ? "#74A9D9" : "#fff"} />
+                  if (route.name === "profile") {
+                    onPress = () => {
+                      if (isAuthenticated && user) {
+                        navigation.navigate("profile", {
+                          screen: "[id]",
+                          params: { id: user.id },
+                        });
+                      } else {
+                        showAuthModal("access_profile");
+                      }
+                    };
+                  }
+
+                  if (route.name === "inbox") {
+                    onPress = () => {
+                      if (isAuthenticated) {
+                        const event = navigation.emit({
+                          type: "tabPress",
+                          target: route.key,
+                          canPreventDefault: true,
+                        });
+
+                        if (!isFocused && !event.defaultPrevented) {
+                          navigation.navigate(route.name);
+                        }
+                      } else {
+                        showAuthModal("access_messages");
+                      }
+                    };
+                  }
+
+                  let icon;
+                  if (route.name === "index") {
+                    icon = <HomeIcon color={isFocused ? "#74A9D9" : "#fff"} />;
+                  } else if (route.name === "explore") {
+                    icon = (
+                      <DiscoverIcon color={isFocused ? "#74A9D9" : "#fff"} />
+                    );
+                  } else if (route.name === "create") {
+                    icon = <ContentIcon color="#FFB700" />;
+                  } else if (route.name === "inbox") {
+                    const iconColor = !isAuthenticated
+                      ? isFocused
+                        ? "#FF4D67"
+                        : "rgba(136, 136, 136, 0.6)"
+                      : isFocused
+                      ? "#74A9D9"
+                      : "#fff";
+                    icon = <MessageIcon color={iconColor} />;
+                  } else if (route.name === "profile") {
+                    const iconColor = !isAuthenticated
+                      ? isFocused
+                        ? "#FF4D67"
+                        : "rgba(136, 136, 136, 0.6)"
+                      : isFocused
+                      ? "#74A9D9"
+                      : "#fff";
+                    icon = <UserIcon color={iconColor} />;
+                  }
+
+                  return (
+                    <TabBarButton
+                      key={route.key}
+                      label={route.name === "create" ? undefined : label}
+                      icon={icon}
+                      onPress={onPress}
+                      focused={isFocused}
+                    />
                   );
-                } else if (route.name === "create") {
-                  icon = <ContentIcon color="#FFB700" />;
-                } else if (route.name === "inbox") {
-                  const iconColor = !isAuthenticated
-                    ? isFocused
-                      ? "#FF4D67"
-                      : "rgba(136, 136, 136, 0.6)"
-                    : isFocused
-                    ? "#74A9D9"
-                    : "#fff";
-                  icon = <MessageIcon color={iconColor} />;
-                } else if (route.name === "profile") {
-                  const iconColor = !isAuthenticated
-                    ? isFocused
-                      ? "#FF4D67"
-                      : "rgba(136, 136, 136, 0.6)"
-                    : isFocused
-                    ? "#74A9D9"
-                    : "#fff";
-                  icon = <UserIcon color={iconColor} />;
-                }
+                })}
+            </View>
+          )}
+        >
+          <Tabs.Screen name="index" options={{ title: "Home" }} />
+          <Tabs.Screen name="explore" options={{ title: "Discover" }} />
+          <Tabs.Screen name="create" options={{ title: "Create" }} />
+          <Tabs.Screen name="inbox" options={{ title: "Inbox" }} />
+          <Tabs.Screen name="profile" options={{ title: "Profile" }} />
+          <Tabs.Screen name="nearby" options={{ href: null }} />
+        </Tabs>
 
-                return (
-                  <TabBarButton
-                    key={route.key}
-                    label={route.name === "create" ? undefined : label}
-                    icon={icon}
-                    onPress={onPress}
-                    focused={isFocused}
-                  />
-                );
-              })}
-          </View>
+        {isAuthenticated && (
+          <CreateOptionModal
+            visible={modalVisible}
+            onClose={() => setModalVisible(false)}
+          />
         )}
-      >
-        <Tabs.Screen name="index" options={{ title: "Home" }} />
-        <Tabs.Screen name="explore" options={{ title: "Discover" }} />
-        <Tabs.Screen name="create" options={{ title: "Create" }} />
-        <Tabs.Screen name="inbox" options={{ title: "Inbox" }} />
-        <Tabs.Screen name="profile" options={{ title: "Profile" }} />
-      </Tabs>
-
-      {isAuthenticated && (
-        <CreateOptionModal
-          visible={modalVisible}
-          onClose={() => setModalVisible(false)}
-        />
-      )}
-    </SafeAreaView>
+      </SafeAreaView>
+    </VideoProvider>
   );
 }
 

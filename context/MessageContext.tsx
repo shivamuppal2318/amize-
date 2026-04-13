@@ -1,6 +1,7 @@
 // context/MessageContext.tsx - Updated with unified interfaces
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useRef } from 'react';
 import { useAuth } from '@/hooks/useAuth';
+import { buildMockMessagingData } from '@/data/mockMessaging';
 import { socketManager } from '@/lib/socket/socketManager';
 import { useRealTimeMessages } from '@/hooks/useRealTimeMessages';
 import {
@@ -152,6 +153,32 @@ export const MessageProvider: React.FC<{children: ReactNode}> = ({ children }) =
     // Refs for tracking state
     const socketInitialized = useRef(false);
 
+    const applyMockMessagingData = useCallback((reason: string) => {
+        const mockData = buildMockMessagingData(user?.id);
+        setConversationsState(mockData.conversations);
+        setMessagesState(mockData.messages);
+        setError(null);
+        log('info', `Loaded mock conversations (${reason})`, {
+            count: mockData.conversations.length,
+        });
+    }, [user?.id]);
+
+    const mergeMockConversations = useCallback((serverConversations: Conversation[]) => {
+        const mockData = buildMockMessagingData(user?.id);
+        const existingIds = new Set(serverConversations.map((conv) => conv.id));
+        const mergedConversations = [
+            ...serverConversations,
+            ...mockData.conversations.filter((conv) => !existingIds.has(conv.id)),
+        ];
+
+        setMessagesState((prev) => ({
+            ...mockData.messages,
+            ...prev,
+        }));
+
+        return mergedConversations;
+    }, [user?.id]);
+
     // Subscribe to connection state changes
     useEffect(() => {
         const unsubscribe = connectionStateManager.subscribe((status) => {
@@ -176,6 +203,12 @@ export const MessageProvider: React.FC<{children: ReactNode}> = ({ children }) =
 
         return unsubscribe;
     }, [isAuthenticated, user]);
+
+    useEffect(() => {
+        if (!connectionStatus.isConnected && conversations.length === 0) {
+            applyMockMessagingData('offline');
+        }
+    }, [connectionStatus.isConnected, conversations.length, applyMockMessagingData]);
 
     // Enhanced state management functions
     const addMessage = useCallback((conversationId: string, message: Message) => {
@@ -525,13 +558,15 @@ export const MessageProvider: React.FC<{children: ReactNode}> = ({ children }) =
                 ConversationUtils.fromSocket(conv, user.id, onlineUsers)
             );
 
-            setConversations(localConversations);
-            log('success', 'Updated local conversations', { count: localConversations.length });
+            const mergedConversations = mergeMockConversations(localConversations);
+            setConversations(mergedConversations);
+            log('success', 'Updated local conversations', { count: mergedConversations.length });
         } catch (error) {
             log('error', 'Failed to refresh conversations', error);
             setError('Failed to load conversations');
+            applyMockMessagingData('refresh failed');
         }
-    }, [user, onlineUsers, setConversations]);
+    }, [user, onlineUsers, setConversations, applyMockMessagingData, mergeMockConversations]);
 
     // Send message with unified interface
     const sendMessage = useCallback(async (
@@ -633,6 +668,14 @@ export const MessageProvider: React.FC<{children: ReactNode}> = ({ children }) =
         } catch (error) {
             log('error', 'Failed to refresh messages', error);
             setError('Failed to load messages');
+            const mockData = buildMockMessagingData(user?.id);
+            const fallbackMessages = mockData.messages[conversationId];
+            if (fallbackMessages) {
+                setMessagesState(prev => ({
+                    ...prev,
+                    [conversationId]: fallbackMessages,
+                }));
+            }
         }
     }, [user]);
 

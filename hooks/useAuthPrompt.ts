@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { useRouter } from 'expo-router';
 import { useAuth } from './useAuth';
+import { isDemoMode } from '@/lib/release/releaseConfig';
 
 interface AuthPromptState {
     visible: boolean;
@@ -44,6 +45,8 @@ interface UseAuthPromptReturn {
 export const useAuthPrompt = (): UseAuthPromptReturn => {
     const router = useRouter();
     const { isAuthenticated } = useAuth();
+    const demoMode = isDemoMode();
+    const isEffectivelyAuthenticated = isAuthenticated || demoMode;
 
     const [authPrompt, setAuthPrompt] = useState<AuthPromptState>({
         visible: false,
@@ -87,7 +90,7 @@ export const useAuthPrompt = (): UseAuthPromptReturn => {
         callback?: () => void,
         context?: any
     ): boolean => {
-        if (isAuthenticated) {
+        if (isEffectivelyAuthenticated) {
             // User is authenticated, execute callback immediately
             if (callback) {
                 callback();
@@ -98,20 +101,20 @@ export const useAuthPrompt = (): UseAuthPromptReturn => {
             showAuthPrompt(action, context);
             return true; // Auth prompt was shown
         }
-    }, [isAuthenticated, showAuthPrompt]);
+    }, [isEffectivelyAuthenticated, showAuthPrompt]);
 
     // Higher-order function to wrap callbacks with auth requirement
     const withAuth = useCallback(<T extends any[]>(
         callback: (...args: T) => void
     ) => {
         return (...args: T) => {
-            if (isAuthenticated) {
+            if (isEffectivelyAuthenticated) {
                 callback(...args);
             } else {
                 showAuthPrompt('action');
             }
         };
-    }, [isAuthenticated, showAuthPrompt]);
+    }, [isEffectivelyAuthenticated, showAuthPrompt]);
 
     return {
         // State
@@ -125,7 +128,7 @@ export const useAuthPrompt = (): UseAuthPromptReturn => {
         handleSignup,
 
         // Utilities
-        isAuthenticated,
+        isAuthenticated: isEffectivelyAuthenticated,
         withAuth,
     };
 };

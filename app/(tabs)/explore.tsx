@@ -16,7 +16,7 @@ import {
     Search,
     X,
     Filter,
-    ArrowLeft,
+    MapPin,
 } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -27,6 +27,9 @@ import { useSearchHistory, SearchHistory, SearchSuggestions } from '@/components
 import AdvancedFilters, { FilterOptions } from '@/components/explore/AdvancedFilters';
 import MasonryGrid from '@/components/explore/MasonryGrid';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useDiscoveryTopics } from '@/hooks/useDiscoveryTopics';
+import { AdBanner } from '@/components/ads/AdBanner';
+import { mockMixedFeed } from '@/data/mockVideos';
 
 const { width } = Dimensions.get('window');
 
@@ -34,6 +37,7 @@ const ExploreScreen = () => {
     const insets = useSafeAreaInsets();
     const { isAuthenticated } = useAuth();
     const { addToHistory } = useSearchHistory();
+    const { activeTopics } = useDiscoveryTopics();
 
     // Animated values for suggestions panel
     const suggestionsOpacity = useRef(new Animated.Value(0)).current;
@@ -61,13 +65,13 @@ const ExploreScreen = () => {
     const searchFocusedRef = useRef(false);
     const lastSearchTimestampRef = useRef(0);
     const lastTypingTimestampRef = useRef(0);
-    const autoHideTimeoutRef = useRef<number | null>(null);
+    const autoHideTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     // Categories for filters
-    const categories = useMemo(() => [
-        'Comedy', 'Music', 'Dance', 'Food', 'Travel', 'Art', 'Sports',
-        'Gaming', 'Education', 'Fashion', 'Beauty', 'Pets', 'DIY'
-    ], []);
+    const categories = useMemo(
+        () => activeTopics.map((topic) => topic.name),
+        [activeTopics]
+    );
 
     // Use the enhanced explore hook with mixed feed enabled
     const {
@@ -354,23 +358,25 @@ const ExploreScreen = () => {
 
     // Render main content with memoization to reduce rerenders
     const renderContent = useMemo(() => {
-        if (mixedFeedLoading && mixedFeed.length === 0) {
+        const displayFeed = mixedFeed.length > 0 ? mixedFeed : mockMixedFeed;
+
+        if (displayFeed.length === 0) {
             return (
                 <View style={styles.loadingContainer}>
                     <ActivityIndicator size="large" color="#FF5A5F" />
-                    <Text style={styles.loadingText}>Discovering amazing content...</Text>
+                    <Text style={styles.loadingText}>Loading discovery feed...</Text>
                 </View>
             );
         }
 
         return (
             <MasonryGrid
-                data={mixedFeed}
+                data={displayFeed}
                 onLoadMore={handleLoadMore}
                 onRefresh={handleRefresh}
                 refreshing={refreshing}
                 loading={mixedFeedLoading}
-                hasMore={mixedFeedHasMore}
+                hasMore={mixedFeed.length > 0 ? mixedFeedHasMore : false}
                 onVideoPress={handleVideoPress}
                 onUserPress={handleUserPress}
                 onSoundPress={handleSoundPress}
@@ -429,6 +435,12 @@ const ExploreScreen = () => {
                         <TouchableOpacity style={styles.filterButton} onPress={() => setShowFilters(true)}>
                             <Filter size={20} color="#FF5A5F" />
                         </TouchableOpacity>
+                        <TouchableOpacity
+                            style={styles.filterButton}
+                            onPress={() => router.push('/nearby')}
+                        >
+                            <MapPin size={20} color="#74A9D9" />
+                        </TouchableOpacity>
                     </View>
 
                     {/* Search state indicator */}
@@ -449,6 +461,7 @@ const ExploreScreen = () => {
 
                 {/* Main content */}
                 <View style={styles.content}>
+                    <AdBanner label="Explore Banner" placement="exploreBanner" />
                     {renderContent}
                 </View>
 

@@ -32,7 +32,7 @@ const ConversationDetail: React.FC<ConversationDetailProps> = ({
 }) => {
   const flatListRef = useRef<FlatList>(null);
 
-  const { connectionStatus, refreshMessages } = useMessages();
+  const { connectionStatus, refreshMessages, sendMessage } = useMessages();
 
   // Load messages when conversation changes and we're connected
   useEffect(() => {
@@ -56,13 +56,39 @@ const ConversationDetail: React.FC<ConversationDetailProps> = ({
   }, [messages.length]);
 
   const handleRetryMessage = (messageId: string) => {
+    const failedMessage = messages.find((message) => message.id === messageId);
+
+    if (!failedMessage) {
+      Alert.alert("Retry Failed", "The original message could not be found.");
+      return;
+    }
+
     Alert.alert("Retry", "Retry sending message?", [
       { text: "Cancel", style: "cancel" },
       {
         text: "Retry",
-        onPress: () => {
-          console.log("[ConversationDetail] Retrying message:", messageId);
-          // TODO: Implement retry logic
+        onPress: async () => {
+          try {
+            console.log("[ConversationDetail] Retrying message:", messageId);
+            const retryMessageType =
+              failedMessage.messageType === "system"
+                ? "text"
+                : failedMessage.messageType;
+
+            await sendMessage(conversation.id, failedMessage.content, {
+              messageType: retryMessageType,
+              attachmentUrl: failedMessage.attachmentUrl,
+              attachmentType: failedMessage.attachmentType,
+              fileName: failedMessage.fileName,
+              replyToId: failedMessage.replyToId,
+            });
+          } catch (error) {
+            console.error("[ConversationDetail] Retry failed:", error);
+            Alert.alert(
+              "Retry Failed",
+              "The message could not be resent right now."
+            );
+          }
         },
       },
     ]);

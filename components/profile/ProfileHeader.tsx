@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity, Alert } from 'react-native';
-import { Share, CheckCircle, Star, UserPlus, UserCheck } from 'lucide-react-native';
+import { View, Text, StyleSheet, Image, TouchableOpacity, Alert, Share as NativeShare } from 'react-native';
+import { Share as ShareIcon, CheckCircle, Star, UserPlus, UserCheck } from 'lucide-react-native';
 import { router } from 'expo-router';
+import { SocialAPI } from '@/lib/api/SocialAPI';
+import { SITE_URL } from '@/lib/settings/constants';
 
 interface User {
     id: string;
@@ -49,13 +51,11 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({
 
         setFollowLoading(true);
         try {
-            // TODO: Implement follow/unfollow API call
-            // const response = await followUser(user.id);
+            const response = isFollowing
+                ? await SocialAPI.unfollowUser(user.id)
+                : await SocialAPI.followUser(user.id);
 
-            // Simulate API call
-            await new Promise(resolve => setTimeout(resolve, 500));
-
-            if (onFollowChange) {
+            if (response.success && onFollowChange) {
                 onFollowChange(!isFollowing);
             }
         } catch (error) {
@@ -68,16 +68,12 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({
 
     const handleShare = async () => {
         try {
-            // In a real app, this would use the platform's native share
-            Alert.alert(
-                'Share Profile',
-                `Share @${user.username}'s profile`,
-                [
-                    { text: 'Copy Link', onPress: () => console.log('Copy link') },
-                    { text: 'Share', onPress: () => console.log('Share') },
-                    { text: 'Cancel', style: 'cancel' }
-                ]
-            );
+            const profileUrl = `${SITE_URL}/profile/${user.id}`;
+            await NativeShare.share({
+                title: `@${user.username} on Amize`,
+                message: `Check out @${user.username} on Amize: ${profileUrl}`,
+                url: profileUrl,
+            });
         } catch (error) {
             console.error('Error sharing profile:', error);
         }
@@ -183,7 +179,7 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({
                     style={styles.shareButton}
                     onPress={handleShare}
                 >
-                    <Share size={20} color="white" />
+                    <ShareIcon size={20} color="white" />
                 </TouchableOpacity>
             </View>
         </View>
