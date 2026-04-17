@@ -1,4 +1,5 @@
 import apiClient from '@/lib/api/client';
+import { createIdempotencyKey } from '@/lib/network/idempotency';
 
 export type WalletTransaction = {
   id: string;
@@ -147,11 +148,19 @@ export const WalletAPI = {
     price: number,
     paymentMethodId?: string
   ): Promise<WalletTopUpResult> {
-    const response = await apiClient.post<WalletResponse>('/wallet/top-up', {
-      coins,
-      price,
-      paymentMethodId,
-    });
+    const response = await apiClient.post<WalletResponse>(
+      '/wallet/top-up',
+      {
+        coins,
+        price,
+        paymentMethodId,
+      },
+      {
+        headers: {
+          "x-idempotency-key": createIdempotencyKey("wallet-topup"),
+        },
+      }
+    );
 
     if (response.data.requiresAction && response.data.payment) {
       return {
@@ -188,11 +197,19 @@ export const WalletAPI = {
     giftType: "rose" | "star" | "crown",
     quantity = 1
   ): Promise<{ wallet: WalletState; gift?: GiftSendResponse["gift"] }> {
-    const response = await apiClient.post<GiftSendResponse>('/wallet/gifts/send', {
-      recipientId,
-      giftType,
-      quantity,
-    });
+    const response = await apiClient.post<GiftSendResponse>(
+      '/wallet/gifts/send',
+      {
+        recipientId,
+        giftType,
+        quantity,
+      },
+      {
+        headers: {
+          "x-idempotency-key": createIdempotencyKey("wallet-gift"),
+        },
+      }
+    );
 
     return {
       wallet: response.data.wallet ?? defaultWalletState,
@@ -205,22 +222,36 @@ export const WalletAPI = {
     payoutMethod: string,
     payoutDestination: string
   ): Promise<WalletState> {
-    const response = await apiClient.post<WalletResponse>('/wallet/withdrawals', {
-      amount,
-      payoutMethod,
-      payoutDestination,
-    });
+    const response = await apiClient.post<WalletResponse>(
+      '/wallet/withdrawals',
+      {
+        amount,
+        payoutMethod,
+        payoutDestination,
+      },
+      {
+        headers: {
+          "x-idempotency-key": createIdempotencyKey("wallet-withdrawal"),
+        },
+      }
+    );
     return response.data.wallet ?? defaultWalletState;
   },
 
   async getWithdrawals(params?: {
     scope?: "mine" | "all";
     status?: "pending" | "processing" | "completed" | "rejected" | "all";
-  }): Promise<WithdrawalRequest[]> {
+    limit?: number;
+    offset?: number;
+    search?: string;
+  }): Promise<{ withdrawals: WithdrawalRequest[]; total?: number }> {
     const response = await apiClient.get<WithdrawalResponse>("/wallet/withdrawals", {
       params,
     });
-    return response.data.withdrawals ?? [];
+    return { 
+      withdrawals: response.data.withdrawals ?? [],
+      total: response.data.withdrawals?.length
+    };
   },
 
   async updateWithdrawalStatus(
@@ -232,5 +263,16 @@ export const WalletAPI = {
       { status }
     );
     return response.data.withdrawal ?? null;
+  },
+
+  async bulkUpdateWithdrawalStatus(
+    ids: string[],
+    status: "processing" | "completed" | "rejected"
+  ): Promise<{ success: boolean; updated: number }> {
+    const response = await apiClient.patch<{ success: boolean; updated: number }>(
+      `/wallet/withdrawals/bulk`,
+      { ids, status }
+    );
+    return { success: response.data.success, updated: response.data.updated || ids.length };
   },
 };

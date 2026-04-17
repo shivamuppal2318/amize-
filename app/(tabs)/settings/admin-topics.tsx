@@ -45,8 +45,12 @@ export default function AdminTopicsScreen() {
             <LinearGradient colors={['#1E4A72', '#000000']} style={styles.gradient}>
                 <ScrollView contentContainerStyle={styles.content}>
                     <View style={styles.header}>
-                        <TouchableOpacity onPress={() => router.back()}>
-                            <ArrowLeft size={24} color="white" />
+<TouchableOpacity 
+                        onPress={() => router.back()}
+                        accessibilityLabel="Go back"
+                        accessibilityRole="button"
+                    >
+                        <ArrowLeft size={24} color="white" />
                         </TouchableOpacity>
                         <Text style={styles.headerTitle}>Discovery Topics</Text>
                         <TouchableOpacity

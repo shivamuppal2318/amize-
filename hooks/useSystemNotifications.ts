@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useRef } from 'react';
+import { useEffect, useCallback, useRef, useState } from 'react';
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -23,6 +23,7 @@ export const useSystemNotifications = (options: UseSystemNotificationsOptions = 
     const { user, isAuthenticated } = useAuth();
     const { unreadCount, markAsRead } = useNotifications();
     const isInitialized = useRef(false);
+    const [isReady, setIsReady] = useState(false);
 
     // Initialize notification service
     useEffect(() => {
@@ -37,6 +38,7 @@ export const useSystemNotifications = (options: UseSystemNotificationsOptions = 
                 .then((success) => {
                     if (success) {
                         isInitialized.current = true;
+                        setIsReady(true);
                         console.log('✅ [useSystemNotifications] Notification service initialized');
                     } else {
                         console.warn('⚠️ [useSystemNotifications] Failed to initialize notification service');
@@ -149,7 +151,7 @@ export const useSystemNotifications = (options: UseSystemNotificationsOptions = 
     // Setup notification response handlers
     useEffect(() => {
         if (Platform.OS === 'web') return;
-        if (!isAuthenticated || !isInitialized.current) return;
+        if (!isAuthenticated || !isReady) return;
 
         console.log('📱 [useSystemNotifications] Setting up notification handlers...');
 
@@ -180,12 +182,12 @@ export const useSystemNotifications = (options: UseSystemNotificationsOptions = 
         checkInitialNotification();
 
         return subscription;
-    }, [isAuthenticated, isInitialized.current, handleNotificationTap]);
+    }, [isAuthenticated, isReady, handleNotificationTap]);
 
     // Update badge count when unread count changes
     useEffect(() => {
         if (Platform.OS === 'web') return;
-        if (!enableBadgeCount || !isInitialized.current) return;
+        if (!enableBadgeCount || !isReady) return;
 
         console.log('📱 [useSystemNotifications] Updating badge count:', unreadCount);
 
@@ -193,12 +195,12 @@ export const useSystemNotifications = (options: UseSystemNotificationsOptions = 
             .catch((error) => {
                 console.error('❌ [useSystemNotifications] Failed to update badge count:', error);
             });
-    }, [unreadCount, enableBadgeCount, isInitialized.current]);
+    }, [unreadCount, enableBadgeCount, isReady]);
 
     // ✅ NEW: Handle app state changes for better notification management
     useEffect(() => {
         if (Platform.OS === 'web') return;
-        if (!isAuthenticated || !isInitialized.current) return;
+        if (!isAuthenticated || !isReady) return;
 
         // Listen for when the app comes to foreground
         const subscription = Notifications.addNotificationReceivedListener((notification) => {
@@ -213,7 +215,7 @@ export const useSystemNotifications = (options: UseSystemNotificationsOptions = 
         });
 
         return () => subscription.remove();
-    }, [isAuthenticated, isInitialized.current]);
+    }, [isAuthenticated, isReady]);
 
     // Cleanup on unmount
     useEffect(() => {
@@ -224,6 +226,8 @@ export const useSystemNotifications = (options: UseSystemNotificationsOptions = 
                 if (enableBadgeCount) {
                     notificationService.clearBadge().catch(console.error);
                 }
+                notificationService.dispose();
+                setIsReady(false);
             }
         };
     }, [enableBadgeCount]);

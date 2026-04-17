@@ -12,11 +12,9 @@ const explicitDisable =
 const explicitEnable =
   process.env.EXPO_PUBLIC_ENABLE_LOCAL_DEMO_AUTH === "true";
 const isDevelopmentEnv = process.env.NODE_ENV !== "production";
-const isDevFlagEnabled =
-  typeof __DEV__ !== "undefined" && __DEV__ === true;
 
 const isLocalDemoAuthEnabled =
-  explicitEnable || (!explicitDisable && (isDevFlagEnabled || isDevelopmentEnv));
+  !explicitDisable && (explicitEnable || isDevelopmentEnv);
 
 const buildDemoUser = (
   user: Partial<User> & Pick<User, "id" | "username" | "email" | "role">
@@ -51,15 +49,15 @@ const buildDemoUser = (
 const demoAccounts: DemoAccount[] = [
   {
     label: "Demo Admin",
-    identifier: "shivamuppal098@gmail.com",
-    password: "muskan2318",
+    identifier: "admin@amize.local",
+    password: "Admin@123",
     user: buildDemoUser({
       id: "local-demo-admin",
-      username: "shivamuppal098",
-      email: "shivamuppal098@gmail.com",
-      firstName: "Shivam",
-      lastName: "Uppal",
-      fullName: "Shivam Uppal",
+      username: "admin_demo",
+      email: "admin@amize.local",
+      firstName: "Admin",
+      lastName: "Demo",
+      fullName: "Admin Demo",
       role: "ADMIN",
       verified: true,
     }),
@@ -67,7 +65,7 @@ const demoAccounts: DemoAccount[] = [
   {
     label: "Demo User",
     identifier: "demo.user@amize.local",
-    password: "Demo@123",
+    password: "User@123",
     user: buildDemoUser({
       id: "local-demo-user",
       username: "demo_user",

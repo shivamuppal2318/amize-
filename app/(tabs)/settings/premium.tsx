@@ -1,19 +1,25 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Alert,
+  FlatList,
+  KeyboardAvoidingView,
+  Platform,
   RefreshControl,
   SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
 import { router } from "expo-router";
 import {
   ArrowLeft,
+  ArrowRight,
   BadgeDollarSign,
   Crown,
+  Plus,
   Sparkles,
   Users,
 } from "lucide-react-native";
@@ -23,7 +29,9 @@ import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/Button";
 import {
   CreatorAPI,
+  CreatorSearchResult,
   SubscriptionPaymentRecord,
+  SubscriptionPlan,
   UserSubscriptionRecord,
   UserStatusResponse,
 } from "@/lib/api/CreatorAPI";
@@ -152,6 +160,16 @@ export default function PremiumScreen() {
   });
   const [creatorStatus, setCreatorStatus] =
     useState<UserStatusResponse["creator"]>(emptyCreatorStatus);
+  const [showBrowseCreators, setShowBrowseCreators] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<CreatorSearchResult[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [selectedCreator, setSelectedCreator] = useState<CreatorSearchResult | null>(null);
+  const [creatorPlans, setCreatorPlans] = useState<SubscriptionPlan[]>([]);
+  const [loadingPlans, setLoadingPlans] = useState(false);
+  const [subscribingToPlanId, setSubscribingToPlanId] = useState<string | null>(null);
+  const [billingOffset, setBillingOffset] = useState(0);
+  const [hasMoreBilling, setHasMoreBilling] = useState(true);
   const demoMode = isDemoMode();
   const showDemoBlocked = () => {
     Alert.alert(
@@ -382,6 +400,105 @@ export default function PremiumScreen() {
     return "Premium creator monetization is not enabled on this account yet.";
   }, [creatorStatus]);
 
+  const handleSearchCreators = useCallback(async () => {
+    if (demoMode) {
+      showDemoBlocked();
+      return;
+    }
+    try {
+      setSearching(true);
+      const result = await CreatorAPI.searchCreators(searchQuery, 20, 0);
+      setSearchResults(result.creators || []);
+    } catch (error) {
+      captureException(error, {
+        tags: { screen: "settings-premium", stage: "search-creators" },
+      });
+    } finally {
+      setSearching(false);
+    }
+  }, [searchQuery, demoMode]);
+
+  const handleSelectCreator = useCallback(async (creator: CreatorSearchResult) => {
+    if (!creator.monetizationEnabled || !creator.hasActivePlan) {
+      Alert.alert("Not Available", "This creator doesn't have subscription plans available.");
+      return;
+    }
+    try {
+      setLoadingPlans(true);
+      setSelectedCreator(creator);
+      const result = await CreatorAPI.getCreatorPlans(creator.id);
+      setCreatorPlans(result.plans || []);
+    } catch (error) {
+      captureException(error, {
+        tags: { screen: "settings-premium", stage: "load-plans" },
+        extra: { creatorId: creator.id },
+      });
+    } finally {
+      setLoadingPlans(false);
+    }
+  }, []);
+
+  const handleSubscribeToPlan = useCallback(async (plan: SubscriptionPlan) => {
+    if (!selectedCreator || demoMode) {
+      showDemoBlocked();
+      return;
+    }
+    try {
+      setSubscribingToPlanId(plan.id);
+      const result = await CreatorAPI.subscribeToPlan(selectedCreator.id, plan.id);
+      if (result.success) {
+        Alert.alert("Subscribed!", `You are now subscribed to ${selectedCreator.fullName || selectedCreator.username}.`);
+        setSelectedCreator(null);
+        setCreatorPlans([]);
+        loadPremiumData();
+      } else if (result.requiresAction && result.payment) {
+        Alert.alert("Action Required", "Please complete payment verification.");
+      } else {
+        Alert.alert("Failed", result.message || "Could not complete subscription.");
+      }
+    } catch (error) {
+      captureException(error, {
+        tags: { screen: "settings-premium", stage: "subscribe" },
+        extra: { creatorId: selectedCreator.id, planId: plan.id },
+      });
+    } finally {
+      setSubscribingToPlanId(null);
+    }
+  }, [selectedCreator, demoMode, loadPremiumData]);
+
+  const handleLoadMoreBilling = useCallback(async () => {
+    if (!hasMoreBilling || loading) return;
+    const newOffset = billingOffset + 8;
+    try {
+      const response = await Promise.all([
+        PaymentAPI.getAttempts({ purpose: "subscription_initial", limit: 6, offset: newOffset }),
+        PaymentAPI.getAttempts({ purpose: "subscription_renewal", limit: 6, offset: newOffset }),
+      ]);
+      const moreAttempts: BillingItem[] = [
+        ...response[0],
+        ...response[1],
+      ].map((attempt) => ({
+        id: attempt.id,
+        createdAt: attempt.createdAt,
+        title: formatPaymentTitle(attempt.purpose),
+        subtitle: `${attempt.provider} | ${attempt.paymentMethod}`,
+        amountLabel: formatPaymentAmount(attempt),
+        status: attempt.status,
+        canConfirm: attempt.status === "requires_action",
+        confirmAttemptId: attempt.id,
+        clientSecret: attempt.clientSecret,
+      }));
+      if (moreAttempts.length === 0) {
+        setHasMoreBilling(false);
+      } else {
+        setBillingItems(prev => [...prev, ...moreAttempts].slice(0, 50));
+        setBillingOffset(newOffset);
+      }
+    } catch (error) {
+      setHasMoreBilling(false);
+    }
+  }, [billingOffset, hasMoreBilling, loading]);
+
   const handleConfirmPaymentAttempt = useCallback(
     async (paymentAttemptId: string, clientSecret?: string | null) => {
       if (demoMode) {
@@ -436,224 +553,340 @@ export default function PremiumScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <LinearGradient colors={["#1E4A72", "#000000"]} style={styles.gradient}>
-        <ScrollView
-          contentContainerStyle={styles.content}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
-          }
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          style={styles.keyboardView}
         >
-          <View style={styles.header}>
-            <TouchableOpacity onPress={() => router.back()}>
-              <ArrowLeft size={24} color="white" />
-            </TouchableOpacity>
-            <Text style={styles.headerTitle}>Premium & Subscriptions</Text>
-            <View style={{ width: 24 }} />
-          </View>
+          <ScrollView
+            contentContainerStyle={styles.content}
+            keyboardShouldPersistTaps="handled"
+            refreshControl={
+              <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+            }
+          >
+            <View style={styles.header}>
+              <TouchableOpacity 
+                onPress={() => router.back()}
+                accessibilityLabel="Go back"
+                accessibilityRole="button"
+              >
+                <ArrowLeft size={24} color="white" />
+              </TouchableOpacity>
+              <Text style={styles.headerTitle}>Premium & Subscriptions</Text>
+              <TouchableOpacity 
+                onPress={() => setShowBrowseCreators(true)}
+                accessibilityLabel="Add creator"
+                accessibilityRole="button"
+              >
+                <Plus size={24} color="white" />
+              </TouchableOpacity>
+            </View>
 
-          <View style={styles.heroCard}>
-            <Crown size={24} color="#FFCC66" />
-            <View style={styles.heroCopy}>
-              <Text style={styles.heroTitle}>Premium Access</Text>
-              <Text style={styles.heroSubtitle}>
-                Manage active subscriptions and review creator monetization
-                status.
-              </Text>
-            </View>
-          </View>
-
-          {loadError ? (
-            <View style={styles.noticeCard}>
-              <Text style={styles.noticeTitle}>
-                {previewMode ? "Preview mode" : "Load issue"}
-              </Text>
-              <Text style={styles.noticeBody}>{loadError}</Text>
-              <Button
-                label={refreshing ? "Retrying..." : "Retry"}
-                onPress={handleRefresh}
-                variant="outline"
-                fullWidth
-                disabled={refreshing}
-              />
-            </View>
-          ) : null}
-
-          {demoMode ? (
-            <View style={styles.noticeCard}>
-              <Text style={styles.noticeTitle}>Demo build</Text>
-              <Text style={styles.noticeBody}>
-                Subscriptions are simulated in this demo. No real billing or
-                renewals occur.
-              </Text>
-            </View>
-          ) : null}
-
-          <View style={styles.statsRow}>
-            <View style={styles.statCard}>
-              <Sparkles size={18} color="#FFCC66" />
-              <Text style={styles.statValue}>{stats.active}</Text>
-              <Text style={styles.statLabel}>Active</Text>
-            </View>
-            <View style={styles.statCard}>
-              <Users size={18} color="#93C5FD" />
-              <Text style={styles.statValue}>{stats.total}</Text>
-              <Text style={styles.statLabel}>Total</Text>
-            </View>
-            <View style={styles.statCard}>
-              <BadgeDollarSign size={18} color="#86EFAC" />
-              <Text style={styles.statValue}>
-                {currencyFormatter.format(stats.spending ?? 0)}
-              </Text>
-              <Text style={styles.statLabel}>Spending</Text>
-            </View>
-          </View>
-
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Creator Status</Text>
-            <View style={styles.infoCard}>
-              <Text style={styles.infoHeadline}>
-                {creatorStatus.isCreator ? "Creator Account" : "Standard Account"}
-              </Text>
-              <Text style={styles.infoBody}>{monetizationSummary}</Text>
-              <View style={styles.infoRow}>
-                <Text style={styles.infoPill}>
-                  Subscribers: {creatorStatus.stats.subscribers}
-                </Text>
-                <Text style={styles.infoPill}>
-                  Posts: {creatorStatus.stats.totalContent}
+            <View style={styles.heroCard}>
+              <Crown size={24} color="#FFCC66" />
+              <View style={styles.heroCopy}>
+                <Text style={styles.heroTitle}>Premium Access</Text>
+                <Text style={styles.heroSubtitle}>
+                  Manage active subscriptions and review creator monetization
+                  status.
                 </Text>
               </View>
-              {creatorStatus.creatorCategory ? (
-                <Text style={styles.creatorCategory}>
-                  Category: {creatorStatus.creatorCategory}
-                </Text>
-              ) : null}
             </View>
-          </View>
 
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Active Subscriptions</Text>
-            {loading ? (
+            {loadError ? (
+              <View style={styles.noticeCard}>
+                <Text style={styles.noticeTitle}>
+                  {previewMode ? "Preview mode" : "Load issue"}
+                </Text>
+                <Text style={styles.noticeBody}>{loadError}</Text>
+                <Button
+                  label={refreshing ? "Retrying..." : "Retry"}
+                  onPress={handleRefresh}
+                  variant="outline"
+                  fullWidth
+                  disabled={refreshing}
+                />
+              </View>
+            ) : null}
+
+            {demoMode ? (
+              <View style={styles.noticeCard}>
+                <Text style={styles.noticeTitle}>Demo build</Text>
+                <Text style={styles.noticeBody}>
+                  Subscriptions are simulated in this demo. No real billing or
+                  renewals occur.
+                </Text>
+              </View>
+            ) : null}
+
+            <View style={styles.statsRow}>
+              <View style={styles.statCard}>
+                <Sparkles size={18} color="#FFCC66" />
+                <Text style={styles.statValue}>{stats.active}</Text>
+                <Text style={styles.statLabel}>Active</Text>
+              </View>
+              <View style={styles.statCard}>
+                <Users size={18} color="#93C5FD" />
+                <Text style={styles.statValue}>{stats.total}</Text>
+                <Text style={styles.statLabel}>Total</Text>
+              </View>
+              <View style={styles.statCard}>
+                <BadgeDollarSign size={18} color="#86EFAC" />
+                <Text style={styles.statValue}>
+                  {currencyFormatter.format(stats.spending ?? 0)}
+                </Text>
+                <Text style={styles.statLabel}>Spending</Text>
+              </View>
+            </View>
+
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Creator Status</Text>
               <View style={styles.infoCard}>
-                <Text style={styles.infoBody}>Loading subscriptions...</Text>
-              </View>
-            ) : subscriptions.length === 0 ? (
-              <View style={styles.infoCard}>
-                <Text style={styles.infoHeadline}>No active subscriptions</Text>
-                <Text style={styles.infoBody}>
-                  Subscription management is wired, but this account does not
-                  have active plans right now.
+                <Text style={styles.infoHeadline}>
+                  {creatorStatus.isCreator ? "Creator Account" : "Standard Account"}
                 </Text>
-              </View>
-            ) : (
-              subscriptions.map((subscription) => (
-                <View key={subscription.id} style={styles.subscriptionCard}>
-                  <View style={styles.subscriptionHeader}>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.subscriptionCreator}>
-                        {subscription.creatorName ||
-                          subscription.creatorUsername ||
-                          "Creator subscription"}
-                      </Text>
-                      <Text style={styles.subscriptionPlan}>
-                        {subscription.planName || "Premium plan"}
-                      </Text>
-                    </View>
-                    <Text style={styles.subscriptionAmount}>
-                      {resolveCurrencyAmount(subscription)}
-                    </Text>
-                  </View>
-
-                  <View style={styles.subscriptionMeta}>
-                    <Text style={styles.subscriptionMetaText}>
-                      Renews: {formatDate(subscription.endDate)}
-                    </Text>
-                    <Text style={styles.subscriptionMetaText}>
-                      Auto-renew: {subscription.autoRenew ? "On" : "Off"}
-                    </Text>
-                  </View>
-
-                  <Button
-                    label={
-                      cancellingId === subscription.id
-                        ? "Cancelling..."
-                        : "Cancel Subscription"
-                    }
-                    onPress={() => handleCancelSubscription(subscription.id)}
-                    variant="outline"
-                    fullWidth
-                    loading={cancellingId === subscription.id}
-                    disabled={cancellingId === subscription.id || demoMode}
-                  />
+                <Text style={styles.infoBody}>{monetizationSummary}</Text>
+                <View style={styles.infoRow}>
+                  <Text style={styles.infoPill}>
+                    Subscribers: {creatorStatus.stats.subscribers}
+                  </Text>
+                  <Text style={styles.infoPill}>
+                    Posts: {creatorStatus.stats.totalContent}
+                  </Text>
                 </View>
-              ))
-            )}
-          </View>
+                {creatorStatus.creatorCategory ? (
+                  <Text style={styles.creatorCategory}>
+                    Category: {creatorStatus.creatorCategory}
+                  </Text>
+                ) : null}
+              </View>
+            </View>
 
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Recent Billing</Text>
-            {loading ? (
-              <View style={styles.infoCard}>
-                <Text style={styles.infoBody}>Loading billing activity...</Text>
-              </View>
-            ) : billingItems.length === 0 ? (
-              <View style={styles.infoCard}>
-                <Text style={styles.infoHeadline}>No billing activity yet</Text>
-                <Text style={styles.infoBody}>
-                  Subscription billing activity will appear here, including
-                  successful charges, refunds, and payments that still need
-                  verification.
-                </Text>
-              </View>
-            ) : (
-              billingItems.map((item) => (
-                <View key={item.id} style={styles.subscriptionCard}>
-                  <View style={styles.subscriptionHeader}>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.subscriptionCreator}>{item.title}</Text>
-                      <Text style={styles.subscriptionPlan}>
-                        {formatDate(item.createdAt)} | {item.subtitle}
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Active Subscriptions</Text>
+              {loading ? (
+                <View style={styles.infoCard}>
+                  <Text style={styles.infoBody}>Loading subscriptions...</Text>
+                </View>
+              ) : subscriptions.length === 0 ? (
+                <View style={styles.infoCard}>
+                  <Text style={styles.infoHeadline}>No active subscriptions</Text>
+                  <Text style={styles.infoBody}>
+                    Subscription management is wired, but this account does not
+                    have active plans right now.
+                  </Text>
+                </View>
+              ) : (
+                subscriptions.map((subscription) => (
+                  <View key={subscription.id} style={styles.subscriptionCard}>
+                    <View style={styles.subscriptionHeader}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.subscriptionCreator}>
+                          {subscription.creatorName ||
+                            subscription.creatorUsername ||
+                            "Creator subscription"}
+                        </Text>
+                        <Text style={styles.subscriptionPlan}>
+                          {subscription.planName || "Premium plan"}
+                        </Text>
+                      </View>
+                      <Text style={styles.subscriptionAmount}>
+                        {resolveCurrencyAmount(subscription)}
                       </Text>
                     </View>
-                    <Text style={styles.subscriptionAmount}>
-                      {item.amountLabel}
-                    </Text>
-                  </View>
 
-                  <View style={styles.subscriptionMeta}>
-                    <Text
-                      style={[
-                        styles.subscriptionMetaText,
-                        getBillingStatusStyle(item.status),
-                      ]}
-                    >
-                      Status: {formatBillingStatus(item.status)}
-                    </Text>
-                  </View>
+                    <View style={styles.subscriptionMeta}>
+                      <Text style={styles.subscriptionMetaText}>
+                        Renews: {formatDate(subscription.endDate)}
+                      </Text>
+                      <Text style={styles.subscriptionMetaText}>
+                        Auto-renew: {subscription.autoRenew ? "On" : "Off"}
+                      </Text>
+                    </View>
 
-                  {item.canConfirm && item.confirmAttemptId ? (
                     <Button
                       label={
-                        confirmingPaymentId === item.confirmAttemptId
-                          ? "Confirming..."
-                          : "Complete Verification"
+                        cancellingId === subscription.id
+                          ? "Cancelling..."
+                          : "Cancel Subscription"
                       }
-                      onPress={() =>
-                        handleConfirmPaymentAttempt(
-                          item.confirmAttemptId!,
-                          item.clientSecret
-                        )
-                      }
+                      onPress={() => handleCancelSubscription(subscription.id)}
                       variant="outline"
                       fullWidth
-                      loading={confirmingPaymentId === item.confirmAttemptId}
-                      disabled={confirmingPaymentId === item.confirmAttemptId || demoMode}
+                      loading={cancellingId === subscription.id}
+                      disabled={cancellingId === subscription.id || demoMode}
                     />
-                  ) : null}
+                  </View>
+                ))
+              )}
+            </View>
+
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Recent Billing</Text>
+              {loading ? (
+                <View style={styles.infoCard}>
+                  <Text style={styles.infoBody}>Loading billing activity...</Text>
                 </View>
-              ))
-            )}
-          </View>
-        </ScrollView>
+              ) : billingItems.length === 0 ? (
+                <View style={styles.infoCard}>
+                  <Text style={styles.infoHeadline}>No billing activity yet</Text>
+                  <Text style={styles.infoBody}>
+                    Subscription billing activity will appear here, including
+                    successful charges, refunds, and payments that still need
+                    verification.
+                  </Text>
+                </View>
+              ) : (
+                billingItems.map((item) => (
+                  <View key={item.id} style={styles.subscriptionCard}>
+                    <View style={styles.subscriptionHeader}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.subscriptionCreator}>{item.title}</Text>
+                        <Text style={styles.subscriptionPlan}>
+                          {formatDate(item.createdAt)} | {item.subtitle}
+                        </Text>
+                      </View>
+                      <Text style={styles.subscriptionAmount}>
+                        {item.amountLabel}
+                      </Text>
+                    </View>
+
+                    <View style={styles.subscriptionMeta}>
+                      <Text
+                        style={[
+                          styles.subscriptionMetaText,
+                          getBillingStatusStyle(item.status),
+                        ]}
+                      >
+                        Status: {formatBillingStatus(item.status)}
+                      </Text>
+                    </View>
+
+                    {item.canConfirm && item.confirmAttemptId ? (
+                      <Button
+                        label={
+                          confirmingPaymentId === item.confirmAttemptId
+                            ? "Confirming..."
+                            : "Complete Verification"
+                        }
+                        onPress={() =>
+                          handleConfirmPaymentAttempt(
+                            item.confirmAttemptId!,
+                            item.clientSecret
+                          )
+                        }
+                        variant="outline"
+                        fullWidth
+                        loading={confirmingPaymentId === item.confirmAttemptId}
+                        disabled={confirmingPaymentId === item.confirmAttemptId || demoMode}
+                      />
+                    ) : null}
+                  </View>
+                ))
+              )}
+              {hasMoreBilling && billingItems.length > 0 ? (
+                <Button
+                  label="Load More"
+                  onPress={handleLoadMoreBilling}
+                  variant="outline"
+                  fullWidth
+                />
+              ) : null}
+            </View>
+          </ScrollView>
+
+          {showBrowseCreators ? (
+            <View style={styles.modalOverlay}>
+              <View style={styles.modalContent}>
+                <View style={styles.modalHeader}>
+                  <Text style={styles.modalTitle}>Find Creators</Text>
+                  <TouchableOpacity onPress={() => setShowBrowseCreators(false)}>
+                    <ArrowLeft size={24} color="white" />
+                  </TouchableOpacity>
+                </View>
+                <View style={styles.searchRow}>
+                  <TextInput
+                    style={styles.searchInput}
+                    placeholder="Search creators..."
+                    placeholderTextColor="#9CA3AF"
+                    value={searchQuery}
+                    onChangeText={setSearchQuery}
+                    onSubmitEditing={handleSearchCreators}
+                  />
+                  <Button
+                    label="Search"
+                    onPress={handleSearchCreators}
+                    variant="primary"
+                    disabled={searching}
+                  />
+                </View>
+                {selectedCreator ? (
+                  <View style={styles.plansSection}>
+                    <Text style={styles.plansTitle}>
+                      Plans from {selectedCreator.fullName || selectedCreator.username}
+                    </Text>
+                    {loadingPlans ? (
+                      <Text style={styles.infoBody}>Loading plans...</Text>
+                    ) : creatorPlans.length === 0 ? (
+                      <Text style={styles.infoBody}>No plans available</Text>
+                    ) : (
+                      creatorPlans.map((plan) => (
+                        <View key={plan.id} style={styles.planCard}>
+                          <View style={styles.planInfo}>
+                            <Text style={styles.planName}>{plan.name}</Text>
+                            <Text style={styles.planPrice}>
+                              {currencyFormatter.format(plan.price)}/{plan.intervalType}
+                            </Text>
+                          </View>
+                          <Button
+                            label={
+                              subscribingToPlanId === plan.id
+                                ? "Subscribing..."
+                                : "Subscribe"
+                            }
+                            onPress={() => handleSubscribeToPlan(plan)}
+                            variant="primary"
+                            disabled={subscribingToPlanId === plan.id || demoMode}
+                            loading={subscribingToPlanId === plan.id}
+                          />
+                        </View>
+                      ))
+                    )}
+                  </View>
+                ) : searching ? (
+                  <Text style={styles.infoBody}>Searching...</Text>
+                ) : searchResults.length === 0 ? (
+                  <Text style={styles.infoBody}>
+                    Search for creators to subscribe to their premium content.
+                  </Text>
+                ) : (
+                  <FlatList
+                    data={searchResults}
+                    keyExtractor={(item) => item.id}
+                    renderItem={({ item: creator }) => (
+                      <TouchableOpacity
+                        style={styles.creatorCard}
+                        onPress={() => handleSelectCreator(creator)}
+                        disabled={!creator.monetizationEnabled || !creator.hasActivePlan}
+                      >
+                        <Text style={styles.creatorName}>
+                          {creator.fullName || creator.username}
+                        </Text>
+                        <Text style={styles.creatorMeta}>
+                          {creator.category || "Creator"} •{" "}
+                          {creator.subscriberCount} subscribers
+                        </Text>
+                        {creator.monetizationEnabled && creator.hasActivePlan ? (
+                          <ArrowRight size={16} color="#86EFAC" />
+                        ) : null}
+                      </TouchableOpacity>
+                    )}
+                  />
+                )}
+              </View>
+            </View>
+          ) : null}
+        </KeyboardAvoidingView>
       </LinearGradient>
     </SafeAreaView>
   );
@@ -861,5 +1094,103 @@ const styles = StyleSheet.create({
   },
   errorText: {
     color: "#FCA5A5",
+  },
+  keyboardView: {
+    flex: 1,
+  },
+  modalOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0,0,0,0.95)",
+    zIndex: 100,
+  },
+  modalContent: {
+    flex: 1,
+    paddingHorizontal: 20,
+    paddingTop: 16,
+  },
+  modalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 20,
+  },
+  modalTitle: {
+    color: "#fff",
+    fontSize: 22,
+    fontWeight: "700",
+  },
+  searchRow: {
+    flexDirection: "row",
+    gap: 10,
+    marginBottom: 20,
+  },
+  searchInput: {
+    flex: 1,
+    backgroundColor: "rgba(12, 18, 32, 0.92)",
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    color: "#fff",
+    fontSize: 16,
+    borderWidth: 1,
+    borderColor: "rgba(148, 163, 184, 0.16)",
+  },
+  plansSection: {
+    marginTop: 10,
+  },
+  plansTitle: {
+    color: "#fff",
+    fontSize: 18,
+    fontWeight: "700",
+    marginBottom: 12,
+  },
+  planCard: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    backgroundColor: "rgba(12, 18, 32, 0.92)",
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: "rgba(148, 163, 184, 0.16)",
+  },
+  planInfo: {
+    flex: 1,
+  },
+  planName: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  planPrice: {
+    color: "#86EFAC",
+    fontSize: 14,
+    marginTop: 4,
+  },
+  creatorCard: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    backgroundColor: "rgba(12, 18, 32, 0.92)",
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: "rgba(148, 163, 184, 0.16)",
+  },
+  creatorName: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  creatorMeta: {
+    color: "#94A3B8",
+    fontSize: 13,
+    marginTop: 4,
   },
 });

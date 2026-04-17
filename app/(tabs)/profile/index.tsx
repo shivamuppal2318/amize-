@@ -11,6 +11,7 @@ const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
 export default function ProfileIndexPage() {
     const { user, isAuthenticated, loading } = useAuth();
+    const canAccessProfile = isAuthenticated;
     const scaleAnim = useRef(new Animated.Value(0.8)).current;
     const opacityAnim = useRef(new Animated.Value(0)).current;
     const rotateAnim = useRef(new Animated.Value(0)).current;
@@ -73,7 +74,7 @@ export default function ProfileIndexPage() {
 
     useEffect(() => {
         if (!loading) {
-            if (isAuthenticated && user) {
+            if (canAccessProfile && user) {
                 setTimeout(() => {
                     router.replace(`/(tabs)/profile/${user.id}`);
                 }, 800);
@@ -83,7 +84,7 @@ export default function ProfileIndexPage() {
                 }, 800);
             }
         }
-    }, [loading, isAuthenticated, user]);
+    }, [loading, canAccessProfile, user]);
 
     return (
         <SafeAreaView style={styles.container}>
@@ -137,12 +138,12 @@ export default function ProfileIndexPage() {
                     <Text style={styles.loadingText}>
                         {loading
                             ? 'Loading your profile...'
-                            : isAuthenticated
+                            : canAccessProfile
                                 ? 'Opening profile...'
                                 : 'Redirecting to sign in...'}
                     </Text>
 
-                    {isAuthenticated && user && (
+                    {canAccessProfile && user && (
                         <Text style={styles.welcomeText}>
                             Welcome back, @{user.username}!
                         </Text>

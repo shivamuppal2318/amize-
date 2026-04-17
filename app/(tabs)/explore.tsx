@@ -4,13 +4,15 @@ import {
     Text,
     TextInput,
     TouchableOpacity,
+    ScrollView,
+    Pressable,
     Modal,
     StyleSheet,
-    Dimensions,
     ActivityIndicator,
     KeyboardAvoidingView,
     Platform,
     Animated,
+    useWindowDimensions,
 } from 'react-native';
 import {
     Search,
@@ -31,10 +33,9 @@ import { useDiscoveryTopics } from '@/hooks/useDiscoveryTopics';
 import { AdBanner } from '@/components/ads/AdBanner';
 import { mockMixedFeed } from '@/data/mockVideos';
 
-const { width } = Dimensions.get('window');
-
 const ExploreScreen = () => {
     const insets = useSafeAreaInsets();
+    const { width: windowWidth } = useWindowDimensions();
     const { isAuthenticated } = useAuth();
     const { addToHistory } = useSearchHistory();
     const { activeTopics } = useDiscoveryTopics();
@@ -64,14 +65,49 @@ const ExploreScreen = () => {
     // Search state refs to avoid unnecessary renders
     const searchFocusedRef = useRef(false);
     const lastSearchTimestampRef = useRef(0);
-    const lastTypingTimestampRef = useRef(0);
     const autoHideTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const blurHideTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     // Categories for filters
     const categories = useMemo(
         () => activeTopics.map((topic) => topic.name),
         [activeTopics]
     );
+
+    const discoverTopics = useMemo(() => {
+        const fallback = [
+            'Trending',
+            'Comedy',
+            'Music',
+            'Gaming',
+            'Sports',
+            'Beauty',
+            'Tech',
+            'Food',
+            'Travel',
+            'Fitness',
+            'Fashion',
+            'Pets',
+        ];
+
+        const merged = [...categories, ...fallback];
+        const uniq: string[] = [];
+        for (const name of merged) {
+            const trimmed = (name || '').trim();
+            if (!trimmed) continue;
+            if (!uniq.includes(trimmed)) uniq.push(trimmed);
+            if (uniq.length >= 14) break;
+        }
+        return uniq;
+    }, [categories]);
+
+    const gridColumns = useMemo(() => {
+        if (Platform.OS !== 'web') return 2;
+        if (windowWidth >= 1400) return 5;
+        if (windowWidth >= 1100) return 4;
+        if (windowWidth >= 860) return 3;
+        return 2;
+    }, [windowWidth]);
 
     // Use the enhanced explore hook with mixed feed enabled
     const {
@@ -84,7 +120,6 @@ const ExploreScreen = () => {
         refreshing,
         handleRefresh,
         clearSearch,
-        searchSuggestions,
         hasSuggestions,
         isSearchActive,
     } = useExplore({
@@ -96,7 +131,6 @@ const ExploreScreen = () => {
     });
 
     const searchInputRef = useRef<TextInput>(null);
-    const userQueryChangeRef = useRef(false);
 
     // Auto-hide suggestions after inactivity
     const scheduleAutoHideSuggestions = useCallback(() => {
@@ -155,16 +189,29 @@ const ExploreScreen = () => {
             if (autoHideTimeoutRef.current) {
                 clearTimeout(autoHideTimeoutRef.current);
             }
+            if (blurHideTimeoutRef.current) {
+                clearTimeout(blurHideTimeoutRef.current);
+            }
         };
     }, []);
 
     // Navigation handlers
     const handleVideoPress = useCallback((video: any) => {
+        const displayFeed = mixedFeed.length > 0 ? mixedFeed : mockMixedFeed;
+        const startIndex = Math.max(
+            0,
+            displayFeed.findIndex((item: any) => item?.id === video?.id)
+        );
+
         router.push({
-            pathname: '/(tabs)',
-            params: { videoId: video.id }
+            pathname: "/(tabs)",
+            params: {
+                videos: JSON.stringify(displayFeed),
+                startIndex: String(startIndex),
+                fromExplore: "true",
+            },
         });
-    }, []);
+    }, [mixedFeed]);
 
     const handleUserPress = useCallback((user: any) => {
         router.push(`/(tabs)/profile/${user.id}`);
@@ -187,7 +234,6 @@ const ExploreScreen = () => {
         lastSearchTimestampRef.current = now;
 
         // Mark that the user initiated this query (not a suggestion)
-        userQueryChangeRef.current = true;
         setSearchQuery(query);
 
         // Hide all dropdowns
@@ -218,8 +264,12 @@ const ExploreScreen = () => {
     const handleSearchBlur = useCallback(() => {
         searchFocusedRef.current = false;
 
+        if (blurHideTimeoutRef.current) {
+            clearTimeout(blurHideTimeoutRef.current);
+        }
+
         // Delay hiding to allow for suggestion selection
-        setTimeout(() => {
+        blurHideTimeoutRef.current = setTimeout(() => {
             if (!searchFocusedRef.current) {
                 // Hide both panels when blurring
                 setShowSearchHistory(false);
@@ -265,19 +315,18 @@ const ExploreScreen = () => {
 
     // Controlled input change handler with improved typing detection
     const handleSearchInputChange = useCallback((text: string) => {
-        // Mark that the user initiated this query
-        userQueryChangeRef.current = true;
         setSearchQuery(text);
-
-        // Update last typing timestamp
-        lastTypingTimestampRef.current = Date.now();
 
         // Show appropriate panels based on text
         if (text.trim().length >= 2) {
-            setShowSearchSuggestions(true);
             setShowSearchHistory(false);
-            // Reset auto-hide timer
-            scheduleAutoHideSuggestions();
+            if (hasSuggestions) {
+                setShowSearchSuggestions(true);
+                // Reset auto-hide timer
+                scheduleAutoHideSuggestions();
+            } else {
+                setShowSearchSuggestions(false);
+            }
         } else {
             setShowSearchSuggestions(false);
             if (text.trim().length === 0) {
@@ -286,10 +335,21 @@ const ExploreScreen = () => {
                 setShowSearchHistory(false);
             }
         }
-    }, [setSearchQuery, scheduleAutoHideSuggestions]);
+    }, [setSearchQuery, scheduleAutoHideSuggestions, hasSuggestions]);
+
+    // If suggestions arrive while focused, show them automatically
+    useEffect(() => {
+        if (
+            searchFocusedRef.current &&
+            searchQuery.trim().length >= 2 &&
+            hasSuggestions
+        ) {
+            setShowSearchSuggestions(true);
+            scheduleAutoHideSuggestions();
+        }
+    }, [hasSuggestions, scheduleAutoHideSuggestions, searchQuery]);
 
     const handleClearSearch = useCallback(() => {
-        userQueryChangeRef.current = true;
         setSearchQuery('');
         clearSearch();
         setShowSearchSuggestions(false);
@@ -380,9 +440,12 @@ const ExploreScreen = () => {
                 onVideoPress={handleVideoPress}
                 onUserPress={handleUserPress}
                 onSoundPress={handleSoundPress}
-                numColumns={2}
-                spacing={8}
-                contentContainerStyle={styles.gridContent}
+                numColumns={gridColumns}
+                spacing={Platform.OS === 'web' ? 10 : 8}
+                contentContainerStyle={[
+                    styles.gridContent,
+                    Platform.OS === 'web' ? { paddingHorizontal: 20 } : null,
+                ]}
             />
         );
     }, [
@@ -394,14 +457,15 @@ const ExploreScreen = () => {
         handleRefresh,
         handleVideoPress,
         handleUserPress,
-        handleSoundPress
+        handleSoundPress,
+        gridColumns
     ]);
 
     return (
         <KeyboardAvoidingView
-            style={[styles.container, { paddingTop: 50,  }]}
+            style={[styles.container, { paddingTop: insets.top }]}
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-            keyboardVerticalOffset={-insets.bottom}
+            keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top : 0}
         >
             <LinearGradient
                 colors={['#1E4A72', '#000000']}  
@@ -427,17 +491,29 @@ const ExploreScreen = () => {
                                 onSubmitEditing={handleSearchSubmit}
                             />
                             {searchQuery.length > 0 && (
-                                <TouchableOpacity onPress={handleClearSearch} style={styles.clearButton}>
+                                <TouchableOpacity 
+                                    onPress={handleClearSearch} 
+                                    style={styles.clearButton}
+                                    accessibilityLabel="Clear search"
+                                    accessibilityRole="button"
+                                >
                                     <X size={16} color="#999" />
                                 </TouchableOpacity>
                             )}
                         </View>
-                        <TouchableOpacity style={styles.filterButton} onPress={() => setShowFilters(true)}>
+                        <TouchableOpacity 
+                            style={styles.filterButton} 
+                            onPress={() => setShowFilters(true)}
+                            accessibilityLabel="Open filters"
+                            accessibilityRole="button"
+                        >
                             <Filter size={20} color="#FF5A5F" />
                         </TouchableOpacity>
-                        <TouchableOpacity
+<TouchableOpacity
                             style={styles.filterButton}
                             onPress={() => router.push('/nearby')}
+                            accessibilityLabel="View nearby"
+                            accessibilityRole="button"
                         >
                             <MapPin size={20} color="#74A9D9" />
                         </TouchableOpacity>
@@ -449,7 +525,7 @@ const ExploreScreen = () => {
                             <Text style={styles.searchIndicatorText}>
                                 Searching for "{searchQuery}"
                             </Text>
-                            <TouchableOpacity onPress={handleClearSearch}>
+                            <TouchableOpacity onPress={handleClearSearch} accessibilityLabel="Clear search" accessibilityRole="button">
                                 <Text style={styles.clearSearchText}>Clear</Text>
                             </TouchableOpacity>
                         </View>
@@ -462,6 +538,35 @@ const ExploreScreen = () => {
                 {/* Main content */}
                 <View style={styles.content}>
                     <AdBanner label="Explore Banner" placement="exploreBanner" />
+                    {/* Quick topics: keeps Explore from feeling empty (especially on web preview) */}
+                    {!isSearchActive && (
+                        <View style={styles.topicsSection}>
+                            <Text style={styles.topicsTitle}>Discover</Text>
+                            <ScrollView
+                                horizontal
+                                showsHorizontalScrollIndicator={false}
+                                contentContainerStyle={styles.topicsRow}
+                            >
+                                {discoverTopics.map((topic) => (
+                                    <TouchableOpacity
+                                        key={topic}
+                                        style={styles.topicChip}
+                                        onPress={() => {
+                                            // Drives mixed-feed search via useExplore (>=2 chars triggers)
+                                            setSearchQuery(topic);
+                                            addToHistory(topic);
+                                        }}
+                                        accessibilityRole="button"
+                                        accessibilityLabel={`Search ${topic}`}
+                                    >
+                                        <Text style={styles.topicChipText} numberOfLines={1}>
+                                            {topic}
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </ScrollView>
+                        </View>
+                    )}
                     {renderContent}
                 </View>
 
@@ -472,12 +577,16 @@ const ExploreScreen = () => {
                     transparent
                     onRequestClose={() => setShowSearchHistory(false)}
                 >
-                    <TouchableOpacity
+                    <Pressable
                         style={styles.searchHistoryOverlay}
-                        activeOpacity={1}
                         onPress={() => setShowSearchHistory(false)}
+                        accessibilityLabel="Close search history"
+                        accessibilityRole="button"
                     >
-                        <View style={[styles.searchHistoryModal, { top: insets.top + 70 }]}>
+                        <View
+                            style={[styles.searchHistoryModal, { top: insets.top + 70 }]}
+                            onStartShouldSetResponder={() => true}
+                        >
                             <SearchHistory
                                 onSearchSelect={(query) => {
                                     handleSearchWithHistory(query, false);
@@ -488,7 +597,7 @@ const ExploreScreen = () => {
                                 compact={true}  // Use compact mode
                             />
                         </View>
-                    </TouchableOpacity>
+                    </Pressable>
                 </Modal>
 
                 {/* Advanced Filters Modal */}
@@ -624,6 +733,36 @@ const styles = StyleSheet.create({
     },
     gridContent: {
         paddingVertical: 8,
+    },
+    topicsSection: {
+        paddingHorizontal: 20,
+        paddingBottom: 10,
+    },
+    topicsTitle: {
+        color: 'rgba(255, 255, 255, 0.9)',
+        fontSize: 14,
+        fontWeight: '700',
+        fontFamily: 'Figtree',
+        marginBottom: 8,
+        letterSpacing: 0.2,
+    },
+    topicsRow: {
+        gap: 10,
+        paddingBottom: 4,
+    },
+    topicChip: {
+        backgroundColor: 'rgba(255, 255, 255, 0.10)',
+        borderRadius: 999,
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.12)',
+    },
+    topicChipText: {
+        color: 'rgba(255, 255, 255, 0.92)',
+        fontSize: 13,
+        fontWeight: '600',
+        fontFamily: 'Figtree',
     },
 });
 

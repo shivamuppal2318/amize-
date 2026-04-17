@@ -25,6 +25,11 @@ type Region = {
     longitudeDelta: number;
 };
 
+const toCoarseCoordinate = (value: number) => Math.round(value * 100) / 100;
+
+const withPrivacySafeJitter = (value: number, seed: number) =>
+    Number((value + seed * 0.0008).toFixed(6));
+
 const requireNativeModule = (moduleName: string) => {
     const dynamicRequire = eval('require') as NodeRequire;
     return dynamicRequire(moduleName);
@@ -103,9 +108,14 @@ export default function NearbyScreen() {
                 accuracy: Location.Accuracy.Balanced,
             });
 
+            const preciseLatitude = currentPosition.coords.latitude;
+            const preciseLongitude = currentPosition.coords.longitude;
+            const coarseLatitude = toCoarseCoordinate(preciseLatitude);
+            const coarseLongitude = toCoarseCoordinate(preciseLongitude);
+
             const nextRegion: Region = {
-                latitude: currentPosition.coords.latitude,
-                longitude: currentPosition.coords.longitude,
+                latitude: coarseLatitude,
+                longitude: coarseLongitude,
                 latitudeDelta: 0.04,
                 longitudeDelta: 0.04,
             };
@@ -113,8 +123,8 @@ export default function NearbyScreen() {
             setRegion(nextRegion);
 
             const reverseGeocode = await Location.reverseGeocodeAsync({
-                latitude: currentPosition.coords.latitude,
-                longitude: currentPosition.coords.longitude,
+                latitude: preciseLatitude,
+                longitude: preciseLongitude,
             });
 
             const place = reverseGeocode[0];
@@ -126,26 +136,33 @@ export default function NearbyScreen() {
 
             try {
                 const items = await NearbyService.getNearbyDiscovery({
-                    latitude: currentPosition.coords.latitude,
-                    longitude: currentPosition.coords.longitude,
+                    latitude: coarseLatitude,
+                    longitude: coarseLongitude,
                     area: areaLabel || undefined,
                     limit: 12,
                 });
 
                 setNearbyItems(
                     items.length > 0
-                        ? items
+                        ? items.map((item, index) => ({
+                              ...item,
+                              latitude: withPrivacySafeJitter(item.latitude, index % 3 === 0 ? -1 : 1),
+                              longitude: withPrivacySafeJitter(
+                                  item.longitude,
+                                  index % 2 === 0 ? 1 : -1
+                              ),
+                          }))
                         : createNearbyItems(
-                              currentPosition.coords.latitude,
-                              currentPosition.coords.longitude
+                              coarseLatitude,
+                              coarseLongitude
                           )
                 );
             } catch (apiError) {
                 console.warn('Nearby discovery API unavailable, using fallback:', apiError);
                 setNearbyItems(
                     createNearbyItems(
-                        currentPosition.coords.latitude,
-                        currentPosition.coords.longitude
+                        coarseLatitude,
+                        coarseLongitude
                     )
                 );
             }
@@ -183,14 +200,22 @@ export default function NearbyScreen() {
                 style={styles.gradient}
             >
                 <View style={styles.header}>
-                    <TouchableOpacity onPress={() => router.back()}>
+                    <TouchableOpacity 
+                    onPress={() => router.back()}
+                    accessibilityLabel="Go back"
+                    accessibilityRole="button"
+                >
                         <ArrowLeft size={24} color="white" />
                     </TouchableOpacity>
                     <View style={styles.headerText}>
                         <Text style={styles.title}>Nearby Discovery</Text>
                         <Text style={styles.subtitle}>{headerSubtitle}</Text>
                     </View>
-                    <TouchableOpacity onPress={loadNearby}>
+                    <TouchableOpacity 
+                    onPress={loadNearby}
+                    accessibilityLabel="Refresh nearby"
+                    accessibilityRole="button"
+                >
                         <RefreshCw size={20} color="#FF5A5F" />
                     </TouchableOpacity>
                 </View>

@@ -1,6 +1,7 @@
 import { io, Socket } from 'socket.io-client';
 import { API_CONFIG } from '../api/config';
 import { getTokens, tryRefreshTokens, clearAuthData } from "@/lib/auth/tokens";
+import { isDemoMode } from '@/lib/release/releaseConfig';
 import {
     ServerToClientEvents,
     ClientToServerEvents,
@@ -21,6 +22,11 @@ class SocketClient {
     private maxAuthRetryAttempts = 2; // Only try auth refresh twice
     private isHandlingAuthError = false;
     private onAuthFailure?: () => void; // Callback for complete auth failure
+    private pendingMessages: Array<{
+        data: Parameters<ClientToServerEvents['send_message']>[0];
+        callback?: Parameters<ClientToServerEvents['send_message']>[1];
+    }> = [];
+    private maxPendingMessages = 50;
 
     constructor() {
         console.log('[SocketClient] Initializing socket client');
@@ -52,6 +58,11 @@ class SocketClient {
             const tokens = await getTokens();
             if (!tokens?.accessToken) {
                 throw new Error('No access token available');
+            }
+            if (isDemoMode() || tokens.accessToken.startsWith('local-demo-token-')) {
+                console.log('[SocketClient] Demo session - skipping socket connect');
+                connectionStateManager.setState('disconnected');
+                return;
             }
 
             console.log('[SocketClient] Creating socket connection to:', API_CONFIG.SOCKET_URL);
@@ -143,6 +154,8 @@ class SocketClient {
                 clearTimeout(this.reconnectTimer);
                 this.reconnectTimer = null;
             }
+
+            this.flushPendingMessages();
         });
 
         this.socket.on('disconnect', (reason) => {
@@ -309,18 +322,27 @@ class SocketClient {
         }, delay) as unknown as NodeJS.Timeout;
     }
 
+    private flushPendingMessages(): void {
+        if (!this.socket?.connected || this.pendingMessages.length === 0) {
+            return;
+        }
+
+        const queue = [...this.pendingMessages];
+        this.pendingMessages = [];
+
+        queue.forEach(({ data, callback }) => {
+            this.socket?.emit('send_message', data, (response) => {
+                callback?.(response);
+            });
+        });
+    }
+
     // Send message with callback and validation
     public sendMessage(
         data: Parameters<ClientToServerEvents['send_message']>[0],
         callback?: Parameters<ClientToServerEvents['send_message']>[1]
     ): void {
         console.log('[SocketClient] Attempting to send message:', data);
-
-        if (!this.socket?.connected) {
-            console.error('[SocketClient] Cannot send message - not connected');
-            callback?.({ success: false, error: 'Not connected to server' });
-            return;
-        }
 
         if (!data.content?.trim() && !data.attachmentUrl) {
             console.error('[SocketClient] Cannot send message - no content');
@@ -331,6 +353,15 @@ class SocketClient {
         if (!data.receiverId) {
             console.error('[SocketClient] Cannot send message - no receiver ID');
             callback?.({ success: false, error: 'Receiver ID required' });
+            return;
+        }
+
+        if (!this.socket?.connected) {
+            if (this.pendingMessages.length >= this.maxPendingMessages) {
+                this.pendingMessages.shift();
+            }
+            this.pendingMessages.push({ data, callback });
+            console.warn('[SocketClient] Socket offline, queued message for retry');
             return;
         }
 

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import {
   Alert,
@@ -31,6 +31,7 @@ import {
   CreatorAPI,
   CreatorConnectStatusResponse,
 } from "@/lib/api/CreatorAPI";
+import { AuthContext } from "@/context/AuthContext";
 import { captureException } from "@/utils/errorReporting";
 import { PaymentAPI, PaymentAttempt } from "@/lib/api/paymentService";
 import { completePendingPayment } from "@/lib/payments/completePendingPayment";
@@ -247,6 +248,7 @@ const defaultConnectStatus: CreatorConnectStatusResponse = {
 };
 
 export default function WalletScreen() {
+  const { user } = useContext(AuthContext);
   const [walletState, setWalletState] = useState<WalletState>(DEFAULT_WALLET_STATE);
   const [withdrawals, setWithdrawals] = useState<WithdrawalRequest[]>([]);
   const [paymentAttempts, setPaymentAttempts] = useState<PaymentAttempt[]>([]);
@@ -282,6 +284,15 @@ export default function WalletScreen() {
     connectStatus.connect.detailsSubmitted &&
     connectStatus.connect.payoutsEnabled;
 
+  const canUseCreatorConnect = useMemo(() => {
+    // `/creators/connect` is forbidden for normal accounts on the backend.
+    return !!(
+      user?.role === "CREATOR" ||
+      user?.creatorVerified ||
+      user?.monetizationEnabled
+    );
+  }, [user?.creatorVerified, user?.monetizationEnabled, user?.role]);
+
   const giftActivity = useMemo(
     () =>
       walletState.transactions.filter((transaction) =>
@@ -298,8 +309,8 @@ export default function WalletScreen() {
   };
 
   const loadWithdrawalRequests = useCallback(async () => {
-    const nextWithdrawals = await WalletAPI.getWithdrawals();
-    setWithdrawals(nextWithdrawals);
+    const result = await WalletAPI.getWithdrawals();
+    setWithdrawals(result.withdrawals);
   }, []);
 
   const loadPaymentAttempts = useCallback(async () => {
@@ -315,7 +326,9 @@ export default function WalletScreen() {
       const [wallet, nextPaymentConfig, nextConnectStatus] = await Promise.all([
         WalletAPI.getWallet(),
         ConfigAPI.getPaymentProviderConfig(),
-        CreatorAPI.getCreatorConnectStatus(),
+        canUseCreatorConnect
+          ? CreatorAPI.getCreatorConnectStatus()
+          : Promise.resolve(defaultConnectStatus),
         loadWithdrawalRequests(),
         loadPaymentAttempts(),
       ]);
@@ -340,7 +353,7 @@ export default function WalletScreen() {
     } finally {
       setLoading(false);
     }
-  }, [loadPaymentAttempts, loadWithdrawalRequests]);
+  }, [canUseCreatorConnect, loadPaymentAttempts, loadWithdrawalRequests]);
 
   useEffect(() => {
     loadWalletState();
@@ -377,6 +390,13 @@ export default function WalletScreen() {
   const handleConnectStripe = async () => {
     if (demoMode) {
       showDemoBlocked();
+      return;
+    }
+    if (!canUseCreatorConnect) {
+      Alert.alert(
+        "Stripe Connect",
+        "Creator monetization is not enabled for this account yet."
+      );
       return;
     }
     try {
@@ -622,7 +642,11 @@ export default function WalletScreen() {
       <LinearGradient colors={["#1E4A72", "#000000"]} style={styles.gradient}>
         <ScrollView contentContainerStyle={styles.content}>
           <View style={styles.header}>
-            <TouchableOpacity onPress={() => router.back()}>
+            <TouchableOpacity 
+                onPress={() => router.back()}
+                accessibilityLabel="Go back"
+                accessibilityRole="button"
+              >
               <ArrowLeft size={24} color="white" />
             </TouchableOpacity>
             <Text style={styles.headerTitle}>Wallet & Payouts</Text>

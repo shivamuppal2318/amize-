@@ -120,7 +120,12 @@ export default function ClientShowcaseScreen() {
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.header}>
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+          <TouchableOpacity 
+            style={styles.backButton} 
+            onPress={() => router.back()}
+            accessibilityLabel="Go back"
+            accessibilityRole="button"
+          >
             <ChevronLeft size={24} color="#FFFFFF" />
           </TouchableOpacity>
           <View style={styles.headerCopy}>

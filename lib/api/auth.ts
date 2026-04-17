@@ -18,6 +18,39 @@ import { getDeviceId } from "@/lib/utils/deviceInfo";
 import { API_URL } from "../settings/constants";
 
 export const authApi = {
+  forgotPassword: async (email: string): Promise<{
+    success: boolean;
+    message: string;
+  }> => {
+    const response = await axios.post(
+      API_CONFIG.BASE_URL + "/auth/forgot-password",
+      { email },
+      {
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    );
+    return response.data;
+  },
+
+  resetPassword: async (payload: {
+    token: string;
+    password: string;
+    confirmPassword: string;
+  }): Promise<{ success: boolean; message: string }> => {
+    const response = await axios.post(
+      API_CONFIG.BASE_URL + "/auth/reset-password",
+      payload,
+      {
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    );
+    return response.data;
+  },
+
   // Login with email or phone number and password
   login: async (data: LoginRequest): Promise<AuthResponse> => {
     console.log("Login data:", data);
@@ -45,7 +78,23 @@ export const authApi = {
       );
 
       return response.data;
-    } catch (error) {
+    } catch (error: any) {
+      if (
+        typeof window !== "undefined" &&
+        error?.message === "Network Error"
+      ) {
+        const webGoogleError = new Error(
+          "Google login failed because the backend blocked the browser request. Enable CORS on the backend for this web origin or use the Android build."
+        );
+        (webGoogleError as any).response = {
+          data: {
+            message:
+              "Google login failed because the backend blocked the browser request. Enable CORS on the backend for this web origin or use the Android build.",
+          },
+        };
+        throw webGoogleError;
+      }
+
       console.error("Google login error:", error);
       throw error;
     }

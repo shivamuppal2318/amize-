@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Animated, Dimensions, StyleSheet, View } from "react-native";
+import { Animated, Dimensions, Platform, StyleSheet, View } from "react-native";
 import { router } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 
@@ -282,49 +282,51 @@ const MessagingSection: React.FC<MessagingSectionProps> = ({
           onRetry={handleRetryConnection}
         />
 
-        <Animated.View
-          style={[
-            styles.animatedContainer,
-            {
-              transform: [{ translateX: listPosition }],
-            },
-          ]}
-        >
-          <ConversationsList
-            conversations={conversations}
-            searchText={searchText}
-            setSearchText={setSearchText}
-            activeTab={activeTab}
-            setActiveTab={setActiveTab}
-            onConversationPress={handleConversationPress}
-            isConnected={connectionStatus.isConnected}
-            loading={loading}
-            onRetry={handleRetryConnection}
-            onRefresh={refreshConversations}
-          />
-        </Animated.View>
-
-        <Animated.View
-          style={[
-            styles.animatedContainer,
-            {
-              transform: [{ translateX: detailPosition }],
-            },
-          ]}
-        >
-          {selectedConversation ? (
-            <ConversationDetail
-              conversation={selectedConversation}
-              messages={currentMessages}
-              typingUsers={typingUsers}
-              isOnline={getConversationOnlineStatus(selectedConversation)}
+        <View style={styles.viewport}>
+          <Animated.View
+            style={[
+              styles.animatedContainer,
+              {
+                transform: [{ translateX: listPosition }],
+              },
+            ]}
+          >
+            <ConversationsList
+              conversations={conversations}
+              searchText={searchText}
+              setSearchText={setSearchText}
+              activeTab={activeTab}
+              setActiveTab={setActiveTab}
+              onConversationPress={handleConversationPress}
               isConnected={connectionStatus.isConnected}
-              onBack={handleBackPress}
-              onTypingStart={handleTypingStart}
-              onTypingStop={handleTypingStop}
+              loading={loading}
+              onRetry={handleRetryConnection}
+              onRefresh={refreshConversations}
             />
-          ) : null}
-        </Animated.View>
+          </Animated.View>
+
+          <Animated.View
+            style={[
+              styles.animatedContainer,
+              {
+                transform: [{ translateX: detailPosition }],
+              },
+            ]}
+          >
+            {selectedConversation ? (
+              <ConversationDetail
+                conversation={selectedConversation}
+                messages={currentMessages}
+                typingUsers={typingUsers}
+                isOnline={getConversationOnlineStatus(selectedConversation)}
+                isConnected={connectionStatus.isConnected}
+                onBack={handleBackPress}
+                onTypingStart={handleTypingStart}
+                onTypingStop={handleTypingStop}
+              />
+            ) : null}
+          </Animated.View>
+        </View>
       </LinearGradient>
     </View>
   );
@@ -333,6 +335,12 @@ const MessagingSection: React.FC<MessagingSectionProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  viewport: {
+    flex: 1,
+    width: "100%",
+    maxWidth: Platform.OS === "web" ? 1200 : undefined,
+    alignSelf: "center",
   },
   animatedContainer: {
     position: "absolute",

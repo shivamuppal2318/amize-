@@ -182,6 +182,7 @@ const styles = StyleSheet.create({
   },
   listContent: {
     flexGrow: 1,
+    paddingBottom: UI.SPACING.XXL,
   },
   emptyListContent: {
     flex: 1,

@@ -39,6 +39,7 @@ import {
   UserCheck,
   Calendar,
   MapPin,
+  Shield,
 } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import apiClient from "@/lib/api/client";
@@ -65,6 +66,7 @@ interface User {
   creatorVerified: boolean;
   creatorCategory?: string;
   role: string;
+  adminPermissions?: string;
   isEligibleForCreator: boolean;
   location?: string;
   joinedAt?: string;
@@ -78,8 +80,8 @@ interface User {
 export interface Video {
   id: string;
   title: string;
-  description?: string;
-  thumbnailUrl?: string;
+  description?: string | null;
+  thumbnailUrl?: string | null;
   videoUrl: string;
   duration: number;
   isPublic: boolean;
@@ -161,6 +163,9 @@ export default function ProfilePage() {
   const [savedVideos, setSavedVideos] = useState<Video[]>([]);
   const [privateVideos, setPrivateVideos] = useState<Video[]>([]);
   const [loadingTab, setLoadingTab] = useState(false);
+  const canAccessAdmin =
+    isOwnProfile &&
+    (user?.role === "ADMIN" || user?.adminPermissions === "all");
 
   // Animation values
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -177,7 +182,8 @@ export default function ProfilePage() {
       setUser(mockData.user);
       setVideos(mockData.videos);
       setLikes(mockData.likes);
-      setIsOwnProfile(false);
+      // In demo mode, treat as own profile to show Settings button
+      setIsOwnProfile(true);
       setIsFollowing(false);
       setError(null);
     },
@@ -341,7 +347,7 @@ export default function ProfilePage() {
       const mockData = buildMockProfileData(id);
       setLikes(mockData.likes);
     }
-  }, [activeTab]);
+  }, [id]);
 
   const fetchSavedVideos = useCallback(async () => {
     setSavedVideos([]);
@@ -417,6 +423,10 @@ export default function ProfilePage() {
 
   const handleEditProfile = () => {
     router.push("/settings");
+  };
+
+  const handleOpenAdmin = () => {
+    router.push("/admin");
   };
 
   const formatNumber = (num: number) => {
@@ -769,7 +779,6 @@ export default function ProfilePage() {
   if (error || !user) {
     return (
       <SafeAreaView style={styles.errorContainer}>
-        3
         <LinearGradient
           colors={["#1E4A72", "#000000"]}
           start={{ x: 0.5, y: 0 }}
@@ -808,7 +817,12 @@ export default function ProfilePage() {
         style={{ flex: 1 }}
       >
         <View style={styles.header}>
-          <TouchableOpacity onPress={handleBack} style={styles.headerButton}>
+          <TouchableOpacity 
+            onPress={handleBack} 
+            style={styles.headerButton}
+            accessibilityLabel="Go back"
+            accessibilityRole="button"
+          >
             <ChevronLeft size={24} color="white" />
           </TouchableOpacity>
 
@@ -835,6 +849,8 @@ export default function ProfilePage() {
             <TouchableOpacity
               onPress={handleEditProfile}
               style={styles.headerButton}
+              accessibilityLabel="Settings"
+              accessibilityRole="button"
             >
               <Settings size={24} color="white" />
             </TouchableOpacity>
@@ -952,13 +968,24 @@ export default function ProfilePage() {
 
                   <View style={styles.actionButtons}>
                     {isOwnProfile ? (
-                      <TouchableOpacity
-                        style={styles.editButton}
-                        onPress={handleEditProfile}
-                      >
-                        <Edit3 size={18} color="white" />
-                        <Text style={styles.editButtonText}>Edit Profile</Text>
-                      </TouchableOpacity>
+                      <>
+                        <TouchableOpacity
+                          style={styles.editButton}
+                          onPress={handleEditProfile}
+                        >
+                          <Edit3 size={18} color="white" />
+                          <Text style={styles.editButtonText}>Edit Profile</Text>
+                        </TouchableOpacity>
+                        {canAccessAdmin && (
+                          <TouchableOpacity
+                            style={styles.editButton}
+                            onPress={handleOpenAdmin}
+                          >
+                            <Shield size={18} color="white" />
+                            <Text style={styles.editButtonText}>Admin</Text>
+                          </TouchableOpacity>
+                        )}
+                      </>
                     ) : (
                       <>
                         <TouchableOpacity

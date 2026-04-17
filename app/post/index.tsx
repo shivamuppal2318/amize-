@@ -14,7 +14,7 @@ import {
 } from "react-native";
 import { CameraView } from "expo-camera";
 import * as MediaLibrary from "expo-media-library";
-import * as FileSystem from "expo-file-system";
+import * as FileSystem from "expo-file-system/legacy";
 import * as ImageManipulator from "expo-image-manipulator";
 import { useRouter, Stack } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
@@ -46,6 +46,7 @@ const { width, height } = Dimensions.get("window");
 export default function CameraScreen() {
   const router = useRouter();
   const toast = useToast();
+  const isWeb = Platform.OS === "web";
 
   const {
     hasPermissions,
@@ -421,6 +422,54 @@ export default function CameraScreen() {
     );
     setSoundVisibleModel(false);
   };
+
+  if (isWeb)
+    return (
+      <SafeAreaView style={styles.webSafeArea}>
+        <Stack.Screen options={{ headerShown: false }} />
+        <LinearGradient
+          colors={["#14324F", "#09111A", "#000000"]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.webContainer}
+        >
+          <TouchableOpacity
+            style={styles.webBackButton}
+            onPress={() => router.back()}
+          >
+            <X size={20} color="white" />
+          </TouchableOpacity>
+
+          <View style={styles.webCard}>
+            <View style={styles.webBadge}>
+              <CameraIcon size={24} color="#FF4A76" />
+            </View>
+            <Text style={styles.webTitle}>Create a post</Text>
+            <Text style={styles.webSubtitle}>
+              Desktop preview does not use the native camera. Continue with a
+              gallery upload instead.
+            </Text>
+
+            <TouchableOpacity
+              style={styles.webPrimaryButton}
+              onPress={() => router.push("/post/media-select")}
+            >
+              <ImageIcon size={18} color="white" />
+              <Text style={styles.webPrimaryButtonText}>
+                Choose photos or videos
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.webSecondaryButton}
+              onPress={() => router.back()}
+            >
+              <Text style={styles.webSecondaryButtonText}>Go back</Text>
+            </TouchableOpacity>
+          </View>
+        </LinearGradient>
+      </SafeAreaView>
+    );
 
   if (permissionsLoading)
     return (
@@ -952,5 +1001,90 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     zIndex: 10,
+  },
+  webSafeArea: {
+    flex: 1,
+    backgroundColor: "#06101A",
+  },
+  webContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 24,
+  },
+  webBackButton: {
+    position: "absolute",
+    top: 24,
+    left: 24,
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: "rgba(255,255,255,0.08)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  webCard: {
+    width: "100%",
+    maxWidth: 520,
+    borderRadius: 28,
+    padding: 32,
+    backgroundColor: "rgba(9, 20, 31, 0.92)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.08)",
+    alignItems: "center",
+  },
+  webBadge: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(255, 74, 118, 0.12)",
+    marginBottom: 20,
+  },
+  webTitle: {
+    color: "white",
+    fontSize: 34,
+    fontWeight: "800",
+    marginBottom: 12,
+  },
+  webSubtitle: {
+    color: "rgba(255,255,255,0.72)",
+    fontSize: 16,
+    lineHeight: 24,
+    textAlign: "center",
+    maxWidth: 420,
+    marginBottom: 28,
+  },
+  webPrimaryButton: {
+    width: "100%",
+    maxWidth: 360,
+    height: 56,
+    borderRadius: 18,
+    backgroundColor: "#FF4A76",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    marginBottom: 14,
+  },
+  webPrimaryButtonText: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "700",
+  },
+  webSecondaryButton: {
+    width: "100%",
+    maxWidth: 360,
+    height: 56,
+    borderRadius: 18,
+    backgroundColor: "rgba(255,255,255,0.06)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  webSecondaryButtonText: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "600",
   },
 });

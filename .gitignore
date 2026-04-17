@@ -34,6 +34,17 @@ yarn-error.*
 
 # local env files
 .env*.local
+.env
+.env.release.example
+
+# local backups / nested repos
+.initial/
+amize-next-master/
+
+# local compare dumps and logs
+.compare-files.txt
+.compare-files.filtered.txt
+*.log
 
 # typescript
 *.tsbuildinfo

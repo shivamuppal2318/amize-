@@ -1,7 +1,6 @@
 import { useState, useCallback } from 'react';
 import { useRouter } from 'expo-router';
 import { useAuth } from './useAuth';
-import { isDemoMode } from '@/lib/release/releaseConfig';
 
 interface AuthPromptState {
     visible: boolean;
@@ -45,8 +44,7 @@ interface UseAuthPromptReturn {
 export const useAuthPrompt = (): UseAuthPromptReturn => {
     const router = useRouter();
     const { isAuthenticated } = useAuth();
-    const demoMode = isDemoMode();
-    const isEffectivelyAuthenticated = isAuthenticated || demoMode;
+    const isEffectivelyAuthenticated = isAuthenticated;
 
     const [authPrompt, setAuthPrompt] = useState<AuthPromptState>({
         visible: false,

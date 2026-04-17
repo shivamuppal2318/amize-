@@ -35,7 +35,6 @@ const ConversationItem: React.FC<ConversationItemProps> = ({
     setImgError(false);
   }, [item?.avatar]);
 
-  console.log("fjsdljfalfjalfjasfjalskfjaslfjalfj:------", item);
   const formatTimestamp = (timestamp: string): string => {
     if (!timestamp) return "";
 

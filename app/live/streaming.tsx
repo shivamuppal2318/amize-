@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
     Alert,
     View,
@@ -52,6 +52,7 @@ export default function LiveStreamingScreen() {
     const [comment, setComment] = useState('');
     const [showModerationPanel, setShowModerationPanel] = useState(false);
     const [showGiftPanel, setShowGiftPanel] = useState(false);
+    const [walletCoins, setWalletCoins] = useState(0);
     const [giftCatalog, setGiftCatalog] = useState<GiftCatalogItem[]>([]);
     const [selectedGift, setSelectedGift] = useState<GiftCatalogItem | null>(null);
     const [giftQuantity, setGiftQuantity] = useState('1');
@@ -80,6 +81,29 @@ export default function LiveStreamingScreen() {
         [beauty, comments, moderation, streamDescription, streamTitle, visibility]
     );
     const liveSession = useLiveSession(livePayload);
+
+    useEffect(() => {
+        let mounted = true;
+
+        const loadWallet = async () => {
+            try {
+                const wallet = await WalletAPI.getWallet();
+                if (mounted) {
+                    setWalletCoins(wallet.coinBalance ?? 0);
+                }
+            } catch (error) {
+                if (mounted) {
+                    setWalletCoins(0);
+                }
+            }
+        };
+
+        loadWallet();
+
+        return () => {
+            mounted = false;
+        };
+    }, []);
     const canComment = comments !== 'disabled';
     const isHost = liveSession.state.session?.hostUserId === user?.id;
     const recentComments = liveSession.state.session?.recentComments ?? liveSession.state.comments;
@@ -246,6 +270,7 @@ export default function LiveStreamingScreen() {
                 selectedGift.id,
                 quantity
             );
+            setWalletCoins(wallet.coinBalance ?? 0);
             const label = gift?.quantity
                 ? `${selectedGift.label} x${gift.quantity}`
                 : selectedGift.label;
@@ -394,7 +419,7 @@ export default function LiveStreamingScreen() {
                             To: {viewerGiftTarget?.name || 'Recipient'}
                         </Text>
                         <Text style={styles.giftPanelMeta}>
-                            Coins available: {walletState.coinBalance}
+                            Coins available: {walletCoins}
                         </Text>
                         <View style={styles.giftOptions}>
                             {giftCatalog.map((gift) => {

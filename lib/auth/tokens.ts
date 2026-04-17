@@ -1,6 +1,25 @@
 import { secureStorage, STORAGE_KEYS } from './storage';
 import { authApi } from '../api/auth';
 import { TokenPair } from './types';
+import { jwtDecode } from 'jwt-decode';
+
+const looksLikeJwt = (token: string) => token.split('.').length === 3;
+
+const isJwtTokenValid = (token: string): boolean => {
+    try {
+        const payload = jwtDecode<{ exp?: number }>(token);
+
+        // If the token has no exp claim, don't treat it as invalid here.
+        // Some backends issue opaque/non-expiring tokens.
+        if (typeof payload.exp !== 'number') {
+            return true;
+        }
+
+        return payload.exp * 1000 > Date.now();
+    } catch {
+        return false;
+    }
+};
 
 // Get tokens from secure storage
 export const getTokens = async (): Promise<TokenPair | null> => {
@@ -30,11 +49,31 @@ export const removeTokens = async (): Promise<void> => {
 export const validateTokens = async (): Promise<boolean> => {
     try {
         const tokens = await getTokens();
-        return tokens !== null &&
+        if (tokens === null) {
+            return false;
+        }
+
+        const { accessToken, refreshToken } = tokens;
+        const hasBasicShape =
             typeof tokens.accessToken === 'string' &&
             tokens.accessToken.length > 0 &&
             typeof tokens.refreshToken === 'string' &&
             tokens.refreshToken.length > 0;
+
+        if (!hasBasicShape) {
+            return false;
+        }
+
+        const isLocalDemoToken =
+            accessToken.startsWith('local-demo-token-') &&
+            refreshToken.startsWith('local-demo-refresh-');
+
+        if (isLocalDemoToken) {
+            return true;
+        }
+
+        // If it looks like a JWT, validate expiry; otherwise accept as opaque token.
+        return looksLikeJwt(accessToken) ? isJwtTokenValid(accessToken) : true;
     } catch {
         return false;
     }
@@ -91,6 +130,7 @@ export const clearAuthData = async (): Promise<void> => {
     await removeTokens();
     await secureStorage.clearMultiple([
         STORAGE_KEYS.USER_DATA,
+        STORAGE_KEYS.ONBOARDING_COMPLETED,
         STORAGE_KEYS.SIGNUP_FLOW,
     ]);
 };

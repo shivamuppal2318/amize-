@@ -30,11 +30,11 @@ const parseBoolean = (value: boolean | string | undefined, fallback = false) => 
 
 export const releaseConfig = {
   demoMode: parseBoolean(
-    extra.demoMode ?? process.env.EXPO_PUBLIC_DEMO_MODE,
+    process.env.EXPO_PUBLIC_DEMO_MODE ?? extra.demoMode,
     false
   ),
   enableLiveStreaming: parseBoolean(
-    extra.enableLiveStreaming ?? process.env.EXPO_ENABLE_LIVE_STREAMING,
+    process.env.EXPO_ENABLE_LIVE_STREAMING ?? extra.enableLiveStreaming,
     false
   ),
   admobAndroidAppId:

@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef } from 'react';
 import VideoService from '@/lib/api/videoService';
 import { ApiSharePlatform } from '@/lib/api/types/video';
+import { mobileEvents } from '@/lib/analytics/mobileEvents';
 
 /**
  * Hook for interacting with videos (like, comment, share, view)
@@ -32,6 +33,12 @@ export default function useVideoInteractions() {
             if (onUpdate) {
                 onUpdate(response.liked, response.likesCount);
             }
+
+            mobileEvents.track('video_like_toggled', {
+                videoId,
+                liked: response.liked,
+                likesCount: response.likesCount,
+            });
 
             return response;
         } catch (error) {
@@ -138,6 +145,11 @@ export default function useVideoInteractions() {
                 console.log(`Recording final view for video ${videoId}: ${watchTimeSeconds}s, completion: ${completionRate}%`);
                 await VideoService.recordView(videoId, watchTimeSeconds, completionRate);
                 console.log(`View successfully recorded for ${videoId}`);
+                mobileEvents.track('video_view_completed', {
+                    videoId,
+                    watchTimeSeconds,
+                    completionRate,
+                });
             } catch (error) {
                 console.error(`Error recording view for ${videoId}:`, error);
             } finally {
@@ -166,6 +178,12 @@ export default function useVideoInteractions() {
                 onUpdate(response.sharesCount);
             }
 
+            mobileEvents.track('video_shared', {
+                videoId,
+                platform,
+                sharesCount: response.sharesCount,
+            });
+
             return response;
         } catch (error) {
             console.error(`Error sharing video ${videoId} to ${platform}:`, error);
@@ -186,6 +204,9 @@ export default function useVideoInteractions() {
         viewStartTimes.current = {};
         lastWatchTimes.current = {};
         viewUpdateInterval.current = {};
+        mobileEvents.flush().catch(() => {
+            // Best-effort analytics flush during cleanup.
+        });
     }, []);
 
     return {

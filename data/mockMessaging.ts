@@ -8,7 +8,6 @@ const minutesAgo = (minutes: number) =>
 const createParticipant = (overrides: Partial<Participant>): Participant => ({
   id: overrides.id || "user",
   username: overrides.username || "user",
-  fullName: overrides.fullName || overrides.username || "User",
   profilePhotoUrl:
     overrides.profilePhotoUrl ||
     "https://randomuser.me/api/portraits/men/32.jpg",
@@ -19,28 +18,24 @@ export const buildMockMessagingData = (currentUserId = "demo-user") => {
   const currentUser = createParticipant({
     id: currentUserId,
     username: "you",
-    fullName: "You",
     profilePhotoUrl: "https://randomuser.me/api/portraits/men/75.jpg",
   });
 
   const maya = createParticipant({
     id: "mock-user-1",
     username: "maya.c",
-    fullName: "Maya Chen",
     profilePhotoUrl: "https://randomuser.me/api/portraits/women/44.jpg",
   });
 
   const theo = createParticipant({
     id: "mock-user-2",
     username: "theo.dev",
-    fullName: "Theo Patel",
     profilePhotoUrl: "https://randomuser.me/api/portraits/men/85.jpg",
   });
 
   const crew = createParticipant({
     id: "mock-user-3",
     username: "studio.crew",
-    fullName: "Studio Crew",
     profilePhotoUrl: "https://randomuser.me/api/portraits/women/65.jpg",
   });
 
@@ -48,7 +43,7 @@ export const buildMockMessagingData = (currentUserId = "demo-user") => {
     {
       id: "mock-convo-1",
       type: "direct",
-      name: maya.fullName || maya.username,
+      name: maya.username,
       avatar: maya.profilePhotoUrl,
       participants: [currentUser, maya],
       lastMessage: "Love the new edit!",
@@ -65,7 +60,7 @@ export const buildMockMessagingData = (currentUserId = "demo-user") => {
     {
       id: "mock-convo-2",
       type: "direct",
-      name: theo.fullName || theo.username,
+      name: theo.username,
       avatar: theo.profilePhotoUrl,
       participants: [currentUser, theo],
       lastMessage: "I'll send the thumbnail options.",

@@ -34,11 +34,28 @@ export const AD_CONFIG = {
 type BannerPlacement = keyof typeof AD_CONFIG.placements;
 
 export function isAdMobProductionReady(): boolean {
-    return (
-        !TEST_ADMOB_APP_IDS.has(AD_CONFIG.appIds.android) &&
-        !TEST_ADMOB_APP_IDS.has(AD_CONFIG.appIds.ios) &&
-        Object.values(AD_CONFIG.placements).every((value) => value.trim().length > 0)
+    const placementsReady = Object.values(AD_CONFIG.placements).every(
+        (value) => value.trim().length > 0
     );
+    if (!placementsReady) {
+        return false;
+    }
+
+    if (Platform.OS === 'android') {
+        return (
+            AD_CONFIG.appIds.android.trim().length > 0 &&
+            !TEST_ADMOB_APP_IDS.has(AD_CONFIG.appIds.android)
+        );
+    }
+
+    if (Platform.OS === 'ios') {
+        return (
+            AD_CONFIG.appIds.ios.trim().length > 0 &&
+            !TEST_ADMOB_APP_IDS.has(AD_CONFIG.appIds.ios)
+        );
+    }
+
+    return false;
 }
 
 export function shouldInitializeMobileAds(): boolean {

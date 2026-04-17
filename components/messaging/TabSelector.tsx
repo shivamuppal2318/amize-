@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
+import { Platform, View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { COLORS, UI, TABS } from "./constants";
 
 interface TabSelectorProps {
@@ -35,29 +35,38 @@ const TabSelector: React.FC<TabSelectorProps> = ({
 const styles = StyleSheet.create({
   tabContainer: {
     flexDirection: "row",
-    justifyContent: "space-around",
+    justifyContent: "center",
+    alignSelf: "center",
     paddingHorizontal: UI.SPACING.LG,
     marginBottom: UI.SPACING.MD,
+    width: "100%",
+    maxWidth: Platform.OS === "web" ? 560 : undefined,
+    gap: UI.SPACING.SM,
   },
   tabButton: {
-    paddingVertical: UI.SPACING.SM,
+    flex: 1,
+    paddingVertical: UI.SPACING.SM + 2,
     paddingHorizontal: UI.SPACING.LG,
-    width: "50%",
     justifyContent: "center",
     alignItems: "center",
-    borderColor: COLORS.darkGray,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.08)",
+    borderRadius: UI.BORDER_RADIUS.XL,
+    backgroundColor: "rgba(10, 14, 28, 0.18)",
   },
   activeTab: {
-    borderBottomWidth: 2,
-    borderBottomColor: COLORS.primary,
+    backgroundColor: "rgba(10, 14, 28, 0.42)",
+    borderColor: COLORS.accentBorder,
   },
   tabText: {
     color: COLORS.textGray,
     fontSize: 16,
+    fontWeight: "600",
+    fontFamily: UI.FONT_FAMILY,
   },
   activeTabText: {
     color: COLORS.white,
-    fontWeight: "bold",
+    fontWeight: "700",
   },
 });
 

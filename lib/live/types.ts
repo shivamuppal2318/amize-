@@ -91,4 +91,17 @@ export interface LiveSessionRuntimeState {
     connectionLabel: string;
     session: LiveSession | null;
     hostTransport: LiveHostTransport | null;
+    telemetry?: {
+        bitrateKbps: number;
+        droppedFrames: number;
+        rttMs: number;
+        sampleAt: string;
+    } | null;
+}
+
+export interface LiveTelemetrySample {
+    bitrateKbps: number;
+    droppedFrames: number;
+    rttMs: number;
+    sampleAt: string;
 }

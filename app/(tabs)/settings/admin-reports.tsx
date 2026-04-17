@@ -230,7 +230,11 @@ export default function AdminReportsScreen() {
           }
         >
           <View style={styles.header}>
-            <TouchableOpacity onPress={() => router.back()}>
+            <TouchableOpacity 
+            onPress={() => router.back()}
+            accessibilityLabel="Go back"
+            accessibilityRole="button"
+          >
               <ArrowLeft size={24} color="white" />
             </TouchableOpacity>
             <Text style={styles.headerTitle}>Report Review</Text>
@@ -295,6 +299,8 @@ export default function AdminReportsScreen() {
                         statusFilter === status && styles.filterPillActive,
                       ]}
                       onPress={() => setStatusFilter(status)}
+                      accessibilityLabel={`Filter by ${status}`}
+                      accessibilityRole="button"
                     >
                       <Text
                         style={[
@@ -318,6 +324,8 @@ export default function AdminReportsScreen() {
                         targetFilter === target && styles.filterPillActive,
                       ]}
                       onPress={() => setTargetFilter(target)}
+                      accessibilityLabel={`Filter by ${target}`}
+                      accessibilityRole="button"
                     >
                       <Text
                         style={[

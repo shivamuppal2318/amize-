@@ -19,12 +19,9 @@ import { useAuth } from "@/hooks/useAuth";
 import {
   authProviderConfig,
   isFacebookConfigured,
+  isAnyGoogleProviderConfigured,
   isGoogleConfiguredForCurrentPlatform,
 } from "@/lib/auth/providerConfig";
-import {
-  canUseLocalDemoAuth,
-  LOCAL_DEMO_ACCOUNTS,
-} from "@/lib/auth/localDemoAuth";
 import Constants from "expo-constants";
 import * as WebBrowser from "expo-web-browser";
 import * as Google from "expo-auth-session/providers/google";
@@ -71,9 +68,16 @@ export default function SignInScreen() {
       prefillPassword?: string;
       autoSubmit?: string;
     }>();
-  const { login, loginWithGoogle, loginWithFacebook, loginWithApple, loading } =
-    useAuth();
-  const localDemoEnabled = canUseLocalDemoAuth();
+  const {
+    login,
+    loginWithGoogle,
+    loginWithFacebook,
+    loginWithApple,
+    loading,
+    isAuthenticated,
+    isInSignupFlow,
+    completeSignupFlow,
+  } = useAuth();
   const demoMode = isDemoMode();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -90,6 +94,14 @@ export default function SignInScreen() {
     ? email.trim().toLowerCase()
     : email.trim().replace(/[^\d+]/g, "");
 
+  useEffect(() => {
+    if (!isAuthenticated && isInSignupFlow) {
+      completeSignupFlow().catch((error) => {
+        console.error("[SignIn] Failed to clear stale signup flow:", error);
+      });
+    }
+  }, [completeSignupFlow, isAuthenticated, isInSignupFlow]);
+
   // -----------------------------
   // GOOGLE AUTH HOOK
   // -----------------------------
@@ -104,6 +116,27 @@ export default function SignInScreen() {
             native: getNativeRedirectUri("google"),
           }),
   });
+
+  useEffect(() => {
+    if (!__DEV__) {
+      return;
+    }
+
+    const redirectUri =
+      Platform.OS === "web"
+        ? makeRedirectUri()
+        : makeRedirectUri({ native: getNativeRedirectUri("google") });
+
+    console.log("[Auth][Google] redirectUri:", redirectUri);
+    const responseParams = (response as any)?.params as
+      | Record<string, unknown>
+      | undefined;
+    console.log("[Auth][Google] response:", {
+      type: response?.type,
+      hasIdToken: Boolean(responseParams?.id_token),
+      paramsKeys: responseParams ? Object.keys(responseParams) : [],
+    });
+  }, [response]);
 
   const [facebookAuthState, setFacebookAuthState] = useState<{
     request: any | null;
@@ -139,11 +172,21 @@ export default function SignInScreen() {
 
   const showFacebookButton =
     Boolean(facebookAuthState.request) && isFacebookConfigured;
+  const googleConfiguredForPlatform = isGoogleConfiguredForCurrentPlatform();
   const showGoogleButton =
-    Boolean(request) && isGoogleConfiguredForCurrentPlatform();
+    googleConfiguredForPlatform || (Platform.OS === "web" && isAnyGoogleProviderConfigured);
   const showAppleButton = appleAvailable;
   const showSocialButtons =
-    !demoMode && (showFacebookButton || showGoogleButton || showAppleButton);
+    showFacebookButton || showGoogleButton || showAppleButton;
+  const googleButtonDisabled =
+    googleLoading ||
+    !googleConfiguredForPlatform ||
+    !request;
+  const googleStatusMessage = !googleConfiguredForPlatform
+      ? "Google sign-in is not configured for this platform in the current build."
+      : !request
+        ? "Google sign-in is still initializing for this screen."
+        : "Google sign-in is ready on this platform.";
 
   // Render Facebook auth hook only when configured to avoid crash on Android
   const facebookAuthView = isFacebookConfigured ? <FacebookAuthBridge /> : null;
@@ -176,50 +219,59 @@ export default function SignInScreen() {
 
   useEffect(() => {
     if (
-      (autoProvider === "google" ||
-        autoProvider === "facebook" ||
-        autoProvider === "apple") &&
-      !hasTriggeredAutoProvider
+      hasTriggeredAutoProvider ||
+      (autoProvider !== "google" &&
+        autoProvider !== "facebook" &&
+        autoProvider !== "apple")
     ) {
-      setHasTriggeredAutoProvider(true);
-
-      if (autoProvider === "google") {
-        if (!isGoogleConfiguredForCurrentPlatform()) {
-          Alert.alert(
-            "Google Login",
-            "Google login is not configured for this platform in this build yet."
-          );
-          return;
-        }
-
-        if (request) {
-          promptAsync();
-        }
-      }
-
-      if (autoProvider === "facebook") {
-        if (!isFacebookConfigured) {
-          Alert.alert(
-            "Facebook Login",
-            "Facebook login is not configured for this build yet."
-          );
-          return;
-        }
-
-        facebookAuthState.promptAsync?.();
-      }
-
-      if (autoProvider === "apple") {
-        handleAppleSignIn();
-      }
+      return;
     }
+
+    if (autoProvider === "google") {
+      if (!isGoogleConfiguredForCurrentPlatform()) {
+        setHasTriggeredAutoProvider(true);
+        Alert.alert(
+          "Google Login",
+          "Google login is not configured for this platform in this build yet."
+        );
+        return;
+      }
+
+      if (!request) {
+        return;
+      }
+
+      setHasTriggeredAutoProvider(true);
+      promptAsync();
+      return;
+    }
+
+    if (autoProvider === "facebook") {
+      if (!isFacebookConfigured) {
+        setHasTriggeredAutoProvider(true);
+        Alert.alert(
+          "Facebook Login",
+          "Facebook login is not configured for this build yet."
+        );
+        return;
+      }
+
+      if (!facebookAuthState.promptAsync) {
+        return;
+      }
+
+      setHasTriggeredAutoProvider(true);
+      facebookAuthState.promptAsync();
+      return;
+    }
+
+    setHasTriggeredAutoProvider(true);
+    handleAppleSignIn();
   }, [
     autoProvider,
-    facebookAuthState.request,
     hasTriggeredAutoProvider,
-    appleAvailable,
-    promptAsync,
     request,
+    promptAsync,
     facebookAuthState.promptAsync,
   ]);
 
@@ -231,24 +283,6 @@ export default function SignInScreen() {
     setEmail(typeof prefillEmail === "string" ? prefillEmail : "");
     setPassword(typeof prefillPassword === "string" ? prefillPassword : "");
   }, [prefillEmail, prefillPassword]);
-
-  useEffect(() => {
-    if (!localDemoEnabled) {
-      return;
-    }
-
-    if (email || password) {
-      return;
-    }
-
-    const primaryDemo = LOCAL_DEMO_ACCOUNTS[0];
-    if (!primaryDemo) {
-      return;
-    }
-
-    setEmail(primaryDemo.identifier);
-    setPassword(primaryDemo.password);
-  }, [localDemoEnabled, email, password]);
 
   useEffect(() => {
     if (
@@ -422,13 +456,6 @@ export default function SignInScreen() {
     }
   };
 
-  const handleDemoSignIn = async (identifier: string, secret: string) => {
-    setEmail(identifier);
-    setPassword(secret);
-    setAuthError("");
-    await submitSignIn(identifier, secret);
-  };
-
   const handleBack = () => {
     router.replace("/(auth)/get-started");
   };
@@ -454,10 +481,18 @@ export default function SignInScreen() {
   };
 
   const handleGooglePress = async () => {
-    if (!isGoogleConfiguredForCurrentPlatform()) {
+    if (!googleConfiguredForPlatform) {
       Alert.alert(
         "Google Login",
         "Google login is not configured for this platform in this build yet."
+      );
+      return;
+    }
+
+    if (!request) {
+      Alert.alert(
+        "Google Login",
+        "Google sign-in is still initializing. Wait a moment and try again."
       );
       return;
     }
@@ -472,7 +507,12 @@ export default function SignInScreen() {
         <StatusBar barStyle="light-content" backgroundColor="#1E4A72" />
         <ScrollView contentContainerStyle={{ flexGrow: 1, paddingTop: 30 }}>
           <View style={{ flex: 1, paddingHorizontal: 24 }}>
-            <TouchableOpacity style={styles.backButton} onPress={handleBack}>
+            <TouchableOpacity 
+              style={styles.backButton} 
+              onPress={handleBack}
+              accessibilityLabel="Go back"
+              accessibilityRole="button"
+            >
               <ChevronLeft size={24} color="white" />
             </TouchableOpacity>
 
@@ -487,7 +527,8 @@ export default function SignInScreen() {
               <View style={styles.demoNotice}>
                 <Text style={styles.demoNoticeTitle}>Demo build</Text>
                 <Text style={styles.demoNoticeText}>
-                  Social login is disabled in demo mode. Use a demo account below.
+                  Demo data is enabled in parts of the app, but configured sign-in
+                  providers are still available in this build.
                 </Text>
               </View>
             ) : null}
@@ -531,38 +572,6 @@ export default function SignInScreen() {
                 loading={loading}
               />
 
-              {localDemoEnabled && (
-                <View style={styles.demoCard}>
-                  <Text style={styles.demoTitle}>
-                    {t("auth.signIn.localDemoTitle")}
-                  </Text>
-                  <Text style={styles.demoText}>
-                    {t("auth.signIn.localDemoText")}
-                  </Text>
-                  {LOCAL_DEMO_ACCOUNTS.map((account) => (
-                    <View key={account.label} style={styles.demoRow}>
-                      <View style={styles.demoCopy}>
-                        <Text style={styles.demoLabel}>{account.label}</Text>
-                        <Text style={styles.demoCredential}>
-                          {account.identifier}
-                        </Text>
-                        <Text style={styles.demoCredential}>
-                          {account.password}
-                        </Text>
-                      </View>
-                      <TouchableOpacity
-                        style={styles.demoAction}
-                        onPress={() =>
-                          handleDemoSignIn(account.identifier, account.password)
-                        }
-                      >
-                        <Text style={styles.demoActionText}>{t("common.use")}</Text>
-                      </TouchableOpacity>
-                    </View>
-                  ))}
-                </View>
-              )}
-
               {/* SOCIAL LOGIN BUTTONS */}
               {showSocialButtons && (
                 <View style={styles.socialContainer}>
@@ -578,11 +587,20 @@ export default function SignInScreen() {
 
                   {showGoogleButton && (
                     <TouchableOpacity
-                      style={styles.socialButtonStyle}
-                      disabled={googleLoading}
+                      style={[
+                        styles.googleInlineButton,
+                        googleButtonDisabled && styles.googleInlineButtonDisabled,
+                      ]}
+                      disabled={googleButtonDisabled}
                       onPress={handleGooglePress}
                     >
-                      <Image source={GOOGLE_ICON} style={styles.icon} />
+                      <Image source={GOOGLE_ICON} style={styles.googleInlineIcon} />
+                      <View style={styles.googleInlineCopy}>
+                        <Text style={styles.googleInlineTitle}>Continue with Google</Text>
+                        <Text style={styles.googleInlineSubtitle}>
+                          Fast sign-in with your Google account
+                        </Text>
+                      </View>
                     </TouchableOpacity>
                   )}
 
@@ -598,9 +616,20 @@ export default function SignInScreen() {
                 </View>
               )}
 
+              {showGoogleButton && Platform.OS === "web" && (
+                <View style={styles.providerStatusCard}>
+                  <Text style={styles.providerStatusTitle}>Google web status</Text>
+                  <Text style={styles.providerStatusText}>{googleStatusMessage}</Text>
+                </View>
+              )}
+
               <View style={styles.footerRow}>
                 <Text style={styles.footerText}>{t("auth.signIn.noAccount")}</Text>
-                <TouchableOpacity onPress={handleSignUp}>
+                <TouchableOpacity 
+                onPress={handleSignUp}
+                accessibilityLabel="Sign up"
+                accessibilityRole="button"
+              >
                   <Text style={styles.footerLink}>
                     {" "}
                     {t("auth.signIn.signUp")}
@@ -732,10 +761,43 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   socialContainer: {
-    flexDirection: "row",
     justifyContent: "center",
     marginTop: 32,
-    marginBottom: 32,
+    marginBottom: 16,
+  },
+  googleInlineButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#141B30",
+    borderRadius: 18,
+    paddingVertical: 16,
+    paddingHorizontal: 18,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.12)",
+    width: "100%",
+  },
+  googleInlineButtonDisabled: {
+    opacity: 0.6,
+  },
+  googleInlineIcon: {
+    width: 24,
+    height: 24,
+    marginRight: 14,
+  },
+  googleInlineCopy: {
+    flex: 1,
+  },
+  googleInlineTitle: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "700",
+    fontFamily: "Figtree",
+  },
+  googleInlineSubtitle: {
+    color: "#94A3B8",
+    fontSize: 12,
+    marginTop: 2,
+    fontFamily: "Figtree",
   },
   socialButtonStyle: {
     width: 56,
@@ -750,6 +812,29 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
+  },
+  providerStatusCard: {
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    marginBottom: 24,
+    backgroundColor: "rgba(15, 23, 42, 0.8)",
+    borderWidth: 1,
+    borderColor: "rgba(96, 165, 250, 0.25)",
+  },
+  providerStatusTitle: {
+    color: "#BFDBFE",
+    fontSize: 12,
+    fontWeight: "700",
+    fontFamily: "Figtree",
+    textTransform: "uppercase",
+  },
+  providerStatusText: {
+    color: "#E2E8F0",
+    fontSize: 12,
+    lineHeight: 18,
+    marginTop: 4,
+    fontFamily: "Figtree",
   },
   footerText: {
     color: "#9CA3AF",

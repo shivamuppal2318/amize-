@@ -341,7 +341,11 @@ export default function CreatorEarningsScreen() {
           }
         >
           <View style={styles.header}>
-            <TouchableOpacity onPress={() => router.back()}>
+            <TouchableOpacity 
+            onPress={() => router.back()}
+            accessibilityLabel="Go back"
+            accessibilityRole="button"
+          >
               <ArrowLeft size={24} color="white" />
             </TouchableOpacity>
             <Text style={styles.headerTitle}>Creator Earnings</Text>

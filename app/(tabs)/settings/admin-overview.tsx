@@ -64,7 +64,12 @@ function QuickAction({
   onPress: () => void;
 }) {
   return (
-    <TouchableOpacity style={styles.quickAction} onPress={onPress}>
+    <TouchableOpacity 
+      style={styles.quickAction} 
+      onPress={onPress}
+      accessibilityLabel={label}
+      accessibilityRole="button"
+    >
       <Text style={styles.quickActionTitle}>{label}</Text>
       <Text style={styles.quickActionSubtitle}>{subtitle}</Text>
     </TouchableOpacity>
@@ -138,7 +143,12 @@ export default function AdminOverviewScreen() {
         contentContainerStyle={styles.content}
       >
         <View style={styles.header}>
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+          <TouchableOpacity 
+            style={styles.backButton} 
+            onPress={() => router.back()}
+            accessibilityLabel="Go back"
+            accessibilityRole="button"
+          >
             <ChevronLeft size={24} color="#FFFFFF" />
           </TouchableOpacity>
           <View style={styles.headerCopy}>

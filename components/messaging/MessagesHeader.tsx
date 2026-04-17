@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   StyleSheet,
   Dimensions,
+  Platform,
 } from "react-native";
 import {
   Plus,
@@ -109,7 +110,8 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     paddingHorizontal: UI.SPACING.LG,
-    paddingVertical: UI.SPACING.LG,
+    paddingTop: Platform.OS === "web" ? UI.SPACING.XL : UI.SPACING.LG,
+    paddingBottom: UI.SPACING.LG,
   },
   headerLeft: {
     flexDirection: "row",

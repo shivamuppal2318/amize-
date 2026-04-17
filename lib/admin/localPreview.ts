@@ -551,7 +551,7 @@ export function buildLocalPaymentAttempts(
   purpose: PaymentAttempt["purpose"],
   count = 3
 ): PaymentAttempt[] {
-  const base = [
+  const base: PaymentAttempt[] = [
     {
       id: `pay-attempt-${purpose}-1`,
       purpose,

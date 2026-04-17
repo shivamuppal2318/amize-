@@ -1,4 +1,5 @@
 import apiClient from '@/lib/api/client';
+import { createIdempotencyKey } from '@/lib/network/idempotency';
 
 // Types
 export interface Creator {
@@ -207,6 +208,24 @@ export interface CreatorPlansResponse {
     recentContent: RecentVideo[];
 }
 
+export interface CreatorSearchResult {
+    id: string;
+    username: string;
+    fullName: string | null;
+    profilePhotoUrl: string | null;
+    verified: boolean;
+    category: string | null;
+    subscriberCount: number;
+    monetizationEnabled: boolean;
+    hasActivePlan: boolean;
+}
+
+export interface CreatorSearchResponse {
+    success: boolean;
+    creators: CreatorSearchResult[];
+    total: number;
+}
+
 export interface PaymentIntentState {
     attemptId?: string;
     provider: string;
@@ -347,6 +366,25 @@ export const SocialAPI = {
 // API functions
 export const CreatorAPI = {
     /**
+     * Search/browse creators with monetization enabled
+     */
+    searchCreators: async (query?: string, limit = 20, offset = 0): Promise<CreatorSearchResponse> => {
+        try {
+            const response = await apiClient.get('/creators/search', {
+                params: { q: query, limit, offset }
+            });
+            return response.data;
+        } catch (error) {
+            console.error('Error searching creators:', error);
+            return {
+                success: false,
+                creators: [],
+                total: 0
+            };
+        }
+    },
+
+    /**
      * Get a creator's subscription plans
      */
     getCreatorPlans: async (creatorId: string): Promise<CreatorPlansResponse> => {
@@ -435,14 +473,36 @@ export const CreatorAPI = {
     subscribeToPlan: async (
         creatorId: string,
         planId: string,
-        paymentMethodId?: string
+        paymentMethodId?: string,
+        options?: {
+            receiptToken?: string;
+            receiptPlatform?: "android_play" | "ios_app_store" | "web";
+            retryAttempt?: number;
+        }
     ): Promise<SubscriptionActionResult> => {
         try {
-            const response = await apiClient.post('/subscriptions', {
-                creatorId,
-                planId,
-                ...(paymentMethodId ? { paymentMethodId } : {}),
-            });
+            const response = await apiClient.post(
+                '/subscriptions',
+                {
+                    creatorId,
+                    planId,
+                    ...(paymentMethodId ? { paymentMethodId } : {}),
+                    ...(options?.receiptToken
+                        ? {
+                            receipt: {
+                                token: options.receiptToken,
+                                platform: options.receiptPlatform || "android_play",
+                                retryAttempt: options.retryAttempt || 0,
+                            },
+                        }
+                        : {}),
+                },
+                {
+                    headers: {
+                        "x-idempotency-key": createIdempotencyKey("sub-create"),
+                    },
+                }
+            );
 
             return {
                 success: !!response.data.success,
@@ -467,13 +527,17 @@ export const CreatorAPI = {
         options?: {
             status?: 'active' | 'canceled' | 'expired' | 'all';
             mode?: 'subscribing' | 'subscribers';
+            limit?: number;
+            offset?: number;
         }
     ): Promise<UserSubscriptionsResponse> => {
         try {
             const response = await apiClient.get(`/users/${userId}/subscriptions`, {
                 params: {
                     status: options?.status || 'active',
-                    mode: options?.mode || 'subscribing'
+                    mode: options?.mode || 'subscribing',
+                    limit: options?.limit,
+                    offset: options?.offset
                 }
             });
             return response.data;
@@ -602,8 +666,11 @@ export const CreatorAPI = {
         try {
             const response = await apiClient.get('/creators/connect');
             return response.data;
-        } catch (error) {
-            console.error('Error fetching creator connect status:', error);
+        } catch (error: any) {
+            // 403 is an expected outcome for non-creator accounts; the UI renders a "not connected" state.
+            if (error?.response?.status !== 403) {
+                console.error('Error fetching creator connect status:', error);
+            }
             return {
                 success: false,
                 connect: {
@@ -623,7 +690,10 @@ export const CreatorAPI = {
             const response = await apiClient.post('/creators/connect');
             return response.data;
         } catch (error: any) {
-            console.error('Error creating creator connect onboarding:', error);
+            // 403 is an expected outcome for non-creator accounts; surface a clean fallback.
+            if (error?.response?.status !== 403) {
+                console.error('Error creating creator connect onboarding:', error);
+            }
             return {
                 success: false,
                 connect: {

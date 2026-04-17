@@ -35,6 +35,7 @@ export const PaymentAPI = {
   async getAttempts(params?: {
     purpose?: "wallet_top_up" | "subscription_initial" | "subscription_renewal" | "all";
     limit?: number;
+    offset?: number;
   }): Promise<PaymentAttempt[]> {
     const response = await apiClient.get<PaymentAttemptsResponse>("/payments", {
       params,

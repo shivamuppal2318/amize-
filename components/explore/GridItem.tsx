@@ -7,6 +7,7 @@ import {
     StyleSheet,
     Animated,
     ActivityIndicator,
+    Platform,
 } from 'react-native';
 import {
     Play,
@@ -43,10 +44,12 @@ const GridItem: React.FC<GridItemProps> = memo(({
                                                     onSoundPress,
                                                 }) => {
     const demoMode = isDemoMode() || canUseLocalDemoAuth();
+    const staticPreviewOnly = Platform.OS === 'web';
     // State
     const [isLoading, setIsLoading] = useState(true);
     const [isPlaying, setIsPlaying] = useState(false);
     const [videoReady, setVideoReady] = useState(false);
+    const [mediaFailed, setMediaFailed] = useState(false);
 
     // Animation refs
     const scaleAnim = useRef(new Animated.Value(0.98)).current;
@@ -75,6 +78,13 @@ const GridItem: React.FC<GridItemProps> = memo(({
             isMounted.current = false;
         };
     }, []);
+
+    useEffect(() => {
+        setMediaFailed(false);
+        setIsLoading(true);
+        setVideoReady(false);
+        setIsPlaying(false);
+    }, [item.id]);
 
     // Format numbers for display (1K, 1M, etc.)
     const formatNumber = (num: number): string => {
@@ -241,7 +251,18 @@ const GridItem: React.FC<GridItemProps> = memo(({
                         style={styles.videoThumbnail}
                         resizeMode="cover"
                         onLoadEnd={() => setIsLoading(false)}
+                        onError={() => {
+                            setIsLoading(false);
+                            setMediaFailed(true);
+                        }}
                     />
+
+                    {mediaFailed && (
+                        <View style={styles.mediaFallback}>
+                            <Play size={26} color="rgba(255,255,255,0.92)" />
+                            <Text style={styles.mediaFallbackText}>Preview unavailable</Text>
+                        </View>
+                    )}
 
                     {isLoading && (
                         <View style={styles.loaderContainer}>
@@ -250,8 +271,8 @@ const GridItem: React.FC<GridItemProps> = memo(({
                     )}
 
                     <LinearGradient
-                        colors={['transparent', 'rgba(0,0,0,0.8)']}
-                        locations={[0.6, 1]}
+                        colors={['rgba(5, 14, 28, 0.08)', 'rgba(5, 14, 28, 0.28)', 'rgba(0,0,0,0.68)']}
+                        locations={[0, 0.55, 1]}
                         style={styles.gradientOverlay}
                     />
 
@@ -332,12 +353,20 @@ const GridItem: React.FC<GridItemProps> = memo(({
                         source={{ uri: getImageUrl(user.profilePhotoUrl, 'user') }}
                         style={styles.userImageFill}
                         resizeMode="cover"
+                        onError={() => setMediaFailed(true)}
                     />
+
+                    {mediaFailed && (
+                        <View style={styles.mediaFallback}>
+                            <Users size={28} color="rgba(255,255,255,0.92)" />
+                            <Text style={styles.mediaFallbackText}>Creator preview</Text>
+                        </View>
+                    )}
 
                     {/* Gradient overlay for better text visibility */}
                     <LinearGradient
-                        colors={['transparent', 'rgba(0,0,0,0.7)', 'rgba(0,0,0,0.85)']}
-                        locations={[0.5, 0.8, 1]}
+                        colors={['rgba(8, 22, 42, 0.05)', 'rgba(0,0,0,0.45)', 'rgba(0,0,0,0.78)']}
+                        locations={[0.25, 0.68, 1]}
                         style={styles.userGradient}
                     />
 
@@ -501,7 +530,7 @@ const GridItem: React.FC<GridItemProps> = memo(({
     // Render based on item type
     switch (item.type) {
         case 'video':
-            return demoMode ? <DemoVideoItem video={item.data} /> : <VideoItem video={item.data} />;
+            return (demoMode || staticPreviewOnly) ? <DemoVideoItem video={item.data} /> : <VideoItem video={item.data} />;
         case 'user':
             return <UserItem user={item.data} />;
         case 'sound':
@@ -516,6 +545,9 @@ const styles = StyleSheet.create({
         borderRadius: 12,
         overflow: 'hidden',
         position: 'relative',
+        backgroundColor: '#122843',
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.08)',
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 1 },
         shadowOpacity: 0.15,
@@ -529,14 +561,29 @@ const styles = StyleSheet.create({
     },
     videoThumbnail: {
         ...StyleSheet.absoluteFillObject,
-        backgroundColor: 'rgba(26, 26, 46, 0.5)',
+        backgroundColor: '#16324F',
     },
     loaderContainer: {
         ...StyleSheet.absoluteFillObject,
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: 'rgba(26, 26, 46, 0.5)',
+        backgroundColor: 'rgba(12, 26, 44, 0.26)',
         zIndex: 5,
+    },
+    mediaFallback: {
+        ...StyleSheet.absoluteFillObject,
+        zIndex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        backgroundColor: 'rgba(16, 35, 58, 0.92)',
+    },
+    mediaFallbackText: {
+        color: 'rgba(255,255,255,0.92)',
+        fontSize: 11,
+        fontWeight: '600',
+        fontFamily: 'Figtree',
+        letterSpacing: 0.2,
     },
     gradientOverlay: {
         ...StyleSheet.absoluteFillObject,
@@ -544,13 +591,15 @@ const styles = StyleSheet.create({
     },
     durationBadge: {
         position: 'absolute',
-        bottom: 10,
+        top: 10,
         right: 10,
-        backgroundColor: 'rgba(0, 0, 0, 0.6)',
-        borderRadius: 4,
-        paddingHorizontal: 6,
-        paddingVertical: 2,
+        backgroundColor: 'rgba(6, 12, 22, 0.65)',
+        borderRadius: 999,
+        paddingHorizontal: 8,
+        paddingVertical: 4,
         zIndex: 3,
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.12)',
     },
     durationText: {
         color: 'white',
@@ -563,15 +612,15 @@ const styles = StyleSheet.create({
         bottom: 0,
         left: 0,
         right: 0,
-        padding: 10,
+        padding: 12,
         zIndex: 3,
     },
     videoTitle: {
         color: 'white',
-        fontSize: 12,
-        fontWeight: '600',
+        fontSize: 14,
+        fontWeight: '700',
         fontFamily: 'Figtree',
-        marginBottom: 4,
+        marginBottom: 6,
         textShadowColor: 'rgba(0, 0, 0, 0.7)',
         textShadowOffset: { width: 0, height: 1 },
         textShadowRadius: 2,
@@ -589,7 +638,7 @@ const styles = StyleSheet.create({
     },
     creatorName: {
         color: '#DDD',
-        fontSize: 10,
+        fontSize: 11,
         fontFamily: 'Figtree',
         flex: 1,
         textShadowColor: 'rgba(0, 0, 0, 0.7)',
@@ -615,7 +664,7 @@ const styles = StyleSheet.create({
     },
     statText: {
         color: '#DDD',
-        fontSize: 9,
+        fontSize: 10,
         fontFamily: 'Figtree',
         textShadowColor: 'rgba(0, 0, 0, 0.7)',
         textShadowOffset: { width: 0, height: 1 },
@@ -628,6 +677,7 @@ const styles = StyleSheet.create({
     },
     userImageFill: {
         ...StyleSheet.absoluteFillObject,
+        backgroundColor: '#16324F',
     },
     userGradient: {
         ...StyleSheet.absoluteFillObject,
@@ -694,11 +744,13 @@ const styles = StyleSheet.create({
         position: 'absolute',
         top: 10,
         right: 10,
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
-        borderRadius: 4,
-        paddingHorizontal: 6,
-        paddingVertical: 2,
+        backgroundColor: 'rgba(6, 12, 22, 0.58)',
+        borderRadius: 999,
+        paddingHorizontal: 8,
+        paddingVertical: 4,
         zIndex: 3,
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.12)',
     },
     categoryText: {
         color: '#FF5A5F',

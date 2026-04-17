@@ -8,12 +8,30 @@ type ExpoExtra = {
 
 const extra = (Constants.expoConfig?.extra || {}) as ExpoExtra;
 
+const envSiteUrl = process.env.EXPO_PUBLIC_SITE_URL;
+const envApiUrl = process.env.EXPO_PUBLIC_API_URL;
+const envSocketUrl = process.env.EXPO_PUBLIC_SOCKET_URL;
+
 export const SITE_URL =
-  extra.siteUrl?.replace(/\/+$/, "") || "https://amize-next.onrender.com";
+  (typeof envSiteUrl === "string" ? envSiteUrl : undefined)?.replace(
+    /\/+$/,
+    ""
+  ) ||
+  extra.siteUrl?.replace(/\/+$/, "") ||
+  "https://amize-next.onrender.com";
+
 export const API_URL =
-  extra.apiUrl?.replace(/\/+$/, "") || `${SITE_URL}/api`;
+  (typeof envApiUrl === "string" ? envApiUrl : undefined)?.replace(/\/+$/, "") ||
+  extra.apiUrl?.replace(/\/+$/, "") ||
+  `${SITE_URL}/api`;
+
 export const SOCKET_URL =
-  extra.socketUrl?.replace(/\/+$/, "") || SITE_URL.replace(/^http/i, "ws");
+  (typeof envSocketUrl === "string" ? envSocketUrl : undefined)?.replace(
+    /\/+$/,
+    ""
+  ) ||
+  extra.socketUrl?.replace(/\/+$/, "") ||
+  SITE_URL.replace(/^http/i, "ws");
 export const SERVER_URL = SITE_URL;
 
 export const HELP_CATEGORIES = [

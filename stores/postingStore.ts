@@ -17,6 +17,7 @@ export interface MediaItem {
     selectedSongId?: string;
     postSong?: string;
     songTitle?: string;
+    webFile?: any;
 }
 
 export interface CrossPostSettings {

@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   isAnyGoogleProviderConfigured,
   isFacebookConfigured,
@@ -67,7 +67,7 @@ export default function SignUpScreen() {
     const showAppleSignup = Platform.OS === 'ios';
     const showSocialSignup = showFacebookSignup || showGoogleSignup || showAppleSignup;
 
-    const { loading, startSignupFlow } = useAuth();
+    const { loading, startSignupFlow, isAuthenticated, isInSignupFlow, completeSignupFlow } = useAuth();
     const {
         registrationData,
         updateRegistrationData,
@@ -94,6 +94,14 @@ export default function SignUpScreen() {
         ],
         [passwordChecks]
     );
+
+    useEffect(() => {
+        if (!isAuthenticated && isInSignupFlow) {
+            completeSignupFlow().catch((error) => {
+                console.error('[SignUp] Failed to clear stale signup flow:', error);
+            });
+        }
+    }, [completeSignupFlow, isAuthenticated, isInSignupFlow]);
 
     const handleUsernameChange = (text: string) => {
         updateRegistrationData({ username: text.trimStart() });
@@ -646,7 +654,11 @@ export default function SignUpScreen() {
                                     >
                                         Already have an account?
                                     </Text>
-                                    <TouchableOpacity onPress={handleSignIn}>
+                                    <TouchableOpacity 
+                                    onPress={handleSignIn}
+                                    accessibilityLabel="Sign in"
+                                    accessibilityRole="button"
+                                >
                                         <Text
                                             style={{
                                                 color: '#FF5A5F',

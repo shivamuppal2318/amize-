@@ -50,30 +50,62 @@ const admobNearbyBannerId =
   appJson.expo.extra?.admobNearbyBannerId ||
   "";
 
+const easProjectId =
+  process.env.EAS_PROJECT_ID ||
+  appJson.expo.extra?.eas?.projectId ||
+  "";
+
+const ensureHttpsUrl = (value, fallback) => {
+  if (typeof value !== "string" || !value.trim()) {
+    return fallback;
+  }
+
+  const trimmed = value.trim();
+  if (/^https:\/\//i.test(trimmed)) {
+    return trimmed;
+  }
+
+  if (/^http:\/\//i.test(trimmed)) {
+    return trimmed.replace(/^http:\/\//i, "https://");
+  }
+
+  return fallback;
+};
+
 const supportEmail =
   process.env.SUPPORT_EMAIL ||
   process.env.EXPO_SUPPORT_EMAIL ||
   appJson.expo.extra?.supportEmail ||
-  "";
+  "support@amize.com";
 
-const privacyPolicyUrl =
+const rawPrivacyPolicyUrl =
   process.env.PRIVACY_POLICY_URL ||
   process.env.EXPO_PRIVACY_POLICY_URL ||
   appJson.expo.extra?.privacyPolicyUrl ||
-  "";
+  "https://amize-next.onrender.com/privacy";
 
-const termsOfServiceUrl =
+const rawTermsOfServiceUrl =
   process.env.TERMS_OF_SERVICE_URL ||
   process.env.EXPO_TERMS_OF_SERVICE_URL ||
   appJson.expo.extra?.termsOfServiceUrl ||
-  "";
+  "https://amize-next.onrender.com/terms";
 
-const siteUrl =
+const rawSiteUrl =
   process.env.SITE_URL ||
   process.env.EXPO_PUBLIC_SITE_URL ||
   process.env.APP_BASE_URL ||
   appJson.expo.extra?.siteUrl ||
   "https://amize-next.onrender.com";
+
+const siteUrl = ensureHttpsUrl(rawSiteUrl, "https://amize-next.onrender.com");
+const privacyPolicyUrl = ensureHttpsUrl(
+  rawPrivacyPolicyUrl,
+  `${siteUrl.replace(/\/+$/, "")}/privacy`
+);
+const termsOfServiceUrl = ensureHttpsUrl(
+  rawTermsOfServiceUrl,
+  `${siteUrl.replace(/\/+$/, "")}/terms`
+);
 
 const apiUrl =
   process.env.API_URL ||
@@ -139,6 +171,13 @@ module.exports = ({ config }) => {
       socketUrl,
       enableLiveStreaming,
       demoMode,
+      ...(easProjectId
+        ? {
+            eas: {
+              projectId: easProjectId,
+            },
+          }
+        : {}),
     },
   };
 };

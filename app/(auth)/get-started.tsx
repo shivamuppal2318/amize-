@@ -1,15 +1,13 @@
-import React from 'react';
-import {View, Text, SafeAreaView, TouchableOpacity, Image, ScrollView, Alert, Platform} from 'react-native';
+import React, { useEffect } from 'react';
+import {View, Text, SafeAreaView, TouchableOpacity, Image, ScrollView, Alert, Platform, StyleSheet} from 'react-native';
 import {router} from 'expo-router';
 import {Button} from '@/components/ui/Button';
+import { useAuth } from '@/hooks/useAuth';
 import {
-  isAnyGoogleProviderConfigured,
+  isGoogleConfiguredForCurrentPlatform,
   isFacebookConfigured,
+  isAnyGoogleProviderConfigured,
 } from '@/lib/auth/providerConfig';
-import {
-  canUseLocalDemoAuth,
-  LOCAL_DEMO_ACCOUNTS,
-} from '@/lib/auth/localDemoAuth';
 
 // @ts-ignore
 import DefaultImage from '@/assets/images/figma/Mobile inbox-bro 1.png';
@@ -37,13 +35,27 @@ const showProviderNotConfigured = (provider: 'Google' | 'Facebook') => {
 
 export default function GetStartedScreen() {
     const { t } = useI18n();
+    const { isAuthenticated, isInSignupFlow, completeSignupFlow } = useAuth();
     const demoMode = isDemoMode();
     const showFacebookLogin = isFacebookConfigured;
-    const showGoogleLogin = isAnyGoogleProviderConfigured;
+    const hasCurrentPlatformGoogleConfig = isGoogleConfiguredForCurrentPlatform();
+    const showGoogleLogin =
+      hasCurrentPlatformGoogleConfig ||
+      (Platform.OS === 'web' && isAnyGoogleProviderConfigured);
     const showAppleLogin = Platform.OS === 'ios';
     const showSocialLogin =
-      !demoMode && (showFacebookLogin || showGoogleLogin || showAppleLogin);
-    const localDemoEnabled = canUseLocalDemoAuth();
+      showFacebookLogin || showGoogleLogin || showAppleLogin;
+    const webGoogleStatusMessage = hasCurrentPlatformGoogleConfig
+        ? 'Google sign-in is ready on this platform.'
+        : 'Google sign-in is not configured for this platform in this build.';
+
+    useEffect(() => {
+        if (!isAuthenticated && isInSignupFlow) {
+            completeSignupFlow().catch((error) => {
+                console.error('[GetStarted] Failed to clear stale signup flow:', error);
+            });
+        }
+    }, [completeSignupFlow, isAuthenticated, isInSignupFlow]);
 
     const handleContinueWithEmail = () => {
         router.push('/(auth)/sign-up');
@@ -69,7 +81,7 @@ export default function GetStartedScreen() {
     };
 
     const handleGoogleLogin = () => {
-        if (!isAnyGoogleProviderConfigured) {
+        if (!hasCurrentPlatformGoogleConfig) {
             showProviderNotConfigured('Google');
             return;
         }
@@ -87,17 +99,6 @@ export default function GetStartedScreen() {
             pathname: '/(auth)/sign-in',
             params: {
                 autoProvider: 'apple',
-            },
-        });
-    };
-
-    const handleDemoLogin = (identifier: string, password: string) => {
-        router.push({
-            pathname: '/(auth)/sign-in',
-            params: {
-                prefillEmail: identifier,
-                prefillPassword: password,
-                autoSubmit: 'true',
             },
         });
     };
@@ -167,7 +168,8 @@ export default function GetStartedScreen() {
                                         fontFamily: 'Figtree',
                                         textAlign: 'center'
                                     }}>
-                                        Social login is disabled. Use the demo accounts below.
+                                        Demo data is enabled in parts of the app, but configured sign-in
+                                        providers are still available in this build.
                                     </Text>
                                 </View>
                             ) : null}
@@ -210,32 +212,28 @@ export default function GetStartedScreen() {
                                     {showGoogleLogin && (
                                         <TouchableOpacity
                                             onPress={handleGoogleLogin}
-                                            style={{
-                                                flexDirection: 'row',
-                                                alignItems: 'center',
-                                                justifyContent: 'center',
-                                                backgroundColor: '#1a1a2e',
-                                                borderRadius: 16,
-                                                paddingVertical: 16,
-                                                paddingHorizontal: 24,
-                                                marginBottom: 16,
-                                                borderWidth: 1,
-                                                borderColor: '#4B5563'
-                                            }}
+                                            style={styles.googleButton}
                                         >
                                             <Image
                                                 source={GOOGLE_ICON}
-                                                style={{width: 24, height: 24, marginRight: 12}}
+                                                style={styles.googleIcon}
                                             />
-                                            <Text style={{
-                                                color: 'white',
-                                                fontSize: 16,
-                                                fontWeight: '500',
-                                                fontFamily: 'Figtree'
-                                            }}>
-                                                {t('auth.getStarted.continueGoogle')}
-                                            </Text>
+                                            <View style={styles.googleCopy}>
+                                                <Text style={styles.googleTitle}>
+                                                    {t('auth.getStarted.continueGoogle')}
+                                                </Text>
+                                                <Text style={styles.googleSubtitle}>
+                                                    One tap sign-in with your Google account
+                                                </Text>
+                                            </View>
                                         </TouchableOpacity>
+                                    )}
+
+                                    {showGoogleLogin && Platform.OS === 'web' && (
+                                        <View style={styles.statusCard}>
+                                            <Text style={styles.statusTitle}>Google web status</Text>
+                                            <Text style={styles.statusText}>{webGoogleStatusMessage}</Text>
+                                        </View>
                                     )}
 
                                     {showAppleLogin && (
@@ -300,111 +298,6 @@ export default function GetStartedScreen() {
                             />
                         </View>
 
-                        {localDemoEnabled && (
-                            <View
-                                style={{
-                                    width: '100%',
-                                    maxWidth: 400,
-                                    marginBottom: 32,
-                                    backgroundColor: 'rgba(255,255,255,0.06)',
-                                    borderRadius: 16,
-                                    borderWidth: 1,
-                                    borderColor: 'rgba(255,255,255,0.08)',
-                                    padding: 16,
-                                }}
-                            >
-                                <Text
-                                    style={{
-                                        color: 'white',
-                                        fontSize: 16,
-                                        fontWeight: '700',
-                                        fontFamily: 'Figtree',
-                                        marginBottom: 8,
-                                    }}
-                                >
-                                    Local Demo Login
-                                </Text>
-                                <Text
-                                    style={{
-                                        color: '#CBD5E1',
-                                        fontSize: 13,
-                                        lineHeight: 18,
-                                        fontFamily: 'Figtree',
-                                        marginBottom: 12,
-                                    }}
-                                >
-                                    Use these demo accounts without backend access.
-                                </Text>
-                                {LOCAL_DEMO_ACCOUNTS.map((account) => (
-                                    <View
-                                        key={account.label}
-                                        style={{
-                                            flexDirection: 'row',
-                                            alignItems: 'center',
-                                            justifyContent: 'space-between',
-                                            borderTopWidth: 1,
-                                            borderTopColor: 'rgba(255,255,255,0.06)',
-                                            paddingTop: 12,
-                                            marginTop: 12,
-                                        }}
-                                    >
-                                        <View style={{ flex: 1, paddingRight: 12 }}>
-                                            <Text
-                                                style={{
-                                                    color: 'white',
-                                                    fontSize: 14,
-                                                    fontWeight: '600',
-                                                    fontFamily: 'Figtree',
-                                                }}
-                                            >
-                                                {account.label}
-                                            </Text>
-                                            <Text
-                                                style={{
-                                                    color: '#9CA3AF',
-                                                    fontSize: 12,
-                                                    fontFamily: 'Figtree',
-                                                }}
-                                            >
-                                                {account.identifier}
-                                            </Text>
-                                            <Text
-                                                style={{
-                                                    color: '#9CA3AF',
-                                                    fontSize: 12,
-                                                    fontFamily: 'Figtree',
-                                                }}
-                                            >
-                                                {account.password}
-                                            </Text>
-                                        </View>
-                                        <TouchableOpacity
-                                            onPress={() =>
-                                                handleDemoLogin(account.identifier, account.password)
-                                            }
-                                            style={{
-                                                borderRadius: 12,
-                                                paddingHorizontal: 14,
-                                                paddingVertical: 10,
-                                                backgroundColor: '#1E4A72',
-                                            }}
-                                        >
-                                            <Text
-                                                style={{
-                                                    color: 'white',
-                                                    fontSize: 13,
-                                                    fontWeight: '700',
-                                                    fontFamily: 'Figtree',
-                                                }}
-                                            >
-                                                Use
-                                            </Text>
-                                        </TouchableOpacity>
-                                    </View>
-                                ))}
-                            </View>
-                        )}
-
                         <View style={{
                             flexDirection: 'row',
                             justifyContent: 'center',
@@ -417,7 +310,11 @@ export default function GetStartedScreen() {
                             }}>
                                 {t('auth.signIn.noAccount')}
                             </Text>
-                            <TouchableOpacity onPress={handleContinueWithEmail}>
+                            <TouchableOpacity 
+                                onPress={handleContinueWithEmail}
+                                accessibilityLabel="Sign up"
+                                accessibilityRole="button"
+                            >
                                 <Text style={{
                                     color: '#FF5A5F',
                                     fontWeight: '500',
@@ -436,3 +333,60 @@ export default function GetStartedScreen() {
         </SafeAreaView>
     );
 }
+
+const styles = StyleSheet.create({
+    googleButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#141B30',
+        borderRadius: 18,
+        paddingVertical: 16,
+        paddingHorizontal: 18,
+        marginBottom: 12,
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.12)',
+    },
+    googleIcon: {
+        width: 24,
+        height: 24,
+        marginRight: 14,
+    },
+    googleCopy: {
+        flex: 1,
+    },
+    googleTitle: {
+        color: 'white',
+        fontSize: 16,
+        fontWeight: '700',
+        fontFamily: 'Figtree',
+    },
+    googleSubtitle: {
+        color: '#94A3B8',
+        fontSize: 12,
+        marginTop: 2,
+        fontFamily: 'Figtree',
+    },
+    statusCard: {
+        borderRadius: 14,
+        paddingHorizontal: 14,
+        paddingVertical: 12,
+        marginBottom: 16,
+        backgroundColor: 'rgba(15, 23, 42, 0.8)',
+        borderWidth: 1,
+        borderColor: 'rgba(96, 165, 250, 0.25)',
+    },
+    statusTitle: {
+        color: '#BFDBFE',
+        fontSize: 12,
+        fontWeight: '700',
+        fontFamily: 'Figtree',
+        textTransform: 'uppercase',
+    },
+    statusText: {
+        color: '#E2E8F0',
+        fontSize: 12,
+        lineHeight: 18,
+        marginTop: 4,
+        fontFamily: 'Figtree',
+    },
+});

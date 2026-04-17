@@ -7,6 +7,7 @@ import {
     leaveLiveSession,
     moderateLiveSession as moderateLiveSessionRequest,
     postLiveComment,
+    postLiveTelemetry,
     sendLiveLike,
     updateLiveSession as updateLiveSessionRequest,
 } from '@/lib/live/liveApi';
@@ -58,6 +59,7 @@ const buildPreviewState = (): LiveSessionRuntimeState => ({
         },
     },
     hostTransport: null,
+    telemetry: null,
 });
 
 export function useLiveSession(payload: LiveSessionPayload) {
@@ -73,8 +75,10 @@ export function useLiveSession(payload: LiveSessionPayload) {
         connectionLabel: 'Idle',
         session: null,
         hostTransport: null,
+        telemetry: null,
     });
     const previewIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+    const telemetryIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
     const startPreviewSimulation = useCallback(() => {
         if (previewIntervalRef.current) {
@@ -119,6 +123,7 @@ export function useLiveSession(payload: LiveSessionPayload) {
                 ? 'Backend unavailable, preview mode'
                 : 'Preview mode',
             hostTransport: null,
+            telemetry: null,
         });
         startPreviewSimulation();
     }, [startPreviewSimulation, stopPreviewSimulation]);
@@ -152,6 +157,7 @@ export function useLiveSession(payload: LiveSessionPayload) {
                 connectionLabel: 'Connecting to live backend',
                 session,
                 hostTransport,
+                telemetry: null,
             });
 
             try {
@@ -282,6 +288,10 @@ export function useLiveSession(payload: LiveSessionPayload) {
 
     const endSession = useCallback(async () => {
         stopPreviewSimulation();
+        if (telemetryIntervalRef.current) {
+            clearInterval(telemetryIntervalRef.current);
+            telemetryIntervalRef.current = null;
+        }
 
         setState((current) => ({
             ...current,
@@ -313,6 +323,7 @@ export function useLiveSession(payload: LiveSessionPayload) {
                 ? { ...current.session, status: 'ended' }
                 : current.session,
             hostTransport: current.hostTransport,
+            telemetry: current.telemetry,
         }));
     }, [state.mode, state.sessionId, stopPreviewSimulation]);
 
@@ -437,9 +448,49 @@ export function useLiveSession(payload: LiveSessionPayload) {
 
         return () => {
             stopPreviewSimulation();
+            if (telemetryIntervalRef.current) {
+                clearInterval(telemetryIntervalRef.current);
+                telemetryIntervalRef.current = null;
+            }
             liveSocketClient.disconnect();
         };
     }, [startSession, stopPreviewSimulation]);
+
+    useEffect(() => {
+        if (state.mode !== 'backend' || state.status !== 'live' || !state.sessionId) {
+            if (telemetryIntervalRef.current) {
+                clearInterval(telemetryIntervalRef.current);
+                telemetryIntervalRef.current = null;
+            }
+            return;
+        }
+
+        const sessionId = state.sessionId;
+        telemetryIntervalRef.current = setInterval(() => {
+            const sample = {
+                bitrateKbps: 1500 + Math.floor(Math.random() * 1200),
+                droppedFrames: Math.floor(Math.random() * 5),
+                rttMs: 60 + Math.floor(Math.random() * 90),
+                sampleAt: new Date().toISOString(),
+            };
+
+            setState((current) => ({
+                ...current,
+                telemetry: sample,
+            }));
+
+            postLiveTelemetry(sessionId, sample).catch(() => {
+                // Best effort telemetry pipeline.
+            });
+        }, 15000);
+
+        return () => {
+            if (telemetryIntervalRef.current) {
+                clearInterval(telemetryIntervalRef.current);
+                telemetryIntervalRef.current = null;
+            }
+        };
+    }, [state.mode, state.sessionId, state.status]);
 
     const backendConnected = useMemo(
         () => state.mode === 'backend' && state.status === 'live',

@@ -2,16 +2,14 @@ import React, { useState, useEffect, useCallback, useRef, memo } from 'react';
 import {
     View,
     ScrollView,
-    Dimensions,
     StyleSheet,
     RefreshControl,
     ActivityIndicator,
     Text,
+    useWindowDimensions,
 } from 'react-native';
 import { MixedFeedItem } from "@/lib/api/types/video";
 import GridItem from './GridItem';
-
-const { width: screenWidth } = Dimensions.get('window');
 
 interface MasonryGridProps {
     data: MixedFeedItem[];
@@ -43,10 +41,11 @@ const MasonryGrid: React.FC<MasonryGridProps> = memo(({
                                                           onVideoPress,
                                                           onUserPress,
                                                           onSoundPress,
-                                                          numColumns = 2,
-                                                          spacing = 8,
-                                                          contentContainerStyle,
-                                                      }) => {
+                                                      numColumns = 2,
+                                                      spacing = 8,
+                                                      contentContainerStyle,
+                                                  }) => {
+    const { width: windowWidth } = useWindowDimensions();
     const [columns, setColumns] = useState<GridColumn[]>([]);
     const [containerHeight, setContainerHeight] = useState(0);
     const scrollViewRef = useRef<ScrollView>(null);
@@ -64,7 +63,11 @@ const MasonryGrid: React.FC<MasonryGridProps> = memo(({
 
     // Calculate item dimensions based on aspect ratio
     const getItemDimensions = useCallback((item: MixedFeedItem) => {
-        const columnWidth = (screenWidth - spacing * (numColumns + 1)) / numColumns;
+        const horizontalPadding = spacing * (numColumns + 1);
+        const columnWidth = Math.max(
+            150,
+            (windowWidth - horizontalPadding) / numColumns
+        );
 
         let itemHeight: number;
 
@@ -95,7 +98,7 @@ const MasonryGrid: React.FC<MasonryGridProps> = memo(({
             width: columnWidth,
             height: itemHeight + contentPadding,
         };
-    }, [numColumns, spacing]);
+    }, [numColumns, spacing, windowWidth]);
 
     // Layout algorithm for masonry grid
     const calculateLayout = useCallback((items: MixedFeedItem[]) => {
@@ -191,7 +194,11 @@ const MasonryGrid: React.FC<MasonryGridProps> = memo(({
 
     // Render individual column
     const renderColumn = useCallback((column: GridColumn, columnIndex: number) => {
-        const columnWidth = (screenWidth - spacing * (numColumns + 1)) / numColumns;
+        const horizontalPadding = spacing * (numColumns + 1);
+        const columnWidth = Math.max(
+            150,
+            (windowWidth - horizontalPadding) / numColumns
+        );
         const columnLeft = spacing + columnIndex * (columnWidth + spacing);
 
         return (
@@ -228,7 +235,7 @@ const MasonryGrid: React.FC<MasonryGridProps> = memo(({
                 ))}
             </View>
         );
-    }, [numColumns, spacing, onVideoPress, onUserPress, onSoundPress]);
+    }, [numColumns, spacing, onVideoPress, onUserPress, onSoundPress, windowWidth]);
 
     // Render loading footer with improved display logic
     const renderLoadingFooter = useCallback(() => {
@@ -306,6 +313,7 @@ const styles = StyleSheet.create({
     gridContainer: {
         position: 'relative',
         paddingTop: 10,
+        minHeight: 240,
     },
     column: {
         position: 'absolute',

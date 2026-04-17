@@ -29,7 +29,7 @@ export default function TabLayout() {
   const { user, isAuthenticated, loading } = useAuth();
   const { showAuthModal } = useAuthModal();
   const insets = useSafeAreaInsets();
-  const canAccessAuthGatedTabs = isAuthenticated || !!user;
+  const canAccessAuthGatedTabs = isAuthenticated;
 
   const TabBarButton = ({
     label,
@@ -219,7 +219,9 @@ export default function TabLayout() {
                         if (loading) {
                           return;
                         }
-                        showAuthModal("access_profile");
+                        // Don't show the auth modal repeatedly for Profile.
+                        // Let the profile route handle redirecting to sign-in if needed.
+                        navigation.navigate("profile");
                       }
                     };
                   }

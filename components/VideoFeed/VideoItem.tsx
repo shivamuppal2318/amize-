@@ -11,6 +11,7 @@ import {
   Dimensions,
   Image,
   Modal,
+  Platform,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -97,7 +98,177 @@ const formatCount = (count: number): string => {
   return count.toString();
 };
 
-const VideoItem: React.FC<VideoItemProps> = ({
+const VideoItemWeb: React.FC<VideoItemProps> = ({
+  item,
+  focused = false,
+  onLike,
+  onComment,
+  onShare,
+  onBookmark,
+  onProfilePress,
+}) => {
+  const [isLiked, setIsLiked] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [videoReady, setVideoReady] = useState(false);
+  const [isPlayingWeb, setIsPlayingWeb] = useState(false);
+
+  const videoSource = useMemo<VideoSource>(
+    () => ({ uri: item.video?.uri }),
+    [item.video?.uri]
+  );
+
+  const player = useVideoPlayer(videoSource, (player) => {
+    player.loop = true;
+    player.muted = false;
+  });
+
+  useEffect(() => {
+    if (!focused || !videoReady) {
+      player.pause();
+      setIsPlayingWeb(false);
+      return;
+    }
+  }, [focused, player, videoReady]);
+
+  const handleToggleVideo = useCallback(() => {
+    if (!videoReady) {
+      return;
+    }
+
+    if (isPlayingWeb) {
+      player.pause();
+      setIsPlayingWeb(false);
+      return;
+    }
+
+    player.play();
+    setIsPlayingWeb(true);
+  }, [isPlayingWeb, player, videoReady]);
+
+  const handleLike = useCallback(() => {
+    const next = !isLiked;
+    setIsLiked(next);
+    onLike(next);
+  }, [isLiked, onLike]);
+
+  return (
+    <View style={styles.container}>
+      <View style={styles.videoContainer}>
+        <VideoView
+          style={styles.video}
+          player={player}
+          allowsFullscreen={true}
+          allowsPictureInPicture={false}
+          nativeControls={false}
+          contentFit="cover"
+          onFirstFrameRender={() => {
+            setIsLoading(false);
+            setVideoReady(true);
+          }}
+        />
+        {!videoReady && (
+          <Image
+            source={{ uri: item.video?.poster || item.video?.uri }}
+            style={styles.posterImage}
+            resizeMode="cover"
+          />
+        )}
+      </View>
+
+      <View style={styles.overlay} />
+
+      <View style={styles.pauseContainer}>
+        <TouchableOpacity
+          style={styles.pauseButton}
+          onPress={handleToggleVideo}
+          accessibilityRole="button"
+          accessibilityLabel={isPlayingWeb ? "Pause video" : "Play video"}
+        >
+          <Play size={30} color="#FFFFFF" />
+        </TouchableOpacity>
+        <Text style={styles.pauseReasonText}>
+          {isLoading
+            ? "Loading preview..."
+            : isPlayingWeb
+              ? "Tap to pause"
+              : "Tap to play"}
+        </Text>
+      </View>
+
+      {/* Minimal action buttons for web preview */}
+      <View style={styles.actionButtons}>
+        <TouchableOpacity style={styles.actionButton} onPress={handleLike}>
+          <View style={[styles.actionIconContainer, isLiked && styles.likedIconContainer]}>
+            <Svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+              <Path
+                d="M20.84 4.61c-1.54-1.34-3.77-1.34-5.31 0L12 7.77 8.47 4.61c-1.54-1.34-3.77-1.34-5.31 0-1.76 1.53-1.84 4.21-.19 5.84L12 21.35l9.03-10.9c1.65-1.63 1.57-4.31-.19-5.84z"
+                fill={isLiked ? "#FF5A5F" : "rgba(255,255,255,0.9)"}
+              />
+            </Svg>
+          </View>
+          <Text style={styles.actionText}>{formatCount(item.likeCount || 0)}</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.actionButton} onPress={onComment}>
+          <View style={styles.actionIconContainer}>
+            <Text style={{ color: "#fff", fontWeight: "700" }}>C</Text>
+          </View>
+          <Text style={styles.actionText}>{formatCount(item.commentCount || 0)}</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.actionButton} onPress={() => onShare()}>
+          <View style={styles.actionIconContainer}>
+            <Text style={{ color: "#fff", fontWeight: "700" }}>S</Text>
+          </View>
+          <Text style={styles.actionText}>{formatCount(item.shareCount || 0)}</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.actionButton} onPress={() => onBookmark(true)}>
+          <View style={styles.actionIconContainer}>
+            <Text style={{ color: "#fff", fontWeight: "700" }}>B</Text>
+          </View>
+          <Text style={styles.actionText}>{formatCount(item.bookmarkCount || 0)}</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.actionButton} onPress={onProfilePress}>
+          <View style={styles.actionIconContainer}>
+            <Image source={{ uri: item.user.avatar }} style={{ width: 28, height: 28, borderRadius: 14 }} />
+          </View>
+          <Text style={styles.actionText}>Profile</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Keep the existing text overlay so UI matches native */}
+      <View style={styles.userInfoContainer}>
+        <View style={styles.userInfo}>
+          <TouchableOpacity style={styles.userAvatar} onPress={onProfilePress}>
+            <Image source={{ uri: item.user.avatar }} style={styles.avatarImage} />
+          </TouchableOpacity>
+          <View style={styles.usernameContainer}>
+            <TouchableOpacity style={styles.usernameRow} onPress={onProfilePress}>
+              <Text style={styles.username}>@{item.user.username}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        <Text style={styles.title} numberOfLines={1}>
+          {item.title}
+        </Text>
+        <Text style={styles.description} numberOfLines={3}>
+          {item.description}
+        </Text>
+        <View style={styles.musicInfo}>
+          <Music size={14} color="#F3F4F6" />
+          <Text style={styles.musicText} numberOfLines={1}>
+            {item.music?.name || "Original Sound"}
+          </Text>
+        </View>
+      </View>
+    </View>
+  );
+};
+
+const VideoItemNative: React.FC<VideoItemProps> = ({
   item,
   focused = false,
   isBuffered = false,
@@ -772,6 +943,13 @@ const VideoItem: React.FC<VideoItemProps> = ({
   );
 };
 
+const VideoItem: React.FC<VideoItemProps> = (props) => {
+  if (Platform.OS === "web") {
+    return <VideoItemWeb {...props} />;
+  }
+  return <VideoItemNative {...props} />;
+};
+
 const styles = StyleSheet.create({
   container: {
     width: width,
@@ -784,6 +962,10 @@ const styles = StyleSheet.create({
   },
   video: {
     ...StyleSheet.absoluteFillObject,
+  },
+  posterImage: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "#0B1220",
   },
   overlay: {
     ...StyleSheet.absoluteFillObject,

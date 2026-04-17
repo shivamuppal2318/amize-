@@ -29,13 +29,10 @@ import {
   Bell,
   BadgeDollarSign,
   Download,
-  BarChart3,
   Trash2,
   Wallet,
   MapPin,
-  SlidersHorizontal,
-  Flag,
-  Rocket,
+  Gift,
 } from "lucide-react-native";
 import { useAuth } from "@/hooks/useAuth";
 import { useI18n } from "@/hooks/useI18n";
@@ -55,8 +52,6 @@ export default function SettingsScreen() {
   const { languageName } = useI18n();
   const { settings, updateSetting } = useSettings();
   const demoMode = isDemoMode();
-  const isAdmin =
-    user?.role === "ADMIN" || user?.adminPermissions === "all";
   const [logoutModalVisible, setLogoutModalVisible] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
 
@@ -114,6 +109,7 @@ export default function SettingsScreen() {
     setLoggingOut(true);
     try {
       await logout();
+      router.replace("/(auth)/sign-in");
     } catch (error) {
       console.error("Error during logout:", error);
     } finally {
@@ -438,6 +434,16 @@ export default function SettingsScreen() {
                     subtitle="Password, two-factor authentication"
                     onPress={() => handleNavigate("/settings/security")}
                   />
+<EnhancedMenuItem
+                    icon={<Gift size={22} color="#FF5A5F" />}
+                    label="Gifts & Coins"
+                    subtitle={
+                      demoMode
+                        ? "Demo: 18 Roses, 6 Stars, 1 Crown"
+                        : "Send and receive gifts"
+                    }
+                    onPress={() => handleNavigate("/settings/wallet")}
+                  />
                   <EnhancedMenuItem
                     icon={<Wallet size={22} color="rgb(255,255,255)" />}
                     label="Wallet & Payouts"
@@ -467,12 +473,6 @@ export default function SettingsScreen() {
                         : "Subscribers, revenue, creator monetization"
                     }
                     onPress={() => handleNavigate("/settings/creator-earnings")}
-                  />
-                  <EnhancedMenuItem
-                    icon={<Rocket size={22} color="rgb(255,255,255)" />}
-                    label="Client Showcase"
-                    subtitle="Fast path to the strongest demo-ready screens"
-                    onPress={() => handleNavigate("/settings/client-showcase")}
                   />
                 </View>
               </View>
@@ -543,50 +543,6 @@ export default function SettingsScreen() {
                   />
                 </View>
               </View>
-
-              {isAdmin && (
-                <View style={styles.settingsSection}>
-                  <Text style={styles.sectionTitle}>Admin</Text>
-                  <View style={styles.sectionContent}>
-                    <EnhancedMenuItem
-                      icon={<BarChart3 size={22} color="rgb(255,255,255)" />}
-                      label="Admin Overview"
-                      subtitle="Track platform health, moderation, and payouts"
-                      onPress={() => handleNavigate("/settings/admin-overview")}
-                    />
-                    <EnhancedMenuItem
-                      icon={<Shield size={22} color="rgb(255,255,255)" />}
-                      label="System Health"
-                      subtitle="Check deployment secrets and provider readiness"
-                      onPress={() => handleNavigate("/settings/admin-system-health")}
-                    />
-                    <EnhancedMenuItem
-                      icon={<Rocket size={22} color="rgb(255,255,255)" />}
-                      label="Release Readiness"
-                      subtitle="Review store-blocking backend and app config gaps"
-                      onPress={() => handleNavigate("/settings/admin-release-readiness")}
-                    />
-                    <EnhancedMenuItem
-                      icon={<SlidersHorizontal size={22} color="rgb(255,255,255)" />}
-                      label="Discovery Topics"
-                    subtitle="Control featured and visible explore topics"
-                      onPress={() => handleNavigate("/settings/admin-topics")}
-                    />
-                    <EnhancedMenuItem
-                      icon={<Wallet size={22} color="rgb(255,255,255)" />}
-                      label="Withdrawal Review"
-                      subtitle="Process payout requests and update statuses"
-                      onPress={() => handleNavigate("/settings/admin-withdrawals")}
-                    />
-                    <EnhancedMenuItem
-                      icon={<Flag size={22} color="rgb(255,255,255)" />}
-                      label="Report Review"
-                      subtitle="Moderate reported videos and users"
-                      onPress={() => handleNavigate("/settings/admin-reports")}
-                    />
-                  </View>
-                </View>
-              )}
 
               {/* Danger Zone */}
               <View style={styles.settingsSection}>

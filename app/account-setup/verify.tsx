@@ -9,6 +9,7 @@ import {
   ScrollView,
   Image,
   StyleSheet,
+  Platform,
 } from "react-native";
 import { StatusBar } from "react-native";
 import { router } from "expo-router";
@@ -16,6 +17,7 @@ import { ChevronLeft, Mail, Phone, Shield, CheckCircle, Clock } from "lucide-rea
 import { Button } from "@/components/ui/Button";
 import { useAuth } from "@/hooks/useAuth";
 import { useRegistration } from "@/context/RegistrationContext";
+import { isDemoMode } from "@/lib/release/releaseConfig";
 
 // @ts-ignore
 import AmizeLogo from "@/assets/images/amize.png";
@@ -24,7 +26,13 @@ import { LinearGradient } from "expo-linear-gradient";
 const AMIZE_LOGO = AmizeLogo;
 
 export default function VerifyScreen() {
-  const { verifyCode, resendVerificationCode, completeSignupFlow } = useAuth();
+  const {
+    user,
+    updateUser,
+    verifyCode,
+    resendVerificationCode,
+    completeSignupFlow,
+  } = useAuth();
   const { registrationData } = useRegistration();
 
   const [code, setCode] = useState("");
@@ -34,8 +42,13 @@ export default function VerifyScreen() {
   const [inputValues, setInputValues] = useState(["", "", "", "", "", ""]);
   const inputRefs = useRef<(TextInput | null)[]>([]);
 
-  const verificationTarget = registrationData.email || registrationData.phoneNumber || "";
-  const isEmailTarget = Boolean(registrationData.email);
+  const verificationTarget =
+    registrationData.email ||
+    registrationData.phoneNumber ||
+    user?.email ||
+    "";
+  const isEmailTarget = Boolean(registrationData.email || user?.email);
+  const allowLocalBypass = Platform.OS === "web" || isDemoMode();
 
   useEffect(() => {
     if (timer <= 0) {
@@ -55,12 +68,8 @@ export default function VerifyScreen() {
       return;
     }
 
-    if (!/^\d*$/.test(text)) {
-      return;
-    }
-
     const newInputValues = [...inputValues];
-    newInputValues[index] = text;
+    newInputValues[index] = text.slice(-1);
     setInputValues(newInputValues);
 
     const fullCode = newInputValues.join("");
@@ -74,7 +83,7 @@ export default function VerifyScreen() {
   };
 
   const handleCodePaste = (pastedText: string) => {
-    const cleanedText = pastedText.replace(/[^0-9]/g, "").slice(0, 6);
+    const cleanedText = pastedText.slice(0, 6);
 
     if (cleanedText.length === 6) {
       const chars = cleanedText.split("");
@@ -103,6 +112,14 @@ export default function VerifyScreen() {
 
     try {
       setVerifying(true);
+
+      if (allowLocalBypass) {
+        updateUser({ verified: true });
+        await completeSignupFlow();
+        router.replace("/(tabs)");
+        return;
+      }
+
       const result = await verifyCode(verificationTarget, code);
 
       if (!result.success) {
@@ -233,7 +250,7 @@ export default function VerifyScreen() {
                           styles.codeInput,
                           inputValues[index] && styles.codeInputFilled,
                         ]}
-                        keyboardType="number-pad"
+                        keyboardType={allowLocalBypass ? "default" : "number-pad"}
                         maxLength={1}
                         value={inputValues[index]}
                         onChangeText={(text) => handleInputChange(text, index)}
@@ -255,7 +272,9 @@ export default function VerifyScreen() {
                     <View style={styles.successIndicator}>
                       <CheckCircle size={16} color="#10B981" />
                       <Text style={styles.successText}>
-                        Code entered successfully
+                        {allowLocalBypass
+                          ? "Verification bypass is enabled for this build"
+                          : "Code entered successfully"}
                       </Text>
                     </View>
                   )}

@@ -17,11 +17,9 @@ import { CheckCircle, Video, Camera, RefreshCw } from 'lucide-react-native';
 import ActionButton from '@/components/shared/UI/ActionButton';
 import HeaderBar from '@/components/shared/UI/HeaderBar';
 import * as ImagePicker from 'expo-image-picker';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import * as MediaLibrary from 'expo-media-library';
-import { manipulateAsync } from 'expo-image-manipulator';
 import { usePostingStore } from '@/stores/postingStore';
-import { useToast } from '@/hooks/useToast';
 import * as Linking from 'expo-linking';
 import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'react-native';
@@ -44,9 +42,9 @@ interface MediaItem {
 
 export default function MediaSelectScreen() {
     const router = useRouter();
-    const toast = useToast();
     const { addMedia, resetMedia } = usePostingStore();
     const { mode } = useLocalSearchParams<{ mode?: string }>();
+    const isWeb = Platform.OS === 'web';
     const isStoryMode = mode === 'story';
     const selectionLimit = isStoryMode ? 1 : MAX_SELECTION;
 
@@ -63,27 +61,113 @@ export default function MediaSelectScreen() {
         resetMedia();
     }, []);
 
+    const buildMediaItem = useCallback(async (asset: ImagePicker.ImagePickerAsset): Promise<MediaItem> => {
+        const isVideo =
+            asset.type?.startsWith('video') ||
+            asset.mimeType?.startsWith('video/') ||
+            asset.uri.toLowerCase().endsWith('.mp4') ||
+            asset.uri.toLowerCase().endsWith('.mov') ||
+            asset.uri.toLowerCase().endsWith('.webm');
+
+        let size = 0;
+        if (!isWeb) {
+            try {
+                const fileInfo = await FileSystem.getInfoAsync(asset.uri);
+                size = fileInfo.exists ? fileInfo.size || 0 : 0;
+            } catch (e) {
+                // Ignore file info errors
+            }
+        }
+
+        return {
+            id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+            uri: asset.uri,
+            type: isVideo ? 'video' : 'photo',
+            width: asset.width || 0,
+            height: asset.height || 0,
+            duration: isVideo ? asset.duration || 0 : undefined,
+            size: size,
+            // Store the web File object for upload
+            ...(isWeb && (asset as any).file && { webFile: (asset as any).file }),
+        };
+    }, []);
+
+    const pickFromDevice = useCallback(async () => {
+        try {
+            setLoading(true);
+
+            const mediaTypes = ImagePicker.MediaTypeOptions.All;
+
+            const result = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: mediaTypes as any,
+                quality: 0.8,
+                allowsMultipleSelection: !isStoryMode,
+                selectionLimit,
+                exif: false,
+            });
+
+            console.log('[DEBUG] ImagePicker result:', result);
+
+            if (result.canceled || result.assets.length === 0) {
+                setLoading(false);
+                return;
+            }
+
+            const nextItems = await Promise.all(result.assets.map(buildMediaItem));
+
+            if (isStoryMode) {
+                setSelectedItems(nextItems.slice(0, 1));
+            } else {
+                setSelectedItems(prev => {
+                    const remainingSlots = selectionLimit - prev.length;
+                    if (remainingSlots <= 0) {
+                        Alert.alert('Selection Limit', `You can only select up to ${selectionLimit} items`);
+                        return prev;
+                    }
+
+                    return [...prev, ...nextItems.slice(0, remainingSlots)];
+                });
+            }
+        } catch (error) {
+            console.error('Error picking media:', error);
+            Alert.alert('Error', 'Failed to open your media library');
+        } finally {
+            setLoading(false);
+        }
+    }, [buildMediaItem, isStoryMode, selectionLimit]);
+
     const checkMediaPermissions = useCallback(async () => {
         try {
+            if (isWeb) {
+                setGalleryPermission(true);
+                return;
+            }
+
             const galleryStatus = await MediaLibrary.requestPermissionsAsync();
             if (galleryStatus.granted) {
                 setGalleryPermission(true);
             } else {
                 setGalleryPermission(false);
-                toast.show('Permission Required', 'This app needs access to your media library');
+                Alert.alert('Permission Required', 'This app needs access to your media library');
             }
 
             const cameraStatus = await ImagePicker.requestCameraPermissionsAsync();
             if (!cameraStatus.granted) {
-                toast.show('Permission Required', 'This app needs access to your camera');
+                Alert.alert('Permission Required', 'This app needs access to your camera');
             }
         } catch (error) {
             console.error('Error checking permissions:', error);
         }
-    }, [toast]);
+    }, [isWeb]);
 
 
     const loadGalleryItems = useCallback(async (refresh = false) => {
+        if (isWeb) {
+            setGalleryItems([]);
+            setHasNextPage(false);
+            return;
+        }
+
         if (loading || (!hasNextPage && !refresh)) return;
     
         try {
@@ -147,11 +231,11 @@ export default function MediaSelectScreen() {
             console.log(`Loaded ${result.assets.length} gallery items`);
         } catch (error) {
             console.error('Error loading gallery items:', error);
-            toast.show('Error', 'Failed to load media from your device');
+            Alert.alert('Error', 'Failed to load media from your device');
         } finally {
             setLoading(false);
         }
-    }, [loading, hasNextPage, endCursor, toast, setGalleryItems, setGalleryItemURIs, setHasNextPage, setEndCursor]);
+    }, [endCursor, hasNextPage, isWeb, loading, setGalleryItems, setGalleryItemURIs, setHasNextPage, setEndCursor]);
 
     useEffect(() => {
         checkMediaPermissions().then(() => {
@@ -200,7 +284,7 @@ export default function MediaSelectScreen() {
                     }
                 } catch (error) {
                     console.error('Error getting asset URI:', error);
-                    toast.show('Error', 'Could not access this media item');
+                    Alert.alert('Error', 'Could not access this media item');
                     setLoading(false);
                     return;
                 }
@@ -232,11 +316,11 @@ export default function MediaSelectScreen() {
             if (isStoryMode) {
                 setSelectedItems([newMediaItem]);
                 if (selectedItems.length > 0) {
-                    toast.show('Story Updated', 'Story mode keeps only the latest selected item');
+                    Alert.alert('Story Updated', 'Story mode keeps only the latest selected item');
                 }
             } else {
                 if (selectedItems.length >= selectionLimit) {
-                    toast.show('Selection Limit', `You can only select up to ${selectionLimit} items`);
+                    Alert.alert('Selection Limit', `You can only select up to ${selectionLimit} items`);
                     return;
                 }
 
@@ -244,7 +328,7 @@ export default function MediaSelectScreen() {
                     setSelectedItems([newMediaItem]);
                 } else {
                     if (selectedItems.length >= selectionLimit) {
-                        toast.show('Selection Limit', `You can only select up to ${selectionLimit} items`);
+                        Alert.alert('Selection Limit', `You can only select up to ${selectionLimit} items`);
                         return;
                     }
 
@@ -253,48 +337,42 @@ export default function MediaSelectScreen() {
             }
         } catch (error) {
             console.error('Error toggling gallery item:', error);
-            toast.show('Error', 'Failed to select media item');
+            Alert.alert('Error', 'Failed to select media item');
         } finally {
             setLoading(false);
         }
     };
 
-    const takePhoto = async () => {
+    const takePhoto = useCallback(async () => {
         try {
+            if (isWeb) {
+                await pickFromDevice();
+                return;
+            }
+
             setLoading(true);
 
+            const cameraMediaTypes = ImagePicker.MediaTypeOptions.All;
+
             const result = await ImagePicker.launchCameraAsync({
-                mediaTypes: ImagePicker.MediaTypeOptions.All,
+                mediaTypes: cameraMediaTypes as any,
                 quality: 0.8,
                 allowsEditing: true,
                 exif: false,
             });
 
             if (!result.canceled && result.assets.length > 0) {
-                const asset = result.assets[0];
-                const isVideo = asset.type?.startsWith('video') || asset.uri.endsWith('.mp4');
-
-                const fileInfo = await FileSystem.getInfoAsync(asset.uri);
-
-                const newMediaItem: MediaItem = {
-                    id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
-                    uri: asset.uri,
-                    type: isVideo ? 'video' : 'photo',
-                    width: asset.width || 0,
-                    height: asset.height || 0,
-                    duration: isVideo ? asset.duration || 0 : undefined,
-                    size: fileInfo.exists ? fileInfo.size : 0,
-                };
+                const newMediaItem = await buildMediaItem(result.assets[0]);
 
                 setSelectedItems(prev => [...prev, newMediaItem]);
             }
         } catch (error) {
             console.error('Error taking photo:', error);
-            toast.show('Error', 'Failed to capture media');
+            Alert.alert('Error', 'Failed to capture media');
         } finally {
             setLoading(false);
         }
-    };
+    }, [buildMediaItem, isWeb, pickFromDevice]);
 
     const clearAllMedia = () => {
         Alert.alert(
@@ -315,7 +393,7 @@ export default function MediaSelectScreen() {
 
     const handleNext = () => {
         if (selectedItems.length === 0) {
-            toast.show('No Selection', 'Please select at least one photo or video');
+            Alert.alert('No Selection', 'Please select at least one photo or video');
             return;
         }
 
@@ -329,17 +407,19 @@ export default function MediaSelectScreen() {
                     size: item.size,
                     duration: item.duration ? item.duration * 1000 : undefined,
                     timestamp: new Date().getTime(),
-                    
                 });
             });
 
-            router.push({
-                pathname: '/post/edit',
-                params: { mode: isStoryMode ? 'story' : 'post' },
-            });
+            // Use setTimeout to avoid navigation during render
+            setTimeout(() => {
+                router.push({
+                    pathname: '/post/edit',
+                    params: { mode: isStoryMode ? 'story' : 'post' },
+                });
+            }, 100);
         } catch (error) {
             console.error('Error proceeding to next screen:', error);
-            toast.show('Error', 'Failed to process selected media');
+            Alert.alert('Error', 'Failed to process selected media');
         }
     };
 
@@ -371,7 +451,6 @@ export default function MediaSelectScreen() {
                             styles.galleryImage,
                             isSelected && styles.selectedImage
                         ]}
-                        defaultSource={require('@/assets/images/placeholder-image.png')}
                     />
                 ) : (
                     <View style={[styles.galleryImage, styles.placeholderContainer]}>
@@ -412,7 +491,6 @@ export default function MediaSelectScreen() {
             <Image
                 source={{ uri: item.uri }}
                 style={styles.capturedImage}
-                defaultSource={require('@/assets/images/placeholder-image.png')}
             />
 
             {item.type === 'video' && (
@@ -438,10 +516,15 @@ export default function MediaSelectScreen() {
     );
 
     const openSettings = () => {
+        if (isWeb) {
+            Alert.alert('Use Upload', 'Browser builds should use the upload flow instead of device settings');
+            return;
+        }
+
         if (Platform.OS === 'ios') {
             Linking.openURL('app-settings:').then(r => {
                 if (!r) {
-                    toast.show('Error', 'Failed to open settings');
+                    Alert.alert('Error', 'Failed to open settings');
                 }
             });
         } else {
@@ -546,6 +629,20 @@ export default function MediaSelectScreen() {
                             <ActivityIndicator size="large" color="#FF4D67" />
                             <Text style={styles.loadingText}>Loading gallery...</Text>
                         </View>
+                    ) : isWeb ? (
+                        <View style={styles.webPickerContainer}>
+                            <TouchableOpacity
+                                style={styles.webPickerButton}
+                                onPress={pickFromDevice}
+                                disabled={loading}
+                            >
+                                <Video size={44} color="#FFFFFF" />
+                                <Text style={styles.webPickerTitle}>Choose media from your device</Text>
+                                <Text style={styles.webPickerSubtitle}>
+                                    Select photos or videos from your computer instead of using the native gallery API.
+                                </Text>
+                            </TouchableOpacity>
+                        </View>
                     ) : galleryItems.length === 0 ? (
                         <View style={styles.emptyContainer}>
                             <Text style={styles.emptyText}>No media found in your gallery</Text>
@@ -596,7 +693,7 @@ export default function MediaSelectScreen() {
                             color="#999" 
                         />
                         <Text style={styles.cameraText}>
-                            {loading ? 'Processing...' : 'Take Photo or Video'}
+                            {loading ? 'Processing...' : isWeb ? 'Upload Photo or Video' : 'Take Photo or Video'}
                         </Text>
                     </TouchableOpacity>
 
@@ -820,6 +917,41 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         fontSize: 16,
         marginTop: 16,
+    },
+    webPickerContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingHorizontal: 24,
+        paddingBottom: 24,
+    },
+    webPickerButton: {
+        width: '100%',
+        maxWidth: 520,
+        minHeight: 220,
+        borderRadius: 20,
+        backgroundColor: 'rgba(255,255,255,0.08)',
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.1)',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingHorizontal: 28,
+        paddingVertical: 32,
+    },
+    webPickerTitle: {
+        color: '#FFFFFF',
+        fontSize: 22,
+        fontWeight: '700',
+        marginTop: 18,
+        marginBottom: 10,
+        textAlign: 'center',
+    },
+    webPickerSubtitle: {
+        color: '#B7C2D0',
+        fontSize: 15,
+        lineHeight: 22,
+        textAlign: 'center',
+        maxWidth: 360,
     },
     permissionContainer: {
         flex: 1,

@@ -1,8 +1,10 @@
 import React, { useMemo, useState } from 'react';
-import { View, Text, SafeAreaView, TouchableOpacity } from 'react-native';
+import { Alert, View, Text, SafeAreaView, TouchableOpacity } from 'react-native';
 import { router } from 'expo-router';
 import { ChevronLeft } from 'lucide-react-native';
 import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
+import { authApi } from '@/lib/api/auth';
 
 const StyledView = View;
 const StyledSafeAreaView = SafeAreaView;
@@ -10,6 +12,8 @@ const StyledTouchableOpacity = TouchableOpacity;
 
 export default function ResetMethodScreen() {
     const [selectedMethod, setSelectedMethod] = useState<'sms' | 'email'>('sms');
+    const [identifier, setIdentifier] = useState('');
+    const [loading, setLoading] = useState(false);
 
     const methodOptions = useMemo(
         () => [
@@ -29,18 +33,43 @@ export default function ResetMethodScreen() {
         []
     );
 
-    const handleContinue = () => {
+    const handleContinue = async () => {
+        if (!identifier.trim()) {
+            Alert.alert('Missing Contact', 'Enter your email or phone first.');
+            return;
+        }
+
+        if (selectedMethod === 'email' && !/\S+@\S+\.\S+/.test(identifier.trim())) {
+            Alert.alert('Invalid Email', 'Use a valid email address for email reset.');
+            return;
+        }
+
+        setLoading(true);
         const selectedOption = methodOptions.find(
             (option) => option.key === selectedMethod
         );
+
+        if (selectedMethod === 'email') {
+            try {
+                await authApi.forgotPassword(identifier.trim().toLowerCase());
+            } catch (error: any) {
+                setLoading(false);
+                Alert.alert(
+                    'Reset Failed',
+                    error?.response?.data?.message || 'Could not send reset email right now.'
+                );
+                return;
+            }
+        }
 
         router.push({
             pathname: '/password-reset/verify',
             params: {
                 method: selectedMethod,
-                target: selectedOption?.value ?? '',
+                target: identifier.trim() || selectedOption?.value || '',
             },
         });
+        setLoading(false);
     };
 
     return (
@@ -74,6 +103,15 @@ export default function ResetMethodScreen() {
                 </StyledView>
 
                 <StyledView className="mb-6">
+                    <Input
+                        placeholder={
+                            selectedMethod === 'email'
+                                ? 'Enter your email'
+                                : 'Enter your phone number'
+                        }
+                        value={identifier}
+                        onChangeText={setIdentifier}
+                    />
                     {methodOptions.map((option, index) => {
                         const isSelected = option.key === selectedMethod;
 
@@ -107,9 +145,14 @@ export default function ResetMethodScreen() {
 
                 <Button
                     label="Continue"
-                    onPress={handleContinue}
+                    onPress={() => {
+                        handleContinue().catch(() => {
+                            setLoading(false);
+                        });
+                    }}
                     variant="primary"
                     fullWidth
+                    loading={loading}
                 />
             </StyledView>
         </StyledSafeAreaView>

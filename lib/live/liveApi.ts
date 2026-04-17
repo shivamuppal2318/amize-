@@ -6,6 +6,7 @@ import {
     LiveModerationAction,
     LiveSession,
     LiveSessionPayload,
+    LiveTelemetrySample,
 } from '@/lib/live/types';
 
 type SessionResponse = {
@@ -105,4 +106,11 @@ export async function getLiveTransport(sessionId: string): Promise<LiveHostTrans
     }
 
     return response.data.transport;
+}
+
+export async function postLiveTelemetry(
+    sessionId: string,
+    sample: LiveTelemetrySample
+): Promise<void> {
+    await apiClient.post(`${LIVE_ENDPOINTS.SESSION_BY_ID(sessionId)}/telemetry`, sample);
 }

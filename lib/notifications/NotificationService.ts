@@ -1,6 +1,7 @@
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 import { Notification } from '@/lib/socket/socketEvents';
+import apiClient from '@/lib/api/client';
 
 Notifications.setNotificationHandler({
     handleNotification: async () => ({
@@ -23,6 +24,8 @@ export interface LocalNotificationData {
 
 class NotificationService {
     private isConfigured = false;
+    private tokenListener: Notifications.EventSubscription | null = null;
+    private currentPushToken: string | null = null;
 
     async initialize() {
         if (this.isConfigured) return;
@@ -77,6 +80,8 @@ class NotificationService {
             }
 
             this.isConfigured = true;
+            await this.syncPushToken();
+            this.attachTokenRefreshListener();
             console.log('✅ [NotificationService] Initialized successfully');
             return true;
 
@@ -84,6 +89,45 @@ class NotificationService {
             console.error('❌ [NotificationService] Initialization failed:', error);
             return false;
         }
+    }
+
+    private async syncPushToken() {
+        try {
+            const pushTokenResponse = await Notifications.getExpoPushTokenAsync();
+            const token = pushTokenResponse.data;
+
+            if (!token || token === this.currentPushToken) {
+                return;
+            }
+
+            await apiClient.post('/save-token', { token });
+            this.currentPushToken = token;
+            console.log('✅ [NotificationService] Push token synced');
+        } catch (error) {
+            console.warn('⚠️ [NotificationService] Push token sync skipped:', error);
+        }
+    }
+
+    private attachTokenRefreshListener() {
+        if (this.tokenListener || Platform.OS === 'web') {
+            return;
+        }
+
+        this.tokenListener = Notifications.addPushTokenListener((tokenInfo) => {
+            const token = tokenInfo.data;
+            if (!token || token === this.currentPushToken) {
+                return;
+            }
+
+            apiClient
+                .post('/save-token', { token })
+                .then(() => {
+                    this.currentPushToken = token;
+                })
+                .catch((error) => {
+                    console.warn('⚠️ [NotificationService] Push token refresh sync failed:', error);
+                });
+        });
     }
 
     async showNotification(notification: Notification) {
@@ -367,6 +411,15 @@ class NotificationService {
         } catch (error) {
             console.error('❌ [NotificationService] Failed to cancel notification:', error);
         }
+    }
+
+    dispose() {
+        if (this.tokenListener) {
+            this.tokenListener.remove();
+            this.tokenListener = null;
+        }
+        this.isConfigured = false;
+        this.currentPushToken = null;
     }
 }
 

@@ -31,6 +31,11 @@ export class AppErrorBoundary extends React.Component<
 
   handleReload = async () => {
     try {
+      if (typeof window !== "undefined") {
+        window.location.reload();
+        return;
+      }
+
       await Updates.reloadAsync();
     } catch (error) {
       captureException(error, { tags: { scope: "reload" } });

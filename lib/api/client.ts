@@ -20,6 +20,8 @@ interface ErrorHandler {
 
 // Create a reference that will be set from the ErrorContext
 let errorHandler: ErrorHandler | null = null;
+let refreshPromise: Promise<{ accessToken: string; refreshToken: string }> | null =
+  null;
 
 // Function to set the error handler from ErrorContext
 export const setErrorHandler = (handler: ErrorHandler) => {
@@ -126,6 +128,9 @@ const apiClient = axios.create({
   headers: API_CONFIG.HEADERS,
 });
 
+const RETRYABLE_METHODS = new Set(["get", "head", "options"]);
+const MAX_NETWORK_RETRIES = 2;
+
 // Create a separate axios instance for uploads with longer timeout
 export const uploadClient = axios.create({
   baseURL: API_CONFIG.BASE_URL,
@@ -166,10 +171,27 @@ uploadClient.interceptors.request.use(authInterceptor, (error) =>
 export const responseInterceptor = async (error: AxiosError) => {
   const originalRequest = error.config as AxiosRequestConfig & {
     _retry?: boolean;
+    _networkRetryCount?: number;
     expectsAuth?: boolean;
   };
-
   const status = error.response?.status;
+  const methodLower = (originalRequest.method || "get").toLowerCase();
+  const shouldRetryNetworkRequest =
+    !!originalRequest &&
+    RETRYABLE_METHODS.has(methodLower) &&
+    (error.code === "ECONNABORTED" ||
+      error.message === "Network Error" ||
+      (typeof status === "number" && status >= 500));
+
+  if (shouldRetryNetworkRequest) {
+    const retryCount = originalRequest._networkRetryCount || 0;
+    if (retryCount < MAX_NETWORK_RETRIES) {
+      originalRequest._networkRetryCount = retryCount + 1;
+      const backoffMs = 400 * Math.pow(2, retryCount);
+      await new Promise((resolve) => setTimeout(resolve, backoffMs));
+      return apiClient(originalRequest);
+    }
+  }
   const url = originalRequest.url || "";
   const method = originalRequest.method || "GET";
   const errorData = error.response?.data as any;
@@ -204,8 +226,13 @@ export const responseInterceptor = async (error: AxiosError) => {
       originalRequest._retry = true;
 
       try {
-        // Try to refresh the token
-        const newTokens = await refreshTokens();
+        // Single-flight token refresh to avoid race conditions across parallel requests.
+        if (!refreshPromise) {
+          refreshPromise = refreshTokens().finally(() => {
+            refreshPromise = null;
+          });
+        }
+        const newTokens = await refreshPromise;
 
         // Update header with new token
         if (originalRequest.headers) {
@@ -256,10 +283,28 @@ export const responseInterceptor = async (error: AxiosError) => {
   // Handle all other API errors with enhanced error handling
   if (errorHandler && status !== 401) {
     // Don't show errors for certain non-critical endpoints
+    const isCreatorOnlySurface =
+      url.includes("/creators/connect") ||
+      url.includes("/creator-status") ||
+      url.includes("/creator-analytics") ||
+      (url.includes("/subscriptions") &&
+        typeof originalRequest?.params?.mode === "string" &&
+        originalRequest.params.mode === "subscribers");
+
+    const hasMockFallback =
+      (method.toUpperCase() === "GET" &&
+        /^\/users\/[^/]+\/videos$/.test(url)) ||
+      (method.toUpperCase() === "GET" &&
+        /^\/users\/[^/]+$/.test(url));
+
     const shouldSuppressError =
       url.includes("/analytics") || // Analytics might fail gracefully
       url.includes("/view") || // View tracking is not critical
-      (method.toUpperCase() === "GET" && isAuthOptionalEndpoint(url));
+      (method.toUpperCase() === "GET" && isAuthOptionalEndpoint(url)) ||
+      // Creator/monetization APIs are often forbidden for normal users; screens handle fallbacks.
+      (status === 403 && isCreatorOnlySurface) ||
+      // Profile surfaces already swap to mock data on request failure.
+      (status === 500 && hasMockFallback);
 
     if (!shouldSuppressError) {
       // Use specific error handlers based on error type

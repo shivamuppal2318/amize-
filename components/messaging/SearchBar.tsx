@@ -1,6 +1,6 @@
 // Enhanced SearchBar.tsx - Updated with improved styling and animations
 import React, { useState, useRef, useEffect } from 'react';
-import { View, TextInput, StyleSheet, Animated, TouchableOpacity } from 'react-native';
+import { Platform, View, TextInput, StyleSheet, Animated, TouchableOpacity } from 'react-native';
 import { Search, X } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { COLORS, UI } from './constants';
@@ -117,6 +117,9 @@ const styles = StyleSheet.create({
     searchContainer: {
         paddingHorizontal: UI.SPACING.LG,
         paddingVertical: UI.SPACING.MD,
+        width: '100%',
+        maxWidth: Platform.OS === 'web' ? 880 : undefined,
+        alignSelf: 'center',
     },
     searchGradient: {
         borderRadius: UI.BORDER_RADIUS.SEARCH,

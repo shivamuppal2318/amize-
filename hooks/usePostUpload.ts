@@ -62,17 +62,19 @@ export function usePostUpload({
   
       console.log("🎵 FINAL soundId chosen from mediaItems:", mediaSoundId);
   
-      const filesToUpload = mediaItems.map((media, index) => {
+const filesToUpload = mediaItems.map((media, index) => {
         const sanitizedUri = sanitizeMediaUri(media.uri);
         return {
           uri: sanitizedUri,
           name:
-            sanitizedUri.split("/").pop() ||
+            media.uri.split("/").pop() ||
             `media_${index}.${media.type === "photo" ? "jpg" : "mp4"}`,
           type: media.type === "photo" ? "image/jpeg" : "video/mp4",
           uploadType: (media.type === "photo" ? "THUMBNAIL" : "VIDEO") as
             | "THUMBNAIL"
             | "VIDEO",
+          // Pass web File object if available
+          ...(media.webFile && { webFile: media.webFile }),
         };
       });
   

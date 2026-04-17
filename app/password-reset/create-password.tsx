@@ -1,9 +1,10 @@
 import React, { useMemo, useState } from 'react';
-import { View, Text, SafeAreaView, TouchableOpacity } from 'react-native';
+import { Alert, View, Text, SafeAreaView, TouchableOpacity } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { ChevronLeft, Lock } from 'lucide-react-native';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { authApi } from '@/lib/api/auth';
 
 const StyledView = View
 
@@ -11,9 +12,10 @@ const StyledSafeAreaView = SafeAreaView
 const StyledTouchableOpacity = TouchableOpacity
 
 export default function CreatePasswordScreen() {
-    const { method, target } = useLocalSearchParams<{
+    const { method, target, token } = useLocalSearchParams<{
         method?: string;
         target?: string;
+        token?: string;
     }>();
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
@@ -53,13 +55,39 @@ export default function CreatePasswordScreen() {
         return isValid;
     };
 
-    const handleContinue = () => {
+    const handleContinue = async () => {
         if (validateForm()) {
             setLoading(true);
-            setTimeout(() => {
-                setLoading(false);
+            try {
+                if (typeof method === 'string' && method === 'email' && typeof target === 'string') {
+                    // Requires token from secure reset link; this screen supports it when provided.
+                    const tokenParam = typeof token === 'string' ? token : '';
+
+                    if (tokenParam) {
+                        await authApi.resetPassword({
+                            token: tokenParam,
+                            password,
+                            confirmPassword,
+                        });
+                    } else {
+                        Alert.alert(
+                            'Reset Link Required',
+                            'For secure email reset, open the reset link from your email to continue.'
+                        );
+                        setLoading(false);
+                        return;
+                    }
+                }
+
                 router.push('/password-reset/success');
-            }, 1000);
+            } catch (error: any) {
+                Alert.alert(
+                    'Reset Failed',
+                    error?.response?.data?.message || 'Could not reset password now.'
+                );
+            } finally {
+                setLoading(false);
+            }
         }
     };
 
@@ -120,7 +148,11 @@ export default function CreatePasswordScreen() {
 
                 <Button
                     label="Continue"
-                    onPress={handleContinue}
+                    onPress={() => {
+                        handleContinue().catch(() => {
+                            setLoading(false);
+                        });
+                    }}
                     variant="primary"
                     fullWidth
                     loading={loading}

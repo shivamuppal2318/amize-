@@ -26,6 +26,7 @@ import {
 } from "@/lib/api/types";
 import { AuthContextValue, LoginResult, RegisterResult } from "@/lib/api/types";
 import { socketManager } from "@/lib/socket/socketManager";
+import { socketClient } from "@/lib/socket/socketClient";
 
 // Default context value
 const defaultContextValue: AuthContextValue = {
@@ -72,6 +73,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     onboardingComplete: boolean
   ) => {
     try {
+      // Demo/local-demo sessions should not attempt realtime sockets.
+      // They use placeholder tokens which would cause auth failures and force logout.
+      const tokens = await getTokens();
+      const isLocalDemoToken =
+        tokens?.accessToken?.startsWith("local-demo-token-") ||
+        tokens?.refreshToken?.startsWith("local-demo-refresh-");
+      if (isDemoMode() || isLocalDemoToken) {
+        console.log("[AuthContext] Demo session - skipping socket initialization");
+        return;
+      }
+
       // Only initialize socket if user is verified and onboarding is complete
       if (userData.verified && onboardingComplete && !isInSignupFlow) {
         console.log("[AuthContext] Initializing socket for authenticated user");
@@ -155,6 +167,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     [hasCompletedOnboarding]
   );
 
+  const finalizeReturningUserSession = useCallback(async () => {
+    await secureStorage.set(STORAGE_KEYS.ONBOARDING_COMPLETED, "true");
+    await secureStorage.remove(STORAGE_KEYS.SIGNUP_FLOW);
+    setHasCompletedOnboarding(true);
+    setIsInSignupFlow(false);
+  }, []);
+
   // Update authentication state based on token validity
   const syncAuthState = useCallback(
     async (forceRefresh = false) => {
@@ -207,6 +226,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       console.error("[AuthContext] Error handling auth failure:", error);
     }
   }, []);
+
+  useEffect(() => {
+    socketClient.setAuthFailureCallback(() => {
+      handleAuthFailure().catch((error) => {
+        console.error("[AuthContext] Socket auth failure callback error:", error);
+      });
+    });
+  }, [handleAuthFailure]);
 
   // Initialize auth state from storage with token validation
   useEffect(() => {
@@ -435,10 +462,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       try {
         const localDemoSession = resolveLocalDemoSession(identifier, password);
         if (localDemoSession) {
-          await secureStorage.set(STORAGE_KEYS.ONBOARDING_COMPLETED, "true");
-          await secureStorage.remove(STORAGE_KEYS.SIGNUP_FLOW);
-          setHasCompletedOnboarding(true);
-          setIsInSignupFlow(false);
+          await finalizeReturningUserSession();
 
           await applyAuthenticatedUser(
             localDemoSession.user,
@@ -465,10 +489,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         // if (response.success && response.token && response.refreshToken && response.user) {
         if (
           response.success &&
-          response.user.id &&
-          response.user.id &&
-          response.user
+          response.user &&
+          response.token &&
+          response.refreshToken
         ) {
+          await finalizeReturningUserSession();
           await applyAuthenticatedUser(
             response.user,
             response.token,
@@ -492,7 +517,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         setLoading(false);
       }
     },
-    [applyAuthenticatedUser]
+    [applyAuthenticatedUser, finalizeReturningUserSession]
   );
 
   const loginWithGoogle = useCallback(
@@ -508,6 +533,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
           response.refreshToken &&
           response.user
         ) {
+          await finalizeReturningUserSession();
           await applyAuthenticatedUser(
             response.user,
             response.token,
@@ -533,7 +559,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         setLoading(false);
       }
     },
-    [applyAuthenticatedUser]
+    [applyAuthenticatedUser, finalizeReturningUserSession]
   );
 
   // Register
@@ -561,6 +587,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
           console.log(
             `[AuthContext] Registration initiated for ${userData.email}`
           );
+
+          // Backend already returns a token + refreshToken for newly registered users.
+          // Store it so the app can proceed through the onboarding/verification flow
+          // even if a web refresh clears the in-memory registration context.
+          if (response.token && response.refreshToken && response.user) {
+            await applyAuthenticatedUser(
+              response.user,
+              response.token,
+              response.refreshToken
+            );
+          }
 
           // Return verification code if provided by the backend
           return {
@@ -593,7 +630,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         setLoading(false);
       }
     },
-    []
+    [applyAuthenticatedUser]
   );
 
   const loginWithFacebook = useCallback(
@@ -609,6 +646,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
           response.refreshToken &&
           response.user
         ) {
+          await finalizeReturningUserSession();
           await applyAuthenticatedUser(
             response.user,
             response.token,
@@ -635,7 +673,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         setLoading(false);
       }
     },
-    [applyAuthenticatedUser]
+    [applyAuthenticatedUser, finalizeReturningUserSession]
   );
 
   const loginWithApple = useCallback(
@@ -651,6 +689,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
           response.refreshToken &&
           response.user
         ) {
+          await finalizeReturningUserSession();
           await applyAuthenticatedUser(
             response.user,
             response.token,
@@ -677,7 +716,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         setLoading(false);
       }
     },
-    [applyAuthenticatedUser]
+    [applyAuthenticatedUser, finalizeReturningUserSession]
   );
 
   // Verify account with code

@@ -97,10 +97,12 @@ function RootLayoutNavigation() {
     const inAccountSetupFlow = rootSegment === "account-setup";
     const inPasswordResetFlow = rootSegment === "password-reset";
     const inTabsFlow = rootSegment === "(tabs)";
+    const inPublicGuestTab =
+      inTabsFlow && (childSegment === "explore" || childSegment === "nearby");
     const inPostFlow = rootSegment === "post";
     const inLiveFlow = rootSegment === "live";
-    const inSupportedFlows = inTabsFlow || inPostFlow || inLiveFlow;
-    const restrictedGuestTabs = new Set(["create", "inbox"]);
+    const inAdminFlow = rootSegment === "admin";
+    const inSupportedFlows = inTabsFlow || inPostFlow || inLiveFlow || inAdminFlow;
 
     console.log("[Layout] Navigation check:", {
       isAuthenticated,
@@ -115,7 +117,7 @@ function RootLayoutNavigation() {
     });
 
     // RULE 0
-    if (isInSignupFlow && !inAccountSetupFlow) {
+    if (isInSignupFlow && !inAccountSetupFlow && !inAuthFlow) {
       router.replace("/account-setup/birthday");
       return;
     }
@@ -133,17 +135,9 @@ function RootLayoutNavigation() {
     if (!isAuthenticated) {
       if (inAuthFlow) return;
       if (inPasswordResetFlow) return;
-      if (inPostFlow || inLiveFlow) {
-        router.replace("/(auth)/get-started");
-        return;
-      }
-      if (inTabsFlow && restrictedGuestTabs.has(childSegment || "")) {
-        router.replace("/(auth)/get-started");
-        return;
-      }
-      if (inSupportedFlows) return;
+      if (inPublicGuestTab) return;
       if (!inOnboardingFlow && !inAccountSetupFlow && !inPasswordResetFlow) {
-        router.replace("/(tabs)");
+        router.replace("/(auth)/get-started");
         return;
       }
     }
@@ -174,7 +168,7 @@ function RootLayoutNavigation() {
       !user.verified
     ) {
       // ❗️Only block sensitive flows, NOT tabs
-      if (rootSegment === "post" || rootSegment === "live") {
+      if (rootSegment === "live") {
         router.navigate("/account-setup/verify");
         return;
       }
