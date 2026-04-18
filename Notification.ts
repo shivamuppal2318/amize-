@@ -14,7 +14,7 @@ Notifications.setNotificationHandler({
 });
 
 export async function registerForPushNotificationsAsync() {
-  if (Platform.OS === "web") {
+  if (Platform.OS === "web" || Constants.appOwnership === "expo") {
     return undefined;
   }
 
@@ -31,7 +31,7 @@ export async function registerForPushNotificationsAsync() {
     }
 
     if (finalStatus !== "granted") {
-      console.error("Failed to get push token!");
+      console.warn("Push notification permission not granted.");
       return;
     }
 
@@ -39,7 +39,7 @@ export async function registerForPushNotificationsAsync() {
       const projectId = Constants.expoConfig?.extra?.eas?.projectId;
 
       if (!projectId) {
-        console.error("Missing Expo EAS projectId for push notifications");
+        console.warn("Missing Expo EAS projectId for push notifications");
         return;
       }
 
@@ -51,11 +51,11 @@ export async function registerForPushNotificationsAsync() {
       console.log("📱 Device Push Token:", deviceToken.data);
       token = deviceToken.data;
     } catch (error: any) {
-      console.error("Error getting push token:", error);
-      console.error("Error getting push token: " + error.message);
+      console.warn("Error getting push token:", error);
+      console.warn("Error getting push token: " + error.message);
     }
   } else {
-    console.error("Must use physical device for Push Notifications");
+    console.warn("Must use physical device for Push Notifications");
   }
 
   if (Platform.OS === "android") {
@@ -71,7 +71,7 @@ export async function registerForPushNotificationsAsync() {
 }
 
 export async function registerForPushNotificationsAsyncAlternative() {
-  if (Platform.OS === "web") {
+  if (Platform.OS === "web" || Constants.appOwnership === "expo") {
     return undefined;
   }
 

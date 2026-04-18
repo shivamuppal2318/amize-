@@ -17,6 +17,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Button } from '@/components/ui/Button';
 import { AdBanner } from '@/components/ads/AdBanner';
 import { NearbyDiscoveryItem, NearbyService } from '@/lib/api/nearbyService';
+import { MapView as NativeMapView, Marker as NativeMarker } from '@/lib/maps/native';
 
 type Region = {
     latitude: number;
@@ -29,20 +30,6 @@ const toCoarseCoordinate = (value: number) => Math.round(value * 100) / 100;
 
 const withPrivacySafeJitter = (value: number, seed: number) =>
     Number((value + seed * 0.0008).toFixed(6));
-
-const requireNativeModule = (moduleName: string) => {
-    const dynamicRequire = eval('require') as NodeRequire;
-    return dynamicRequire(moduleName);
-};
-
-let NativeMapView: any = null;
-let NativeMarker: any = null;
-
-if (Platform.OS !== 'web') {
-    const maps = requireNativeModule('react-native-maps');
-    NativeMapView = maps.default;
-    NativeMarker = maps.Marker;
-}
 
 const createNearbyItems = (latitude: number, longitude: number): NearbyDiscoveryItem[] => [
     {

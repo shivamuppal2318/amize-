@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useRouter } from "expo-router";
+import { Platform } from "react-native";
 import { MediaItem, usePostingStore } from "@/stores/postingStore";
 import { useToast } from "@/hooks/useToast";
 import { usePostApi } from "@/lib/api/postApi";
@@ -34,6 +35,8 @@ export function usePostUpload({
 
   const { createPost, createMultiplePosts, createSlideshow } = usePostApi();
   const { uploadMultipleFiles } = useUploadApi();
+  const uploadIdPattern =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
   const submitPost = async () => {
     if (mediaItems.length === 0) {
@@ -92,6 +95,26 @@ const filesToUpload = mediaItems.map((media, index) => {
   
       if (uploadResults.length === 0) {
         throw new Error("No files were uploaded successfully");
+      }
+
+      const hasBackendReadyUploads = uploadResults.every((result) =>
+        uploadIdPattern.test(result.upload.id)
+      );
+
+      if (!hasBackendReadyUploads) {
+        if (Platform.OS === "web") {
+          toast.show(
+            "Web Preview Only",
+            "Web preview can select media, but real post creation requires the Android app build."
+          );
+          setUploading(false);
+          router.replace("/(tabs)");
+          return true;
+        }
+
+        throw new Error(
+          "Upload did not return a valid server file reference. Please try again."
+        );
       }
   
       // ---------------------------------------------------------------------

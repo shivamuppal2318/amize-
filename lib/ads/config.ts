@@ -1,11 +1,7 @@
 import Constants from "expo-constants";
 import { Platform } from 'react-native';
+import { getAdaptiveBannerTestId } from "@/lib/ads/native";
 import { releaseConfig } from '@/lib/release/releaseConfig';
-
-const requireNativeModule = (moduleName: string) => {
-    const dynamicRequire = eval('require') as NodeRequire;
-    return dynamicRequire(moduleName);
-};
 
 const TEST_ADMOB_APP_IDS = new Set([
     'ca-app-pub-3940256099942544~3347511713',
@@ -59,7 +55,7 @@ export function isAdMobProductionReady(): boolean {
 }
 
 export function shouldInitializeMobileAds(): boolean {
-    if (Platform.OS === 'web' || !AD_CONFIG.enabled) {
+    if (Platform.OS === 'web' || !AD_CONFIG.enabled || Constants.appOwnership === 'expo') {
         return false;
     }
 
@@ -76,8 +72,7 @@ export function getBannerAdUnitId(placement: BannerPlacement): string | null {
     }
 
     if (__DEV__ && AD_CONFIG.useTestAdsInDev) {
-        const { TestIds } = requireNativeModule('react-native-google-mobile-ads');
-        return TestIds.ADAPTIVE_BANNER;
+        return getAdaptiveBannerTestId();
     }
 
     if (!isAdMobProductionReady()) {

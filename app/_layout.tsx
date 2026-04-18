@@ -4,8 +4,10 @@ import {
   ThemeProvider,
 } from "@react-navigation/native";
 import * as Notifications from "expo-notifications";
+import Constants from "expo-constants";
 import { registerForPushNotificationsAsync } from "@/Notification";
 import { shouldInitializeMobileAds } from "@/lib/ads/config";
+import { initializeMobileAds } from "@/lib/ads/native";
 
 import { Slot, useRouter, useSegments } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
@@ -56,11 +58,6 @@ import "../global.css";
 SplashScreen.preventAutoHideAsync().then(() => {
   //Ignore
 });
-
-const requireNativeModule = (moduleName: string) => {
-  const dynamicRequire = eval("require") as NodeRequire;
-  return dynamicRequire(moduleName);
-};
 
 // Authentication state provider component
 function RootLayoutNavigation() {
@@ -230,13 +227,15 @@ export default function RootLayout() {
     Figtree_900Black_Italic,
   });
 
+  const [isBootstrapped, setIsBootstrapped] = useState(false);
   const [token, setToken] = useState<string | undefined>();
   const notificationListener = useRef<Notifications.Subscription | null>(null);
   const responseListener = useRef<Notifications.Subscription | null>(null);
   const globalErrorHandlerSet = useRef(false);
+  const splashHiddenRef = useRef(false);
 
 useEffect(() => {
-  if (Platform.OS === "web") {
+  if (Platform.OS === "web" || Constants.appOwnership === "expo") {
     return;
   }
 
@@ -294,36 +293,41 @@ useEffect(() => {
   }, []);
 
   useEffect(() => {
-    if (!shouldInitializeMobileAds()) {
+    if (!shouldInitializeMobileAds() || Constants.appOwnership === "expo") {
       return;
     }
 
-    const adsModule = requireNativeModule("react-native-google-mobile-ads");
-    const nativeMobileAds = adsModule.default;
-    const { MaxAdContentRating } = adsModule;
-
-    nativeMobileAds()
-      .setRequestConfiguration({
-        maxAdContentRating: MaxAdContentRating.T,
-        tagForChildDirectedTreatment: false,
-        tagForUnderAgeOfConsent: false,
-        testDeviceIdentifiers: ["EMULATOR"],
-      })
-      .then(() => nativeMobileAds().initialize())
-      .catch((error: unknown) => {
-        console.error("[Ads] Mobile Ads initialization failed:", error);
-      });
+    initializeMobileAds().catch((error: unknown) => {
+      console.error("[Ads] Mobile Ads initialization failed:", error);
+    });
   }, []);
 
   useEffect(() => {
+    const fallbackTimer = setTimeout(() => {
+      setIsBootstrapped(true);
+    }, 3000);
+
     if (loaded || error) {
-      SplashScreen.hideAsync().then(() => {
-        // Ignore any errors here, just ensure splash screen is hidden
-      });
+      setIsBootstrapped(true);
     }
+
+    return () => {
+      clearTimeout(fallbackTimer);
+    };
   }, [loaded, error]);
 
-  if (!loaded) {
+  useEffect(() => {
+    if (!isBootstrapped || splashHiddenRef.current) {
+      return;
+    }
+
+    splashHiddenRef.current = true;
+    SplashScreen.hideAsync().catch(() => {
+      // Ignore any errors here, just ensure splash screen is hidden
+    });
+  }, [isBootstrapped]);
+
+  if (!isBootstrapped) {
     return null;
   }
 

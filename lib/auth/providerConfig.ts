@@ -62,3 +62,31 @@ export const isAnyGoogleProviderConfigured =
   isNonPlaceholderValue(authProviderConfig.googleWebClientId) ||
   isNonPlaceholderValue(authProviderConfig.googleAndroidClientId) ||
   isNonPlaceholderValue(authProviderConfig.googleIosClientId);
+
+export const isSecureWebAuthOrigin = () => {
+  if (Platform.OS !== "web") {
+    return true;
+  }
+
+  if (typeof window === "undefined") {
+    return false;
+  }
+
+  const { protocol, hostname } = window.location;
+  return (
+    protocol === "https:" ||
+    hostname === "localhost" ||
+    hostname === "127.0.0.1"
+  );
+};
+
+export const isGoogleWebSignInUsable = () => {
+  if (Platform.OS !== "web") {
+    return true;
+  }
+
+  return (
+    isNonPlaceholderValue(authProviderConfig.googleWebClientId) &&
+    isSecureWebAuthOrigin()
+  );
+};

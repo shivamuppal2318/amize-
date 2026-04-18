@@ -7,6 +7,8 @@ import {
   isGoogleConfiguredForCurrentPlatform,
   isFacebookConfigured,
   isAnyGoogleProviderConfigured,
+  isGoogleWebSignInUsable,
+  isSecureWebAuthOrigin,
 } from '@/lib/auth/providerConfig';
 
 // @ts-ignore
@@ -39,15 +41,19 @@ export default function GetStartedScreen() {
     const demoMode = isDemoMode();
     const showFacebookLogin = isFacebookConfigured;
     const hasCurrentPlatformGoogleConfig = isGoogleConfiguredForCurrentPlatform();
+    const googleWebSignInUsable = isGoogleWebSignInUsable();
     const showGoogleLogin =
       hasCurrentPlatformGoogleConfig ||
       (Platform.OS === 'web' && isAnyGoogleProviderConfigured);
     const showAppleLogin = Platform.OS === 'ios';
     const showSocialLogin =
       showFacebookLogin || showGoogleLogin || showAppleLogin;
-    const webGoogleStatusMessage = hasCurrentPlatformGoogleConfig
-        ? 'Google sign-in is ready on this platform.'
-        : 'Google sign-in is not configured for this platform in this build.';
+    const webGoogleStatusMessage =
+        Platform.OS === 'web' && !isSecureWebAuthOrigin()
+        ? 'Google sign-in on phone browser preview requires https or localhost. Use the Android app build for device testing.'
+        : hasCurrentPlatformGoogleConfig
+            ? 'Google sign-in is ready on this platform.'
+            : 'Google sign-in is not configured for this platform in this build.';
 
     useEffect(() => {
         if (!isAuthenticated && isInSignupFlow) {
@@ -81,6 +87,14 @@ export default function GetStartedScreen() {
     };
 
     const handleGoogleLogin = () => {
+        if (Platform.OS === 'web' && !googleWebSignInUsable) {
+            Alert.alert(
+                'Google Login',
+                'Google sign-in on phone browser preview requires localhost or https. Use the Android build for device testing.'
+            );
+            return;
+        }
+
         if (!hasCurrentPlatformGoogleConfig) {
             showProviderNotConfigured('Google');
             return;
@@ -212,7 +226,11 @@ export default function GetStartedScreen() {
                                     {showGoogleLogin && (
                                         <TouchableOpacity
                                             onPress={handleGoogleLogin}
-                                            style={styles.googleButton}
+                                            style={[
+                                                styles.googleButton,
+                                                Platform.OS === 'web' && !googleWebSignInUsable && styles.googleButtonDisabled
+                                            ]}
+                                            disabled={Platform.OS === 'web' && !googleWebSignInUsable}
                                         >
                                             <Image
                                                 source={GOOGLE_ICON}
@@ -345,6 +363,9 @@ const styles = StyleSheet.create({
         marginBottom: 12,
         borderWidth: 1,
         borderColor: 'rgba(255,255,255,0.12)',
+    },
+    googleButtonDisabled: {
+        opacity: 0.6,
     },
     googleIcon: {
         width: 24,

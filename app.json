@@ -168,8 +168,8 @@
       "privacyPolicyUrl": "https://82.112.238.182:4001/privacy",
       "termsOfServiceUrl": "https://82.112.238.182:4001/terms",
       "facebookAppId": "YOUR_FACEBOOK_APP_ID",
-      "googleWebClientId": "177859202045-18c49jua5os0nq3epbghvme0t7ores1g.apps.googleusercontent.com",
-      "googleAndroidClientId": "177859202045-h79hvi7d8beuprtl9p3tgcik4jtcg5k1.apps.googleusercontent.com",
+      "googleWebClientId": "188596080280-jftm5uhn8q9hk1repn686tbk5urh4b7u.apps.googleusercontent.com",
+      "googleAndroidClientId": "188596080280-7e6jt20ikgsfifdlse50ftvo8p3bb5s5.apps.googleusercontent.com",
       "googleIosClientId": "",
       "admobExploreBannerId": "ca-app-pub-9338234499986796/3037045301",
       "admobNearbyBannerId": "ca-app-pub-9338234499986796/3037045301",
@@ -178,7 +178,7 @@
       "enableLiveStreaming": false,
       "demoMode": false,
       "eas": {
-        "projectId": "5bea9a5f-1227-4405-8be4-99700a985684"
+        "projectId": "0744f9e7-a433-4a8a-b4fa-7055680af0e3"
       }
     }
   }

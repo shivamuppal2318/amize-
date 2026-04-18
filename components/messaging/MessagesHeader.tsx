@@ -109,9 +109,9 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: UI.SPACING.LG,
+    paddingHorizontal: Platform.OS === "web" ? UI.SPACING.LG : UI.SPACING.MD,
     paddingTop: Platform.OS === "web" ? UI.SPACING.XL : UI.SPACING.LG,
-    paddingBottom: UI.SPACING.LG,
+    paddingBottom: Platform.OS === "web" ? UI.SPACING.LG : UI.SPACING.MD,
   },
   headerLeft: {
     flexDirection: "row",
@@ -121,12 +121,12 @@ const styles = StyleSheet.create({
   titleContainer: {
     flexDirection: "row",
     alignItems: "center",
-    gap: UI.SPACING.MD,
+    gap: Platform.OS === "web" ? UI.SPACING.MD : UI.SPACING.SM,
     flex: 1,
   },
   titleIcon: {
-    width: 44,
-    height: 44,
+    width: Platform.OS === "web" ? 44 : 38,
+    height: Platform.OS === "web" ? 44 : 38,
     borderRadius: UI.BORDER_RADIUS.BUTTON,
     backgroundColor: COLORS.accent,
     alignItems: "center",
@@ -146,7 +146,7 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   headerSubtitle: {
-    fontSize: 14,
+    fontSize: Platform.OS === "web" ? 14 : 13,
     color: COLORS.textGray,
     fontFamily: UI.FONT_FAMILY,
     fontWeight: "500",
@@ -166,8 +166,9 @@ const styles = StyleSheet.create({
   },
   headerIcons: {
     flexDirection: "row",
-    gap: UI.SPACING.SM,
+    gap: Platform.OS === "web" ? UI.SPACING.SM : UI.SPACING.XS,
     alignItems: "center",
+    marginLeft: UI.SPACING.SM,
   },
   headerIconButton: {
     // No additional styles needed

@@ -1,20 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, Platform } from 'react-native';
 import { AD_CONFIG, getBannerAdUnitId } from '@/lib/ads/config';
-
-const requireNativeModule = (moduleName: string) => {
-    const dynamicRequire = eval('require') as NodeRequire;
-    return dynamicRequire(moduleName);
-};
-
-let NativeBannerAd: any = null;
-let NativeBannerAdSize: any = null;
-
-if (Platform.OS !== 'web') {
-    const adsModule = requireNativeModule('react-native-google-mobile-ads');
-    NativeBannerAd = adsModule.BannerAd;
-    NativeBannerAdSize = adsModule.BannerAdSize;
-}
+import { BannerAd as NativeBannerAd, BannerAdSize as NativeBannerAdSize } from '@/lib/ads/bannerNative';
 
 type AdBannerPlaceholderProps = {
     label?: string;

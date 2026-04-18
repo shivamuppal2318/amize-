@@ -21,6 +21,8 @@ import {
   isFacebookConfigured,
   isAnyGoogleProviderConfigured,
   isGoogleConfiguredForCurrentPlatform,
+  isGoogleWebSignInUsable,
+  isSecureWebAuthOrigin,
 } from "@/lib/auth/providerConfig";
 import Constants from "expo-constants";
 import * as WebBrowser from "expo-web-browser";
@@ -173,6 +175,7 @@ export default function SignInScreen() {
   const showFacebookButton =
     Boolean(facebookAuthState.request) && isFacebookConfigured;
   const googleConfiguredForPlatform = isGoogleConfiguredForCurrentPlatform();
+  const googleWebSignInUsable = isGoogleWebSignInUsable();
   const showGoogleButton =
     googleConfiguredForPlatform || (Platform.OS === "web" && isAnyGoogleProviderConfigured);
   const showAppleButton = appleAvailable;
@@ -180,13 +183,17 @@ export default function SignInScreen() {
     showFacebookButton || showGoogleButton || showAppleButton;
   const googleButtonDisabled =
     googleLoading ||
+    (Platform.OS === "web" && !googleWebSignInUsable) ||
     !googleConfiguredForPlatform ||
     !request;
-  const googleStatusMessage = !googleConfiguredForPlatform
-      ? "Google sign-in is not configured for this platform in the current build."
-      : !request
-        ? "Google sign-in is still initializing for this screen."
-        : "Google sign-in is ready on this platform.";
+  const googleStatusMessage =
+    Platform.OS === "web" && !isSecureWebAuthOrigin()
+      ? "Google sign-in on web preview requires https or localhost. Use the Android app build on your phone."
+      : !googleConfiguredForPlatform
+        ? "Google sign-in is not configured for this platform in the current build."
+        : !request
+          ? "Google sign-in is still initializing for this screen."
+          : "Google sign-in is ready on this platform.";
 
   // Render Facebook auth hook only when configured to avoid crash on Android
   const facebookAuthView = isFacebookConfigured ? <FacebookAuthBridge /> : null;
@@ -228,6 +235,15 @@ export default function SignInScreen() {
     }
 
     if (autoProvider === "google") {
+      if (Platform.OS === "web" && !googleWebSignInUsable) {
+        setHasTriggeredAutoProvider(true);
+        Alert.alert(
+          "Google Login",
+          "Google sign-in on phone browser preview requires localhost or https. Use the Android build for device testing."
+        );
+        return;
+      }
+
       if (!isGoogleConfiguredForCurrentPlatform()) {
         setHasTriggeredAutoProvider(true);
         Alert.alert(
@@ -485,6 +501,14 @@ export default function SignInScreen() {
       Alert.alert(
         "Google Login",
         "Google login is not configured for this platform in this build yet."
+      );
+      return;
+    }
+
+    if (Platform.OS === "web" && !googleWebSignInUsable) {
+      Alert.alert(
+        "Google Login",
+        "Google sign-in on phone browser preview requires localhost or https. Use the Android build for device testing."
       );
       return;
     }

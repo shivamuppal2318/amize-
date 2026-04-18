@@ -1,18 +1,19 @@
-// Enhanced ConversationItem.tsx - Updated with improved styling and animations
 import React, { useEffect, useState } from "react";
 import {
-  View,
+  Animated,
+  Image,
+  Platform,
+  StyleSheet,
   Text,
   TouchableOpacity,
-  Image,
-  StyleSheet,
-  Animated,
-  Platform,
+  View,
 } from "react-native";
-import { Check, CheckCheck, Clock, Mic, Users } from "lucide-react-native";
+import { CheckCheck, Mic, Users } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
+
 import { Conversation } from "@/types/messaging";
-import { COLORS, UI, ANIMATION } from "./constants";
+
+import { COLORS, UI } from "./constants";
 
 interface ConversationItemProps {
   item: Conversation;
@@ -29,19 +30,20 @@ const ConversationItem: React.FC<ConversationItemProps> = ({
   animationDelay = 0,
   searchText = "",
 }) => {
-  const [imgError, setImgError] = useState<boolean>(false);
+  const [imgError, setImgError] = useState(false);
 
   useEffect(() => {
     setImgError(false);
   }, [item?.avatar]);
 
   const formatTimestamp = (timestamp: string): string => {
-    if (!timestamp) return "";
+    if (!timestamp) {
+      return "";
+    }
 
     try {
       const messageTime = new Date(timestamp);
-
-      if (isNaN(messageTime.getTime())) {
+      if (Number.isNaN(messageTime.getTime())) {
         return "";
       }
 
@@ -53,49 +55,50 @@ const ConversationItem: React.FC<ConversationItemProps> = ({
 
       if (diffInMinutes < 1) {
         return "now";
-      } else if (diffInMinutes < 60) {
-        return `${diffInMinutes}m`;
-      } else if (diffInHours < 24) {
-        return `${diffInHours}h`;
-      } else if (diffInDays < 7) {
-        return `${diffInDays}d`;
-      } else {
-        return messageTime.toLocaleDateString([], {
-          month: "short",
-          day: "numeric",
-        });
       }
+      if (diffInMinutes < 60) {
+        return `${diffInMinutes}m`;
+      }
+      if (diffInHours < 24) {
+        return `${diffInHours}h`;
+      }
+      if (diffInDays < 7) {
+        return `${diffInDays}d`;
+      }
+
+      return messageTime.toLocaleDateString([], {
+        month: "short",
+        day: "numeric",
+      });
     } catch (error) {
       console.warn("Error formatting timestamp in ConversationItem:", error);
       return "";
     }
   };
 
-  // Truncate last message with smart truncation and better fallbacks
-  const truncateMessage = (message: string, maxLength: number = 40): string => {
+  const truncateMessage = (message: string, maxLength = 40): string => {
     if (!message || message.trim() === "") {
       return "Start a conversation";
     }
 
     const cleanMessage = message.trim();
-
     if (cleanMessage.length <= maxLength) {
       return cleanMessage;
     }
 
     const truncated = cleanMessage.substring(0, maxLength);
     const lastSpace = truncated.lastIndexOf(" ");
-
     if (lastSpace > maxLength * 0.7) {
-      return truncated.substring(0, lastSpace) + "...";
+      return `${truncated.substring(0, lastSpace)}...`;
     }
 
-    return truncated + "...";
+    return `${truncated}...`;
   };
 
-  // Highlight search text in message preview
   const highlightSearchText = (text: string, highlight: string) => {
-    if (!highlight || !text) return text;
+    if (!highlight || !text) {
+      return text;
+    }
 
     const parts = text.split(new RegExp(`(${highlight})`, "gi"));
     return parts.map((part, index) =>
@@ -109,19 +112,18 @@ const ConversationItem: React.FC<ConversationItemProps> = ({
     );
   };
 
-  // Get message status icon for sent messages
-  const getMessageStatusIcon = () => {
-    if (item.unreadCount === 0) {
-      return <CheckCheck size={12} color={COLORS.success} />;
-    }
-    return null;
-  };
+  const getMessageStatusIcon = () =>
+    item.unreadCount === 0 ? (
+      <CheckCheck size={12} color={COLORS.success} />
+    ) : null;
 
-  // Determine online status
   const isOnline =
     item.isOnline ||
-    (item.participants && item.participants.some((p) => p.isOnline));
+    (item.participants && item.participants.some((participant) => participant.isOnline));
   const isUnread = item.unreadCount > 0;
+  const messageLooksLikeAudio = /\b(voice|audio)\b/i.test(item.lastMessage);
+  const onlineParticipants =
+    item.participants?.filter((participant) => participant.isOnline).length || 0;
 
   return (
     <Animated.View
@@ -144,32 +146,28 @@ const ConversationItem: React.FC<ConversationItemProps> = ({
           style={styles.itemGradient}
         >
           <View style={styles.itemContent}>
-            {/* Avatar Section */}
             <View style={styles.avatarSection}>
               <View style={styles.avatarContainer}>
                 <Image
                   source={{
-                    uri: imgError
-                      ? FALLBACK_AVATAR
-                      : item?.avatar || FALLBACK_AVATAR,
+                    uri: imgError ? FALLBACK_AVATAR : item?.avatar || FALLBACK_AVATAR,
                   }}
                   style={[styles.avatar, isUnread && styles.avatarUnread]}
                   onError={() => setImgError(true)}
                 />
-                {isOnline && (
+                {isOnline ? (
                   <View style={styles.onlineIndicator}>
                     <View style={styles.onlineIndicatorInner} />
                   </View>
-                )}
-                {item.type === "group" && (
+                ) : null}
+                {item.type === "group" ? (
                   <View style={styles.groupIndicator}>
                     <Users size={10} color={COLORS.white} />
                   </View>
-                )}
+                ) : null}
               </View>
             </View>
 
-            {/* Conversation Details */}
             <View style={styles.conversationDetails}>
               <View style={styles.conversationHeader}>
                 <Text
@@ -198,14 +196,12 @@ const ConversationItem: React.FC<ConversationItemProps> = ({
               </View>
 
               <View style={styles.messageRow}>
-                {/* Message type indicator */}
-                {item.lastMessage.startsWith("🎵") && (
+                {messageLooksLikeAudio ? (
                   <View style={styles.messageTypeIconContainer}>
                     <Mic size={12} color={COLORS.textGray} />
                   </View>
-                )}
+                ) : null}
 
-                {/* Last message preview */}
                 <Text
                   style={[
                     styles.conversationPreview,
@@ -221,8 +217,7 @@ const ConversationItem: React.FC<ConversationItemProps> = ({
                     : truncateMessage(item.lastMessage)}
                 </Text>
 
-                {/* Unread count badge */}
-                {isUnread && (
+                {isUnread ? (
                   <LinearGradient
                     colors={[COLORS.primary, COLORS.primaryLight]}
                     style={styles.unreadBadge}
@@ -231,19 +226,15 @@ const ConversationItem: React.FC<ConversationItemProps> = ({
                       {item.unreadCount > 99 ? "99+" : item.unreadCount}
                     </Text>
                   </LinearGradient>
-                )}
+                ) : null}
               </View>
 
-              {/* Group participants info */}
-              {item.type === "group" && item.participants && (
+              {item.type === "group" && item.participants ? (
                 <Text style={styles.participantsCount}>
                   {item.participants.length} participants
-                  {item.participants.filter((p) => p.isOnline).length > 0 &&
-                    ` • ${
-                      item.participants.filter((p) => p.isOnline).length
-                    } online`}
+                  {onlineParticipants > 0 ? ` - ${onlineParticipants} online` : ""}
                 </Text>
-              )}
+              ) : null}
             </View>
           </View>
         </LinearGradient>
@@ -254,7 +245,7 @@ const ConversationItem: React.FC<ConversationItemProps> = ({
 
 const styles = StyleSheet.create({
   conversationItemContainer: {
-    marginHorizontal: UI.SPACING.LG,
+    marginHorizontal: Platform.OS === "web" ? UI.SPACING.LG : UI.SPACING.MD,
     marginVertical: UI.SPACING.XS,
     borderRadius: UI.BORDER_RADIUS.CARD,
     overflow: "hidden",
@@ -264,7 +255,6 @@ const styles = StyleSheet.create({
     ...UI.SHADOW.MEDIUM,
   },
   conversationItem: {
-    // No additional styles needed
     backgroundColor:
       Platform.OS === "ios" ? "rgba(26, 26, 46, 0.6)" : "#1a1a2e",
   },
@@ -275,7 +265,7 @@ const styles = StyleSheet.create({
   },
   itemContent: {
     flexDirection: "row",
-    padding: UI.SPACING.LG,
+    padding: Platform.OS === "web" ? UI.SPACING.LG : UI.SPACING.MD,
     alignItems: "flex-start",
   },
   avatarSection: {
@@ -285,9 +275,9 @@ const styles = StyleSheet.create({
     position: "relative",
   },
   avatar: {
-    width: UI.AVATAR_SIZE_LARGE,
-    height: UI.AVATAR_SIZE_LARGE,
-    borderRadius: UI.AVATAR_SIZE_LARGE / 2,
+    width: Platform.OS === "web" ? UI.AVATAR_SIZE_LARGE : 54,
+    height: Platform.OS === "web" ? UI.AVATAR_SIZE_LARGE : 54,
+    borderRadius: Platform.OS === "web" ? UI.AVATAR_SIZE_LARGE / 2 : 27,
     backgroundColor: COLORS.gray,
     borderWidth: 2,
     borderColor: "rgba(75, 85, 99, 0.3)",
@@ -340,7 +330,7 @@ const styles = StyleSheet.create({
   },
   conversationName: {
     color: COLORS.white,
-    fontSize: 18,
+    fontSize: Platform.OS === "web" ? 18 : 17,
     fontWeight: "600",
     fontFamily: UI.FONT_FAMILY,
     flex: 1,
@@ -377,7 +367,7 @@ const styles = StyleSheet.create({
   },
   conversationPreview: {
     color: COLORS.textGray,
-    fontSize: 15,
+    fontSize: Platform.OS === "web" ? 15 : 14,
     flex: 1,
     lineHeight: 20,
     fontFamily: UI.FONT_FAMILY,

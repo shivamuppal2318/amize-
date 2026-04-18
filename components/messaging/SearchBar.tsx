@@ -115,10 +115,10 @@ const SearchBar: React.FC<SearchBarProps> = ({ searchText, setSearchText }) => {
 
 const styles = StyleSheet.create({
     searchContainer: {
-        paddingHorizontal: UI.SPACING.LG,
+        paddingHorizontal: Platform.OS === 'web' ? UI.SPACING.LG : UI.SPACING.MD,
         paddingVertical: UI.SPACING.MD,
         width: '100%',
-        maxWidth: Platform.OS === 'web' ? 880 : undefined,
+        maxWidth: Platform.OS === 'web' ? 760 : undefined,
         alignSelf: 'center',
     },
     searchGradient: {
@@ -130,7 +130,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         paddingHorizontal: UI.SPACING.MD,
-        paddingVertical: UI.SPACING.SM,
+        paddingVertical: Platform.OS === 'web' ? UI.SPACING.SM : UI.SPACING.XS + 2,
         borderWidth: 2,
         borderColor: COLORS.border,
         backgroundColor: COLORS.surface,
@@ -143,7 +143,7 @@ const styles = StyleSheet.create({
     searchInput: {
         flex: 1,
         color: COLORS.white,
-        fontSize: 16,
+        fontSize: Platform.OS === 'web' ? 16 : 15,
         fontFamily: UI.FONT_FAMILY,
         fontWeight: '500',
         paddingVertical: UI.SPACING.XS,
