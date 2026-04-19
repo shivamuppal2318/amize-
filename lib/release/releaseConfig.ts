@@ -3,6 +3,7 @@ import Constants from "expo-constants";
 type ExpoExtra = {
   enableLiveStreaming?: boolean | string;
   demoMode?: boolean | string;
+  allowVerificationBypass?: boolean | string;
   admobAndroidAppId?: string;
   admobIosAppId?: string;
 };
@@ -33,6 +34,11 @@ export const releaseConfig = {
     process.env.EXPO_PUBLIC_DEMO_MODE ?? extra.demoMode,
     false
   ),
+  allowVerificationBypass: parseBoolean(
+    process.env.EXPO_PUBLIC_ALLOW_VERIFICATION_BYPASS ??
+      extra.allowVerificationBypass,
+    false
+  ),
   enableLiveStreaming: parseBoolean(
     process.env.EXPO_ENABLE_LIVE_STREAMING ?? extra.enableLiveStreaming,
     false
@@ -44,6 +50,7 @@ export const releaseConfig = {
 };
 
 export const isDemoMode = () => releaseConfig.demoMode;
+export const canBypassVerification = () => releaseConfig.allowVerificationBypass;
 
 export const isLiveStreamingEnabled = () =>
   releaseConfig.enableLiveStreaming && !releaseConfig.demoMode;

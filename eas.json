@@ -12,6 +12,7 @@
       },
       "env": {
         "NPM_CONFIG_LEGACY_PEER_DEPS": "true",
+        "EXPO_PUBLIC_ALLOW_VERIFICATION_BYPASS": "true",
         "EXPO_PUBLIC_API_URL": "http://82.112.238.182:4001/api",
         "EXPO_PUBLIC_SITE_URL": "http://82.112.238.182:4001",
         "EXPO_PUBLIC_SOCKET_URL": "ws://82.112.238.182:4001",
@@ -29,6 +30,7 @@
         "NPM_CONFIG_LEGACY_PEER_DEPS": "true",
         "EXPO_PUBLIC_ENABLE_LOCAL_DEMO_AUTH": "false",
         "EXPO_PUBLIC_DEMO_MODE": "false",
+        "EXPO_PUBLIC_ALLOW_VERIFICATION_BYPASS": "true",
         "EXPO_PUBLIC_API_URL": "http://82.112.238.182:4001/api",
         "EXPO_PUBLIC_SITE_URL": "http://82.112.238.182:4001",
         "EXPO_PUBLIC_SOCKET_URL": "ws://82.112.238.182:4001",
@@ -46,6 +48,7 @@
         "NPM_CONFIG_LEGACY_PEER_DEPS": "true",
         "EXPO_PUBLIC_ENABLE_LOCAL_DEMO_AUTH": "false",
         "EXPO_PUBLIC_DEMO_MODE": "false",
+        "EXPO_PUBLIC_ALLOW_VERIFICATION_BYPASS": "true",
         "EXPO_PUBLIC_API_URL": "http://82.112.238.182:4001/api",
         "EXPO_PUBLIC_SITE_URL": "http://82.112.238.182:4001",
         "EXPO_PUBLIC_SOCKET_URL": "ws://82.112.238.182:4001",

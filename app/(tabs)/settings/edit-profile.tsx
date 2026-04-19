@@ -5,7 +5,6 @@ import {
   Text,
   TouchableOpacity,
   Alert,
-  Platform,
   ScrollView,
   ActivityIndicator,
   RefreshControl,
@@ -184,7 +183,7 @@ export default function EditProfileScreen() {
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const asset = result.assets[0];
         console.log("[DEBUG] Image selected, starting upload...");
-        await uploadProfilePhoto(asset.uri);
+        await uploadPhoto(asset.uri);
       } else {
         console.log("[DEBUG] Picker was canceled or no assets were selected.");
       }
@@ -197,24 +196,7 @@ export default function EditProfileScreen() {
     }
   };
 
-  const uploadProfilePhoto = async (uri: string) => {
-    try {
-      const response = await fetch(uri);
-      const blob = await response.blob();
-      const fileName = `profile_${Date.now()}.jpg`;
-      const file = new File([blob], fileName, { type: "image/jpeg" });
-
-      await uploadPhoto(file);
-    } catch (error) {
-      console.error("Error uploading photo:", error);
-      Alert.alert(
-        "Error",
-        error instanceof Error ? error.message : "Failed to upload photo"
-      );
-    }
-  };
-
-  const handleRemovePhoto = async () => {
+   const handleRemovePhoto = async () => {
     Alert.alert(
       "Remove Photo",
       "Are you sure you want to remove your profile photo?",

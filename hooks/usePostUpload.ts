@@ -73,8 +73,10 @@ const filesToUpload = mediaItems.map((media, index) => {
             media.uri.split("/").pop() ||
             `media_${index}.${media.type === "photo" ? "jpg" : "mp4"}`,
           type: media.type === "photo" ? "image/jpeg" : "video/mp4",
-          uploadType: (media.type === "photo" ? "THUMBNAIL" : "VIDEO") as
-            | "THUMBNAIL"
+          // Photos are uploaded as OTHER so the backend can treat them as slideshow inputs.
+          // THUMBNAIL is reserved for video thumbnail uploads.
+          uploadType: (media.type === "photo" ? "OTHER" : "VIDEO") as
+            | "OTHER"
             | "VIDEO",
           // Pass web File object if available
           ...(media.webFile && { webFile: media.webFile }),
@@ -144,46 +146,26 @@ const filesToUpload = mediaItems.map((media, index) => {
       //  MULTIPLE PHOTOS → SLIDESHOW OR MULTI POST
       // ---------------------------------------------------------------------
       else if (mediaItems.every((item) => item.type === "photo")) {
-        if (mediaItems.length > 1 && createAsSlideshow) {
-          const uploadIds = uploadResults.map((u) => u.upload.id);
-  
-          const slideshowData = {
-            uploadIds,
-            title: draftPost.caption || "Slideshow",
-            description: draftPost.location || undefined,
-            soundId: mediaSoundId, // ✅ FIXED here
-            slideDuration,
-            transition,
-            isPublic: draftPost.visibility === "public",
-          };
-  
-          console.log("📤 createSlideshow payload:", slideshowData);
-  
-          await createSlideshow(slideshowData);
-          toast.show(
-            "Success",
-            postMode === "story" ? "Story shared successfully!" : "Slideshow created successfully!"
-          );
-        } else {
-          const uploadIds = uploadResults.map((u) => u.upload.id);
-  
-          const postData = {
-            title: draftPost.caption || undefined,
-            description: draftPost.location || undefined,
-            soundId: mediaSoundId, // ✅ FIXED here
-            isPublic: draftPost.visibility === "public",
-          };
-  
-          console.log("📤 createMultiplePosts payload:", uploadIds, postData);
-  
-          await createMultiplePosts(uploadIds, postData);
-          toast.show(
-            "Success",
-            postMode === "story"
-              ? "Story shared successfully!"
-              : `${uploadResults.length} posts created successfully!`
-          );
-        }
+        // Backend is video-first. Treat any photo selection as a slideshow/video post.
+        const uploadIds = uploadResults.map((u) => u.upload.id);
+
+        const slideshowData = {
+          uploadIds,
+          title: draftPost.caption || "Photo post",
+          description: draftPost.location || undefined,
+          soundId: mediaSoundId,
+          slideDuration,
+          transition,
+          isPublic: draftPost.visibility === "public",
+        };
+
+        console.log("createSlideshow payload:", slideshowData);
+
+        await createSlideshow(slideshowData);
+        toast.show(
+          "Success",
+          postMode === "story" ? "Story shared successfully!" : "Posted successfully!"
+        );
       }
   
       // ---------------------------------------------------------------------

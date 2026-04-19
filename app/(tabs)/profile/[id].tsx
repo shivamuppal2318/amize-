@@ -127,7 +127,7 @@ const buildMockProfileData = (profileId?: string) => {
     id: profileId || baseUser?.id || "demo-user",
     username: baseUser?.username || "demo_user",
     fullName: baseUser?.fullName || "Demo Creator",
-    bio: "Creator in demo mode. Live data will appear once the backend is connected.",
+    bio: "Creator profile preview.",
     profilePhotoUrl: baseUser?.profilePhotoUrl || undefined,
     creatorVerified: baseUser?.creatorVerified || false,
     creatorCategory: "Lifestyle",
@@ -151,6 +151,7 @@ const buildMockProfileData = (profileId?: string) => {
 
 export default function ProfilePage() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const { user: authUser, isAuthenticated } = useAuth();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -182,12 +183,12 @@ export default function ProfilePage() {
       setUser(mockData.user);
       setVideos(mockData.videos);
       setLikes(mockData.likes);
-      // In demo mode, treat as own profile to show Settings button
-      setIsOwnProfile(true);
+      const isOwn = Boolean(isAuthenticated && authUser?.id && authUser.id === id);
+      setIsOwnProfile(isOwn);
       setIsFollowing(false);
       setError(null);
     },
-    [id]
+    [authUser?.id, id, isAuthenticated]
   );
 
   const fetchUserProfile = useCallback(async () => {

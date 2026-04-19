@@ -181,7 +181,8 @@ export default function TabLayout() {
                     typeof options.tabBarLabel === "string"
                       ? options.tabBarLabel
                       : options.title || route.name;
-                  const isFocused = state.index === index;
+                  // `state.index` is for the full routes array; do not compare against the filtered map index.
+                  const isFocused = state.routes[state.index]?.key === route.key;
 
                   let onPress = () => {
                     const event = navigation.emit({

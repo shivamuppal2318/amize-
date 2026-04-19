@@ -4,6 +4,7 @@ import { Alert } from 'react-native';
 import { useAuth } from './useAuth';
 import { profileApi, ProfileUpdateData } from '@/lib/api/profileApi';
 import { User } from '@/lib/api/types';
+import { uploadService } from '@/lib/api/uploadService';
 
 interface UseProfileEditorReturn {
     // State
@@ -18,7 +19,7 @@ interface UseProfileEditorReturn {
     loadProfile: () => Promise<void>;
     updateFormData: (data: Partial<ProfileUpdateData>) => void;
     saveChanges: () => Promise<boolean>;
-    uploadPhoto: (file: File | Blob) => Promise<boolean>;
+    uploadPhoto: (uri: string) => Promise<boolean>;
     removePhoto: () => Promise<boolean>;
     resetForm: () => void;
     discardChanges: () => void;
@@ -162,22 +163,33 @@ export const useProfileEditor = (): UseProfileEditorReturn => {
     }, [formData, originalData, hasChanges, updateUser, initializeFormData]);
 
     // Upload profile photo
-    const uploadPhoto = useCallback(async (file: File | Blob): Promise<boolean> => {
+    const uploadPhoto = useCallback(async (uri: string): Promise<boolean> => {
         try {
             setUploading(true);
 
-            const response = await profileApi.uploadProfilePhotoToS3(file);
+            // Use platform-aware upload service
+            const uploadResponse = await uploadService.uploadFile({
+                uri,
+                uploadType: 'PROFILE_PHOTO',
+            });
 
-            if (response.success && response.profilePhotoUrl) {
-                // Update profile with new photo URL
-                const updatedProfile = { ...profile!, profilePhotoUrl: response.profilePhotoUrl };
-                setProfile(updatedProfile);
-                updateUser(updatedProfile);
+            if (uploadResponse.success && uploadResponse.upload.fileUrl) {
+                const fileUrl = uploadResponse.upload.fileUrl;
 
-                Alert.alert('Success', 'Profile picture updated successfully');
-                return true;
+                // Persist the profile photo URL to the backend
+                const updateResponse = await profileApi.updateProfile({ profilePhotoUrl: fileUrl });
+
+                if (updateResponse.success && updateResponse.profile) {
+                    // Update local state with the updated profile from server
+                    setProfile(updateResponse.profile);
+                    updateUser(updateResponse.profile);
+                    Alert.alert('Success', 'Profile picture updated successfully');
+                    return true;
+                } else {
+                    throw new Error(updateResponse.message || 'Failed to update profile with new photo');
+                }
             } else {
-                throw new Error(response.message || 'Failed to upload photo');
+                throw new Error(uploadResponse.message || 'Failed to upload photo');
             }
         } catch (error) {
             console.error('Error uploading photo:', error);

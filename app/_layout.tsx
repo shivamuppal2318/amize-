@@ -176,7 +176,8 @@ function RootLayoutNavigation() {
     hasCompletedOnboarding,
     isInSignupFlow,
     router,
-    segments,
+    rootSegment,
+    childSegment,
     user,
   ]);
 

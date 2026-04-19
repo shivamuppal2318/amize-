@@ -130,6 +130,11 @@ const demoMode =
   appJson.expo.extra?.demoMode ||
   false;
 
+const allowVerificationBypass =
+  process.env.EXPO_PUBLIC_ALLOW_VERIFICATION_BYPASS ||
+  appJson.expo.extra?.allowVerificationBypass ||
+  false;
+
 const plugins = (appJson.expo.plugins || []).map((plugin) => {
   if (
     Array.isArray(plugin) &&
@@ -171,6 +176,7 @@ module.exports = ({ config }) => {
       socketUrl,
       enableLiveStreaming,
       demoMode,
+      allowVerificationBypass,
       ...(easProjectId
         ? {
             eas: {

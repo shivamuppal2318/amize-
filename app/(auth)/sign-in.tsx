@@ -56,10 +56,12 @@ const GOOGLE_WEB_CLIENT_ID = authProviderConfig.googleWebClientId;
 const GOOGLE_ANDROID_CLIENT_ID = authProviderConfig.googleAndroidClientId;
 const GOOGLE_IOS_CLIENT_ID = authProviderConfig.googleIosClientId;
 const FACEBOOK_APP_ID = authProviderConfig.facebookAppId;
-const APP_SCHEME = Constants.expoConfig?.scheme || "com.kentom.amize";
+const APP_SCHEME =
+  (Array.isArray(Constants.expoConfig?.scheme)
+    ? Constants.expoConfig?.scheme[0]
+    : Constants.expoConfig?.scheme) || "com.kentom.amize";
 
-const getNativeRedirectUri = (provider: string) =>
-  `${APP_SCHEME}:/oauth2redirect/${provider}`;
+const getNativeRedirectPath = (provider: string) => `oauth2redirect/${provider}`;
 
 export default function SignInScreen() {
   const { t } = useI18n();
@@ -107,16 +109,18 @@ export default function SignInScreen() {
   // -----------------------------
   // GOOGLE AUTH HOOK
   // -----------------------------
+  const googleRedirectUri = makeRedirectUri({
+    scheme: APP_SCHEME,
+    path: getNativeRedirectPath("google"),
+  });
+
   const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
-    clientId: GOOGLE_WEB_CLIENT_ID || undefined,
-    androidClientId: GOOGLE_ANDROID_CLIENT_ID || undefined,
-    iosClientId: GOOGLE_IOS_CLIENT_ID || undefined,
-    redirectUri:
-      Platform.OS === "web"
-        ? makeRedirectUri()
-        : makeRedirectUri({
-            native: getNativeRedirectUri("google"),
-          }),
+    // Use platform-specific client IDs. Supplying a mismatched clientId on Android can trigger "invalid_request".
+    clientId: Platform.OS === "web" ? GOOGLE_WEB_CLIENT_ID || undefined : undefined,
+    androidClientId:
+      Platform.OS === "android" ? GOOGLE_ANDROID_CLIENT_ID || undefined : undefined,
+    iosClientId: Platform.OS === "ios" ? GOOGLE_IOS_CLIENT_ID || undefined : undefined,
+    redirectUri: googleRedirectUri,
   });
 
   useEffect(() => {
@@ -124,10 +128,7 @@ export default function SignInScreen() {
       return;
     }
 
-    const redirectUri =
-      Platform.OS === "web"
-        ? makeRedirectUri()
-        : makeRedirectUri({ native: getNativeRedirectUri("google") });
+    const redirectUri = googleRedirectUri;
 
     console.log("[Auth][Google] redirectUri:", redirectUri);
     const responseParams = (response as any)?.params as
@@ -155,7 +156,8 @@ export default function SignInScreen() {
         Platform.OS === "web"
           ? makeRedirectUri()
           : makeRedirectUri({
-              native: getNativeRedirectUri("facebook"),
+              scheme: APP_SCHEME,
+              path: getNativeRedirectPath("facebook"),
             }),
     });
 

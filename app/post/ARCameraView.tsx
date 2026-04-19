@@ -113,3 +113,11 @@
 //     backgroundColor: "#000",
 //   },
 // });
+
+// NOTE:
+// This file is kept as a placeholder so the route exists, but the AR camera
+// implementation is currently disabled (native dependencies not wired for all builds).
+// Export a safe component to satisfy Expo Router and avoid "missing default export" warnings.
+export default function ARCameraView() {
+  return null;
+}

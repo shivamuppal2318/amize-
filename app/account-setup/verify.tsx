@@ -17,7 +17,7 @@ import { ChevronLeft, Mail, Phone, Shield, CheckCircle, Clock } from "lucide-rea
 import { Button } from "@/components/ui/Button";
 import { useAuth } from "@/hooks/useAuth";
 import { useRegistration } from "@/context/RegistrationContext";
-import { isDemoMode } from "@/lib/release/releaseConfig";
+import { canBypassVerification, isDemoMode } from "@/lib/release/releaseConfig";
 
 // @ts-ignore
 import AmizeLogo from "@/assets/images/amize.png";
@@ -48,7 +48,8 @@ export default function VerifyScreen() {
     user?.email ||
     "";
   const isEmailTarget = Boolean(registrationData.email || user?.email);
-  const allowLocalBypass = Platform.OS === "web" || isDemoMode();
+  const allowLocalBypass =
+    Platform.OS === "web" || isDemoMode() || canBypassVerification();
 
   useEffect(() => {
     if (timer <= 0) {
@@ -102,7 +103,7 @@ export default function VerifyScreen() {
       return;
     }
 
-    if (code.length !== 6) {
+    if (!allowLocalBypass && code.length !== 6) {
       Alert.alert(
         "Invalid Code",
         "Please enter the complete 6-digit verification code."
@@ -321,7 +322,7 @@ export default function VerifyScreen() {
                   variant="primary"
                   fullWidth
                   loading={verifying}
-                  disabled={code.length !== 6 || verifying}
+                  disabled={(!allowLocalBypass && code.length !== 6) || verifying}
                 />
               </View>
             </View>
