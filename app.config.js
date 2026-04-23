@@ -55,6 +55,12 @@ const easProjectId =
   appJson.expo.extra?.eas?.projectId ||
   "";
 
+const clerkPublishableKey =
+  process.env.CLERK_PUBLISHABLE_KEY ||
+  process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY ||
+  appJson.expo.extra?.clerkPublishableKey ||
+  "";
+
 const ensureHttpsUrl = (value, fallback) => {
   if (typeof value !== "string" || !value.trim()) {
     return fallback;
@@ -177,6 +183,7 @@ module.exports = ({ config }) => {
       enableLiveStreaming,
       demoMode,
       allowVerificationBypass,
+      clerkPublishableKey,
       ...(easProjectId
         ? {
             eas: {

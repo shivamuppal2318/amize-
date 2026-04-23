@@ -111,9 +111,15 @@ export const uploadService = {
         }
       
         let finalUri = uri;
-        if (Platform.OS === "ios") {
+        if (Platform.OS === "ios" && uri.startsWith("file://")) {
           finalUri = uri.replace("file://", "");
-        } else if (!uri.startsWith("file://") && !IS_WEB) {
+        } else if (
+          !IS_WEB &&
+          !uri.startsWith("file://") &&
+          !uri.startsWith("content://") &&
+          !uri.startsWith("ph://") &&
+          !uri.startsWith("asset://")
+        ) {
           finalUri = `file://${uri}`;
         }
       
@@ -144,27 +150,20 @@ export const uploadService = {
             }
           } catch (error) {
             console.error('[Web Upload] Failed to process file:', error);
-            // On web, return a mock success for demo
-            // Remove this in production
-            return {
-              success: true,
-              message: "Upload simulated (web blob not fully supported)",
-              upload: {
-                id: `web-${Date.now()}`,
-                fileName: filename,
-                originalFileName: filename,
-                fileUrl: finalUri,
-                fileType: mimeType,
-                fileSize: 0,
-                uploadType,
-                status: "completed",
-                createdAt: new Date().toISOString()
-              }
-            };
+            // Web uploads are not fully supported - throw error instead of mock
+            throw new Error('Web file uploads are not currently supported. Please use the mobile app for video uploads.');
           }
         } else {
           // Native platforms
           formData = new FormData();
+          console.log("[Native Upload] Preparing file:", {
+            originalUri: uri,
+            finalUri,
+            uploadType,
+            mimeType,
+            filename,
+          });
+
           formData.append("file", {
             uri: finalUri,
             type: mimeType,

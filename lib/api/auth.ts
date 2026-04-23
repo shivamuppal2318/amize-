@@ -7,6 +7,7 @@ import {
   AuthResponse,
   FacebookLoginRequest,
   GoogleLoginRequest,
+  ClerkLoginRequest,
   AppleLoginRequest,
   RefreshTokenRequest,
   RefreshTokenResponse,
@@ -96,6 +97,25 @@ export const authApi = {
       }
 
       console.error("Google login error:", error);
+      throw error;
+    }
+  },
+
+  clerkLogin: async (data: ClerkLoginRequest): Promise<AuthResponse> => {
+    try {
+      const response = await axios.post(
+        API_CONFIG.BASE_URL + AUTH_ENDPOINTS.CLERK,
+        data,
+        {
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      return response.data;
+    } catch (error) {
+      console.error("Clerk login error:", error);
       throw error;
     }
   },

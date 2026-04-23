@@ -33,6 +33,7 @@ export const API_CONFIG = {
 export const AUTH_ENDPOINTS = {
     LOGIN: '/auth/login',
     GOOGLE: '/auth/google',
+    CLERK: '/auth/clerk',
     FACEBOOK: '/auth/facebook',
     APPLE: '/auth/apple',
     REGISTER: '/auth/register',

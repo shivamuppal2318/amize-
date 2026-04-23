@@ -10,6 +10,7 @@ import {
   isGoogleWebSignInUsable,
   isSecureWebAuthOrigin,
 } from '@/lib/auth/providerConfig';
+import { isClerkConfigured } from '@/lib/auth/clerkConfig';
 
 // @ts-ignore
 import DefaultImage from '@/assets/images/figma/Mobile inbox-bro 1.png';
@@ -46,8 +47,9 @@ export default function GetStartedScreen() {
       hasCurrentPlatformGoogleConfig ||
       (Platform.OS === 'web' && isAnyGoogleProviderConfigured);
     const showAppleLogin = Platform.OS === 'ios';
+    const showClerkLogin = isClerkConfigured();
     const showSocialLogin =
-      showFacebookLogin || showGoogleLogin || showAppleLogin;
+      showClerkLogin || showFacebookLogin || showGoogleLogin || showAppleLogin;
     const webGoogleStatusMessage =
         Platform.OS === 'web' && !isSecureWebAuthOrigin()
         ? 'Google sign-in on phone browser preview requires https or localhost. Use the Android app build for device testing.'
@@ -192,6 +194,24 @@ export default function GetStartedScreen() {
                         {showSocialLogin && (
                             <>
                                 <View style={{ width: '100%', maxWidth: 400, marginBottom: 32 }}>
+                                    {showClerkLogin && (
+                                        <TouchableOpacity
+                                            onPress={() => router.push('/(auth)/clerk')}
+                                            style={styles.googleButton}
+                                        >
+                                            <Image
+                                                source={GOOGLE_ICON}
+                                                style={styles.googleIcon}
+                                            />
+                                            <View style={styles.googleCopy}>
+                                                <Text style={styles.googleTitle}>Continue with Google</Text>
+                                                <Text style={styles.googleSubtitle}>
+                                                    Sign in with Google through Clerk
+                                                </Text>
+                                            </View>
+                                        </TouchableOpacity>
+                                    )}
+
                                     {showFacebookLogin && (
                                         <TouchableOpacity
                                             onPress={handleFacebookLogin}
@@ -223,7 +243,7 @@ export default function GetStartedScreen() {
                                         </TouchableOpacity>
                                     )}
 
-                                    {showGoogleLogin && (
+                                    {showGoogleLogin && !showClerkLogin && (
                                         <TouchableOpacity
                                             onPress={handleGoogleLogin}
                                             style={[
@@ -247,7 +267,7 @@ export default function GetStartedScreen() {
                                         </TouchableOpacity>
                                     )}
 
-                                    {showGoogleLogin && Platform.OS === 'web' && (
+                                    {showGoogleLogin && !showClerkLogin && Platform.OS === 'web' && (
                                         <View style={styles.statusCard}>
                                             <Text style={styles.statusTitle}>Google web status</Text>
                                             <Text style={styles.statusText}>{webGoogleStatusMessage}</Text>

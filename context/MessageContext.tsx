@@ -593,10 +593,54 @@ export const MessageProvider: React.FC<{children: ReactNode}> = ({ children }) =
         log('info', 'Sending message', { conversationId, contentLength: content.length });
 
         try {
+            const isMockConversation = conversationId.startsWith('mock-');
             const conversation = conversations.find(c => c.id === conversationId);
             if (!conversation) {
                 log('error', 'Conversation not found');
                 throw new Error('Conversation not found');
+            }
+
+            // Mock/demo conversations are local-only. They should never hit socket/API,
+            // because their participant IDs (mock-user-*) don't exist on the backend.
+            if (isMockConversation) {
+                const nowIso = new Date().toISOString();
+                const fallbackReceiverId =
+                    conversation.participants.find(p => p.id !== user.id)?.id ?? 'mock';
+
+                const localMessage: Message = {
+                    id: `local-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+                    content,
+                    messageType: options.messageType ?? 'text',
+                    attachmentUrl: options.attachmentUrl,
+                    attachmentType: options.attachmentType,
+                    fileName: options.fileName,
+                    senderId: user.id,
+                    receiverId: fallbackReceiverId,
+                    conversationId,
+                    replyToId: options.replyToId,
+                    sender: conversation.participants.find(p => p.id === user.id),
+                    receiver: conversation.participants.find(p => p.id === fallbackReceiverId),
+                    replyTo: null,
+                    createdAt: nowIso,
+                    updatedAt: nowIso,
+                    timestamp: MessageUtils.formatTimestamp(nowIso),
+                    status: 'sent',
+                    isFromCurrentUser: true,
+                };
+
+                addMessage(conversationId, localMessage);
+
+                const messagePreview = formatMessagePreview(content, options.messageType);
+                updateConversation(conversationId, {
+                    lastMessage: messagePreview,
+                    lastMessageContent: content,
+                    lastMessageAt: nowIso,
+                    lastMessageSender: user.id,
+                    timestamp: MessageUtils.formatTimestamp(nowIso),
+                });
+
+                log('success', 'Mock message added locally', { conversationId, messageId: localMessage.id });
+                return;
             }
 
             const receiverId = ConversationUtils.getRecipientId(conversation, user.id);
@@ -652,6 +696,19 @@ export const MessageProvider: React.FC<{children: ReactNode}> = ({ children }) =
         }
 
         try {
+            // Mock/demo conversations are local-only and don't exist on the backend.
+            if (conversationId.startsWith('mock-')) {
+                const mockData = buildMockMessagingData(user?.id);
+                const fallbackMessages = mockData.messages[conversationId];
+                if (fallbackMessages) {
+                    setMessagesState(prev => ({
+                        ...prev,
+                        [conversationId]: fallbackMessages,
+                    }));
+                }
+                return;
+            }
+
             log('info', 'Refreshing messages for conversation', { conversationId });
             const { messages: socketMessages } = await socketManager.getMessages(conversationId);
             log('info', 'Got messages from server', { count: socketMessages.length });

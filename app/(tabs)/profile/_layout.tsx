@@ -30,6 +30,13 @@ export default function ProfileLayout() {
                     gestureEnabled: true,
                 }}
             />
+            <Stack.Screen
+                name="connections"
+                options={{
+                    animation: 'slide_from_right',
+                    gestureEnabled: true,
+                }}
+            />
         </Stack>
     );
 }

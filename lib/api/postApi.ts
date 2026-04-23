@@ -106,6 +106,10 @@ export const usePostApi = () => {
 
         if (error.code === "ECONNABORTED") {
           errorMessage = "Request timed out. Please try again.";
+        } else if (Array.isArray(error.response?.data?.errors) && error.response.data.errors.length > 0) {
+          // Zod-style validation errors from backend
+          const first = error.response.data.errors[0];
+          errorMessage = typeof first?.message === "string" ? first.message : "Validation error";
         } else if (error.response?.data?.message) {
           errorMessage = error.response.data.message;
         } else if (error.message) {
@@ -208,6 +212,9 @@ export const usePostApi = () => {
         if (error.code === "ECONNABORTED") {
           errorMessage =
             "Slideshow creation timed out. This usually means the video is being processed in the background. Please check your posts in a few minutes.";
+        } else if (Array.isArray(error.response?.data?.errors) && error.response.data.errors.length > 0) {
+          const first = error.response.data.errors[0];
+          errorMessage = typeof first?.message === "string" ? first.message : "Validation error";
         } else if (error.response?.data?.message) {
           errorMessage = error.response.data.message;
         } else if (error.message === "Network Error") {

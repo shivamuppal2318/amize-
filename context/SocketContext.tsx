@@ -12,7 +12,20 @@ interface SocketProviderProps {
 }
 
 export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
-    const socketState = useSocket();
+    let socketState: UseSocketReturn | undefined;
+    
+    try {
+        socketState = useSocket();
+    } catch (error) {
+        console.error('[SocketContext] Failed to initialize socket:', error);
+        // Create a minimal fallback state if socket fails
+        socketState = {
+            isConnected: false,
+            sendMessage: async () => {},
+            onMessageReceived: null,
+            disconnect: () => {},
+        } as UseSocketReturn;
+    }
 
     return (
         <SocketContext.Provider value={socketState}>

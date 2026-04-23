@@ -83,6 +83,13 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({
         router.push('/settings/edit-profile');
     };
 
+    const handleOpenConnections = (type: 'followers' | 'following') => {
+        router.push({
+            pathname: '/(tabs)/profile/connections',
+            params: { id: user.id, type },
+        });
+    };
+
     return (
         <View style={styles.container}>
             {/* Profile Image and Basic Info */}
@@ -124,26 +131,38 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({
 
             {/* Stats */}
             <View style={styles.statsContainer}>
-                <View style={styles.stat}>
+                <TouchableOpacity
+                    style={styles.stat}
+                    onPress={() => router.push(`/(tabs)/profile/${user.id}`)}
+                    activeOpacity={0.8}
+                >
                     <Text style={styles.statNumber}>
                         {formatNumber(user._count.videos)}
                     </Text>
                     <Text style={styles.statLabel}>Videos</Text>
-                </View>
+                </TouchableOpacity>
 
-                <View style={styles.stat}>
+                <TouchableOpacity
+                    style={styles.stat}
+                    onPress={() => handleOpenConnections('followers')}
+                    activeOpacity={0.8}
+                >
                     <Text style={styles.statNumber}>
                         {formatNumber(user._count.followers)}
                     </Text>
                     <Text style={styles.statLabel}>Followers</Text>
-                </View>
+                </TouchableOpacity>
 
-                <View style={styles.stat}>
+                <TouchableOpacity
+                    style={styles.stat}
+                    onPress={() => handleOpenConnections('following')}
+                    activeOpacity={0.8}
+                >
                     <Text style={styles.statNumber}>
                         {formatNumber(user._count.following)}
                     </Text>
                     <Text style={styles.statLabel}>Following</Text>
-                </View>
+                </TouchableOpacity>
             </View>
 
             {/* Action Buttons */}

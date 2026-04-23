@@ -418,6 +418,18 @@ export default function ProfilePage() {
     });
   };
 
+  const handlePressVideosStat = () => {
+    setActiveTab("videos");
+  };
+
+  const handleOpenConnections = (type: "followers" | "following") => {
+    const profileId = user?.id ?? (id ? String(id) : "");
+    router.push({
+      pathname: "/(tabs)/profile/connections",
+      params: { id: profileId, type },
+    });
+  };
+
   const handleMoreOptions = () => {
     console.log("More options");
   };
@@ -945,26 +957,38 @@ export default function ProfilePage() {
                   <Animated.View
                     style={[styles.statsContainer, { opacity: statsOpacity }]}
                   >
-                    <View style={styles.statItem}>
+                    <TouchableOpacity
+                      style={styles.statButton}
+                      onPress={handlePressVideosStat}
+                      activeOpacity={0.8}
+                    >
                       <Text style={styles.statNumber}>
                         {formatNumber(user?._count?.videos)}
                       </Text>
                       <Text style={styles.statLabel}>Videos</Text>
-                    </View>
+                    </TouchableOpacity>
 
-                    <View style={styles.statItem}>
+                    <TouchableOpacity
+                      style={styles.statButton}
+                      onPress={() => handleOpenConnections("followers")}
+                      activeOpacity={0.8}
+                    >
                       <Text style={styles.statNumber}>
                         {formatNumber(user?._count?.followers)}
                       </Text>
                       <Text style={styles.statLabel}>Followers</Text>
-                    </View>
+                    </TouchableOpacity>
 
-                    <View style={styles.statItem}>
+                    <TouchableOpacity
+                      style={styles.statButton}
+                      onPress={() => handleOpenConnections("following")}
+                      activeOpacity={0.8}
+                    >
                       <Text style={styles.statNumber}>
                         {formatNumber(user?._count?.following)}
                       </Text>
                       <Text style={styles.statLabel}>Following</Text>
-                    </View>
+                    </TouchableOpacity>
                   </Animated.View>
 
                   <View style={styles.actionButtons}>
@@ -1220,8 +1244,11 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     gap: 40,
   },
-  statItem: {
+  statButton: {
     alignItems: "center",
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 12,
   },
   statNumber: {
     color: "white",

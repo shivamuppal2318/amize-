@@ -38,6 +38,7 @@ const defaultContextValue: AuthContextValue = {
   isInSignupFlow: false,
   login: async () => ({ success: false }),
   loginWithGoogle: async () => ({ success: false }),
+  loginWithClerk: async () => ({ success: false }),
   loginWithFacebook: async () => ({ success: false }),
   loginWithApple: async () => ({ success: false }),
   register: async () => ({ success: false }),
@@ -148,6 +149,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const applyAuthenticatedUser = useCallback(
     async (authenticatedUser: User, token: string, refreshToken: string) => {
+      console.log('[AUTH DEBUG] applyAuthenticatedUser for user:', authenticatedUser.id);
       await storeTokens({
         accessToken: token,
         refreshToken,
@@ -160,6 +162,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
       setUser(authenticatedUser);
       setInterests(authenticatedUser.interests?.map((i) => i.name) || []);
+      console.log('[AUTH DEBUG] setIsAuthenticated(true) - triggering layout redirect');
       setIsAuthenticated(true);
 
       await initializeSocketForUser(authenticatedUser, hasCompletedOnboarding);
@@ -533,12 +536,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
           response.refreshToken &&
           response.user
         ) {
+          console.log('[AUTH DEBUG] clerkLogin SUCCESS - applying user:', response.user.id);
           await finalizeReturningUserSession();
           await applyAuthenticatedUser(
             response.user,
             response.token,
             response.refreshToken
           );
+          console.log('[AUTH DEBUG] clerkLogin COMPLETE - isAuthenticated should now be true');
 
           return { success: true };
         }
@@ -631,6 +636,52 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       }
     },
     [applyAuthenticatedUser]
+  );
+
+  const loginWithClerk = useCallback(
+    async (token: string): Promise<LoginResult> => {
+      console.log('[AUTH DEBUG] loginWithClerk STARTED with token length:', token.length);
+      setLoading(true);
+
+      try {
+        console.log('[AUTH DEBUG] Calling authApi.clerkLogin...');
+        const response = await authApi.clerkLogin({ token });
+        console.log('[AUTH DEBUG] clerkLogin response:', { success: response.success, userId: response.user?.id });
+
+        if (
+          response.success &&
+          response.token &&
+          response.refreshToken &&
+          response.user
+        ) {
+          await finalizeReturningUserSession();
+          await applyAuthenticatedUser(
+            response.user,
+            response.token,
+            response.refreshToken
+          );
+
+          return { success: true };
+        }
+
+        return {
+          success: false,
+          message: response.message || "Clerk login failed",
+        };
+      } catch (error: any) {
+        console.error("[AuthContext] Clerk login error:", error);
+        return {
+          success: false,
+          message:
+            error?.response?.data?.message ||
+            error?.message ||
+            "Clerk login failed. Please try again.",
+        };
+      } finally {
+        setLoading(false);
+      }
+    },
+    [applyAuthenticatedUser, finalizeReturningUserSession]
   );
 
   const loginWithFacebook = useCallback(
@@ -849,6 +900,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     isInSignupFlow,
     login,
     loginWithGoogle,
+    loginWithClerk,
     loginWithFacebook,
     loginWithApple,
     register,

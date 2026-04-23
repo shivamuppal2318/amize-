@@ -18,6 +18,7 @@ import { RefreshControl } from "react-native";
 import { useFocusEffect, useLocalSearchParams } from "expo-router";
 import Animated, {
   useSharedValue,
+  useAnimatedStyle,
   useAnimatedScrollHandler,
   withTiming,
   withRepeat,
@@ -101,20 +102,16 @@ const LoadingSpinner = () => {
     );
   }, []);
 
+  const spinnerAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ rotate: `${rotation.value}deg` }, { scale: scale.value }],
+    opacity: opacity.value,
+  }));
+
   return (
     <SafeAreaView style={loaderStyles.mainContainer}>
       <View style={loaderStyles.container}>
         <Animated.View
-          style={[
-            loaderStyles.spinnerContainer,
-            {
-              transform: [
-                { rotate: `${rotation.value}deg` },
-                { scale: scale.value },
-              ],
-              opacity: opacity.value,
-            },
-          ]}
+          style={[loaderStyles.spinnerContainer, spinnerAnimatedStyle]}
         >
           <View style={loaderStyles.spinnerOuter}>
             <View style={loaderStyles.spinnerInner}>

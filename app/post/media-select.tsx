@@ -38,6 +38,7 @@ interface MediaItem {
     duration?: number;
     size: number;
     assetId?: string; 
+    webFile?: File;
 }
 
 export default function MediaSelectScreen() {
@@ -407,6 +408,7 @@ export default function MediaSelectScreen() {
                     size: item.size,
                     duration: item.duration ? item.duration * 1000 : undefined,
                     timestamp: new Date().getTime(),
+                    webFile: item.webFile,
                 });
             });
 

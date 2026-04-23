@@ -14,6 +14,7 @@ import { Video, ResizeMode, AVPlaybackStatus } from "expo-av";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
+import { resolveRemoteMediaUri } from "@/utils/mediaHelpers";
 
 const { height, width } = Dimensions.get("window");
 
@@ -58,10 +59,10 @@ export default function UserVideoFeed({ videos, initialIndex = 0 }: Props) {
   // Preload cache for next video
   const preloadVideo = async (index: number) => {
     if (videos[index] && videoRefs.current[index] == null) {
-      const ref = new Video({ source: { uri: videos[index].videoUrl } });
+      const ref = new Video({ source: { uri: resolveRemoteMediaUri(videos[index].videoUrl) } });
       videoRefs.current[index] = ref;
       try {
-        await ref.loadAsync({ uri: videos[index].videoUrl }, {}, false);
+        await ref.loadAsync({ uri: resolveRemoteMediaUri(videos[index].videoUrl) }, {}, false);
       } catch (e) {
         console.log("Preload error", e);
       }
@@ -139,7 +140,7 @@ export default function UserVideoFeed({ videos, initialIndex = 0 }: Props) {
             {/* Thumbnail + loader */}
             {(loadingIndex === index || !showReplay) && item.thumbnailUrl && (
               <Image
-                source={{ uri: item.thumbnailUrl }}
+                source={{ uri: resolveRemoteMediaUri(item.thumbnailUrl) }}
                 style={StyleSheet.absoluteFillObject}
                 blurRadius={10}
               />
@@ -157,7 +158,7 @@ export default function UserVideoFeed({ videos, initialIndex = 0 }: Props) {
               ref={(ref) => {
                 if (ref) videoRefs.current[index] = ref;
               }}
-              source={{ uri: item.videoUrl }}
+              source={{ uri: resolveRemoteMediaUri(item.videoUrl) }}
               style={styles.video}
               resizeMode={ResizeMode.COVER}
               shouldPlay={currentIndex === index && !showReplay}

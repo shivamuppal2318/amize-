@@ -25,6 +25,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { MixedFeedItem } from "@/lib/api/types/video";
 import { isDemoMode } from "@/lib/release/releaseConfig";
 import { canUseLocalDemoAuth } from "@/lib/auth/localDemoAuth";
+import { resolveRemoteMediaUri } from "@/utils/mediaHelpers";
 
 interface GridItemProps {
     item: MixedFeedItem;
@@ -111,7 +112,9 @@ const GridItem: React.FC<GridItemProps> = memo(({
     // Video item component with Expo Video
     const VideoItem = ({ video }: { video: any }) => {
         // Create video player using Expo Video
-        const videoSource: VideoSource = { uri: video.videoUrl || video.url || video.thumbnailUrl };
+        const videoSource: VideoSource = {
+            uri: resolveRemoteMediaUri(video.videoUrl || video.url || video.thumbnailUrl)
+        };
         const player = useVideoPlayer(videoSource, (player) => {
             player.loop = true;
             player.muted = true;

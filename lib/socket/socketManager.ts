@@ -458,6 +458,19 @@ class SocketManager {
         };
     }> {
         try {
+            // Prevent invalid calls (e.g., mock-* ids) from hitting the backend and spamming 400s.
+            const isUuid =
+                /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+                    conversationId
+                );
+            if (!isUuid) {
+                console.warn('[SocketManager] Skipping getMessages for non-UUID conversationId:', conversationId);
+                return {
+                    messages: [],
+                    pagination: { totalItems: 0, totalPages: 0, currentPage: 1, limit },
+                };
+            }
+
             console.log('[SocketManager] Fetching messages from API for conversation:', conversationId);
             const response = await apiClient.get('/messages', {
                 params: { conversationId, page, limit },

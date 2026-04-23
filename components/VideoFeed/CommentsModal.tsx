@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import {
+  Alert,
   View,
   Text,
   Modal,
@@ -122,6 +123,24 @@ const CommentsModal: React.FC<CommentsModalProps> = ({
     console.log(`View replies for comment ${comment.id}`);
   };
 
+  const handleCommentMore = (comment: UIComment) => {
+    Alert.alert(
+      "Comment",
+      `@${comment.user.username}`,
+      [
+        {
+          text: "Report",
+          onPress: () => {
+            // Placeholder until backend/report flow exists
+            Alert.alert("Reported", "Thanks — we’ll review this comment.");
+          },
+        },
+        { text: "Cancel", style: "cancel" },
+      ],
+      { cancelable: true }
+    );
+  };
+
   const renderCommentItem = ({ item }: { item: UIComment }) => (
     <View style={styles.commentItem}>
       <View style={styles.topCommentRow}>
@@ -149,7 +168,11 @@ const CommentsModal: React.FC<CommentsModalProps> = ({
           </View>
         </View>
 
-        <TouchableOpacity style={styles.moreButton}>
+        <TouchableOpacity
+          style={styles.moreButton}
+          onPress={() => handleCommentMore(item)}
+          activeOpacity={0.8}
+        >
           <MoreVertical size={16} color="#FFF" />
         </TouchableOpacity>
       </View>

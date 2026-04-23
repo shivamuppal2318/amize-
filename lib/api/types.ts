@@ -39,6 +39,10 @@ export interface GoogleLoginRequest {
     idToken: string;
 }
 
+export interface ClerkLoginRequest {
+    token: string;
+}
+
 export interface FacebookLoginRequest {
     accessToken: string;
 }
@@ -154,6 +158,7 @@ export interface AuthContextValue {
     isInSignupFlow: boolean;
     login: (identifier: string, password: string) => Promise<LoginResult>;
     loginWithGoogle: (idToken: string) => Promise<LoginResult>;
+    loginWithClerk: (token: string) => Promise<LoginResult>;
     loginWithFacebook: (accessToken: string) => Promise<LoginResult>;
     loginWithApple: (data: AppleLoginRequest) => Promise<LoginResult>;
     register: (userData: RegisterRequest) => Promise<RegisterResult>;

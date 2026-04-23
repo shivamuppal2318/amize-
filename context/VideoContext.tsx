@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
 import { Platform } from 'react-native';
 import NetInfo from '@react-native-community/netinfo';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { VideoItemData } from '@/components/VideoFeed/VideoItem';
 import { ApiVideo } from '@/lib/api/types/video';
@@ -120,7 +120,10 @@ export const VideoProvider: React.FC<{children: React.ReactNode}> = ({ children 
     const processingQueue = useRef<boolean>(false);
 
     // Cache directory
-    const cacheDirectory = `${(FileSystem as any).documentDirectory ?? ""}videocache/`;
+    const supportsFileSystemCache = Platform.OS !== 'web' && Boolean((FileSystem as any).documentDirectory);
+    const cacheDirectory = supportsFileSystemCache
+        ? `${(FileSystem as any).documentDirectory}videocache/`
+        : '';
 
     // Static logging function to avoid recreation
     const log = useRef((message: string, ...args: any[]) => {
@@ -182,10 +185,11 @@ export const VideoProvider: React.FC<{children: React.ReactNode}> = ({ children 
             try {
                 log(`🏗️ Initializing VideoContext`);
 
-                // Create cache directory
-                const dirInfo = await FileSystem.getInfoAsync(cacheDirectory);
-                if (!dirInfo.exists) {
-                    await FileSystem.makeDirectoryAsync(cacheDirectory, { intermediates: true });
+                if (supportsFileSystemCache) {
+                    const dirInfo = await FileSystem.getInfoAsync(cacheDirectory);
+                    if (!dirInfo.exists) {
+                        await FileSystem.makeDirectoryAsync(cacheDirectory, { intermediates: true });
+                    }
                 }
 
                 // Load data
@@ -217,7 +221,7 @@ export const VideoProvider: React.FC<{children: React.ReactNode}> = ({ children 
             let totalSize = 0;
 
             for (const [videoId, item] of Object.entries(parsedCache)) {
-                if (item.localPath) {
+                if (item.localPath && supportsFileSystemCache) {
                     const fileInfo = await FileSystem.getInfoAsync(item.localPath);
                     if (fileInfo.exists) {
                         videoCache[videoId] = item.video;
@@ -236,7 +240,7 @@ export const VideoProvider: React.FC<{children: React.ReactNode}> = ({ children 
         } catch (error) {
             log(`❌ Error loading cache:`, error);
         }
-    }, []);
+    }, [supportsFileSystemCache]);
 
     // Load recently viewed
     const loadRecentlyViewed = useCallback(async () => {
@@ -271,6 +275,8 @@ export const VideoProvider: React.FC<{children: React.ReactNode}> = ({ children 
 
     // Cleanup orphaned files
     const cleanupOrphanedFiles = useCallback(async () => {
+        if (!supportsFileSystemCache) return;
+
         try {
             const dirInfo = await FileSystem.getInfoAsync(cacheDirectory);
             if (!dirInfo.exists) return;
@@ -290,7 +296,7 @@ export const VideoProvider: React.FC<{children: React.ReactNode}> = ({ children 
         } catch (error) {
             log(`❌ Error cleaning up files:`, error);
         }
-    }, []);
+    }, [cacheDirectory, supportsFileSystemCache]);
 
     // Download video file
     const downloadVideoFile = useCallback(async (
@@ -298,6 +304,7 @@ export const VideoProvider: React.FC<{children: React.ReactNode}> = ({ children 
         videoUrl: string,
         priority: 'high' | 'medium' | 'low' = 'medium'
     ): Promise<string | null> => {
+        if (!supportsFileSystemCache) return null;
         if (activeDownloads.current.has(videoId)) return null;
 
         activeDownloads.current.add(videoId);
@@ -375,7 +382,7 @@ export const VideoProvider: React.FC<{children: React.ReactNode}> = ({ children 
         } finally {
             activeDownloads.current.delete(videoId);
         }
-    }, [debouncedPersist]);
+    }, [cacheDirectory, debouncedPersist, supportsFileSystemCache]);
 
     // Add to cache (non-async to avoid loops)
     const addToCache = useCallback((video: ApiVideo | VideoItemData) => {
@@ -405,7 +412,7 @@ export const VideoProvider: React.FC<{children: React.ReactNode}> = ({ children 
     const removeFromCache = useCallback((videoId: string) => {
         return queueOperation(async () => {
             const cacheItem = cacheDetails.current[videoId];
-            if (cacheItem?.localPath) {
+            if (supportsFileSystemCache && cacheItem?.localPath) {
                 await FileSystem.deleteAsync(cacheItem.localPath, { idempotent: true });
                 setCacheSize(prev => prev - cacheItem.fileSize);
             }
@@ -432,7 +439,7 @@ export const VideoProvider: React.FC<{children: React.ReactNode}> = ({ children 
 
             debouncedPersist.current?.();
         });
-    }, [queueOperation]);
+    }, [queueOperation, supportsFileSystemCache]);
 
     // Clear cache
     const clearCache = useCallback(() => {
@@ -441,10 +448,12 @@ export const VideoProvider: React.FC<{children: React.ReactNode}> = ({ children 
             retryTimers.current = {};
             activeDownloads.current.clear();
 
-            const dirInfo = await FileSystem.getInfoAsync(cacheDirectory);
-            if (dirInfo.exists) {
-                await FileSystem.deleteAsync(cacheDirectory, { idempotent: true });
-                await FileSystem.makeDirectoryAsync(cacheDirectory, { intermediates: true });
+            if (supportsFileSystemCache) {
+                const dirInfo = await FileSystem.getInfoAsync(cacheDirectory);
+                if (dirInfo.exists) {
+                    await FileSystem.deleteAsync(cacheDirectory, { idempotent: true });
+                    await FileSystem.makeDirectoryAsync(cacheDirectory, { intermediates: true });
+                }
             }
 
             setCachedVideos({});
@@ -454,7 +463,7 @@ export const VideoProvider: React.FC<{children: React.ReactNode}> = ({ children 
 
             await AsyncStorage.multiRemove([CACHE_STORAGE_KEY, CACHE_METADATA_KEY]);
         });
-    }, [queueOperation]);
+    }, [cacheDirectory, queueOperation, supportsFileSystemCache]);
 
     // Optimize cache
     const optimizeCache = useCallback(() => {
@@ -465,7 +474,7 @@ export const VideoProvider: React.FC<{children: React.ReactNode}> = ({ children 
 
             for (const [videoId] of itemsToRemove) {
                 const cacheItem = cacheDetails.current[videoId];
-                if (cacheItem?.localPath) {
+                if (supportsFileSystemCache && cacheItem?.localPath) {
                     await FileSystem.deleteAsync(cacheItem.localPath, { idempotent: true });
                     setCacheSize(prev => prev - cacheItem.fileSize);
                 }
@@ -481,7 +490,7 @@ export const VideoProvider: React.FC<{children: React.ReactNode}> = ({ children 
 
             debouncedPersist.current?.();
         });
-    }, [queueOperation]);
+    }, [queueOperation, supportsFileSystemCache]);
 
     // Clear old cache
     const clearOldCache = useCallback(() => {
@@ -491,7 +500,7 @@ export const VideoProvider: React.FC<{children: React.ReactNode}> = ({ children 
         return queueOperation(async () => {
             for (const [videoId, item] of Object.entries(cacheDetails.current)) {
                 if (now - item.lastAccessTime > maxAge) {
-                    if (item.localPath) {
+                    if (supportsFileSystemCache && item.localPath) {
                         await FileSystem.deleteAsync(item.localPath, { idempotent: true });
                         setCacheSize(prev => prev - item.fileSize);
                     }
@@ -508,7 +517,7 @@ export const VideoProvider: React.FC<{children: React.ReactNode}> = ({ children 
 
             debouncedPersist.current?.();
         });
-    }, [queueOperation]);
+    }, [queueOperation, supportsFileSystemCache]);
 
     // Get video
     const getVideo = useCallback(async (videoId: string): Promise<VideoItemData | null> => {

@@ -8,6 +8,9 @@ import Constants from "expo-constants";
 import { registerForPushNotificationsAsync } from "@/Notification";
 import { shouldInitializeMobileAds } from "@/lib/ads/config";
 import { initializeMobileAds } from "@/lib/ads/native";
+import { ClerkProvider } from "@clerk/clerk-expo";
+import { clerkPublishableKey, isClerkConfigured } from "@/lib/auth/clerkConfig";
+import { clerkTokenCache } from "@/lib/auth/clerkTokenCache";
 
 import { Slot, useRouter, useSegments } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
@@ -74,6 +77,19 @@ function RootLayoutNavigation() {
     user,
   } = useAuth();
 
+  // 🔍 DEBUG: Auth state logging
+  useEffect(() => {
+    console.log('[LAYOUT DEBUG] Auth state changed:', {
+      isAuthenticated,
+      hasCompletedOnboarding: hasCompletedOnboarding,
+      loading,
+      isInSignupFlow,
+      userId: user?.id,
+      currentRoot: rootSegment,
+      currentChild: childSegment,
+    });
+  }, [isAuthenticated, hasCompletedOnboarding, loading, isInSignupFlow, user?.id, rootSegment, childSegment]);
+
   useApiErrorHandler();
   // Initialize socket connection
   useSocketInitialization();
@@ -101,7 +117,7 @@ function RootLayoutNavigation() {
     const inAdminFlow = rootSegment === "admin";
     const inSupportedFlows = inTabsFlow || inPostFlow || inLiveFlow || inAdminFlow;
 
-    console.log("[Layout] Navigation check:", {
+    console.log("[Layout] Navigation check - RULES:", {
       isAuthenticated,
       hasCompletedOnboarding,
       isInSignupFlow,
@@ -111,6 +127,7 @@ function RootLayoutNavigation() {
       inAccountSetupFlow,
       inPasswordResetFlow,
       inSupportedFlows,
+      redirectTarget: 'none',
     });
 
     // RULE 0
@@ -134,14 +151,15 @@ function RootLayoutNavigation() {
       if (inPasswordResetFlow) return;
       if (inPublicGuestTab) return;
       if (!inOnboardingFlow && !inAccountSetupFlow && !inPasswordResetFlow) {
-        router.replace("/(auth)/get-started");
+        router.replace("/get-started");
         return;
       }
     }
 
     // RULE 4
     if (isAuthenticated && inAuthFlow && !isInSignupFlow) {
-      router.replace("/(tabs)");
+      console.log('[LAYOUT DEBUG] RULE 4 TRIGGERED: auth → tabs');
+      router.replace("/");
       return;
     }
 
@@ -152,7 +170,8 @@ function RootLayoutNavigation() {
       !inSupportedFlows &&
       !isInSignupFlow
     ) {
-      router.replace("/(tabs)");
+      console.log('[LAYOUT DEBUG] RULE 5 TRIGGERED: unsupported → tabs');
+      router.replace("/");
       return;
     }
 
@@ -241,28 +260,42 @@ useEffect(() => {
   }
 
   //  Get FCM token
-  registerForPushNotificationsAsync().then((t) => setToken(t));
+  registerForPushNotificationsAsync()
+    .then((t) => {
+      if (t) setToken(t);
+    })
+    .catch((error) => {
+      console.warn("[Notification] FCM registration failed (non-blocking):", error);
+    });
 
-  //  Listen for incoming notifications (foreground)
-  notificationListener.current =
-    Notifications.addNotificationReceivedListener(
-      (notification: Notifications.Notification) => {
-        console.log("📩 Notification Received:", notification);
-      }
-    );
+  try {
+    //  Listen for incoming notifications (foreground)
+    notificationListener.current =
+      Notifications.addNotificationReceivedListener(
+        (notification: Notifications.Notification) => {
+          console.log("📩 Notification Received:", notification);
+        }
+      );
 
-  //  Listen for user tapping on notification
-  responseListener.current =
-    Notifications.addNotificationResponseReceivedListener(
-      (response: Notifications.NotificationResponse) => {
-        console.log("👆 Notification Response:", response);
-      }
-    );
+    //  Listen for user tapping on notification
+    responseListener.current =
+      Notifications.addNotificationResponseReceivedListener(
+        (response: Notifications.NotificationResponse) => {
+          console.log("👆 Notification Response:", response);
+        }
+      );
+  } catch (error) {
+    console.warn("[Notification] Listener setup failed (non-blocking):", error);
+  }
 
   return () => {
     // ✅ FIXED CLEANUP
-    notificationListener.current?.remove();
-    responseListener.current?.remove();
+    try {
+      notificationListener.current?.remove();
+      responseListener.current?.remove();
+    } catch (error) {
+      console.warn("[Notification] Cleanup error:", error);
+    }
   };
 }, []);
 
@@ -298,9 +331,11 @@ useEffect(() => {
       return;
     }
 
-    initializeMobileAds().catch((error: unknown) => {
-      console.error("[Ads] Mobile Ads initialization failed:", error);
-    });
+    initializeMobileAds()
+      .catch((error: unknown) => {
+        console.warn("[Ads] Mobile Ads initialization failed (non-blocking):", error);
+        // Ads failure should not crash the app
+      });
   }, []);
 
   useEffect(() => {
@@ -332,7 +367,7 @@ useEffect(() => {
     return null;
   }
 
-  return (
+  const appTree = (
     <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
       <SafeAreaProvider>
         <ErrorProvider>
@@ -364,4 +399,22 @@ useEffect(() => {
       </SafeAreaProvider>
     </ThemeProvider>
   );
+
+  try {
+    // Wrap Clerk initialization in try-catch to prevent app crash if Clerk is misconfigured
+    if (!isClerkConfigured()) {
+      console.warn("[Clerk] Clerk not properly configured, skipping ClerkProvider");
+      return appTree;
+    }
+
+    return (
+      <ClerkProvider publishableKey={clerkPublishableKey} tokenCache={clerkTokenCache}>
+        {appTree}
+      </ClerkProvider>
+    );
+  } catch (error) {
+    console.error("[Clerk] Failed to initialize Clerk provider:", error);
+    // Return app tree without Clerk if initialization fails
+    return appTree;
+  }
 }

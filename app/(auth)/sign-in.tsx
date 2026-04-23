@@ -24,6 +24,7 @@ import {
   isGoogleWebSignInUsable,
   isSecureWebAuthOrigin,
 } from "@/lib/auth/providerConfig";
+import { isClerkConfigured } from "@/lib/auth/clerkConfig";
 import Constants from "expo-constants";
 import * as WebBrowser from "expo-web-browser";
 import * as Google from "expo-auth-session/providers/google";
@@ -181,8 +182,9 @@ export default function SignInScreen() {
   const showGoogleButton =
     googleConfiguredForPlatform || (Platform.OS === "web" && isAnyGoogleProviderConfigured);
   const showAppleButton = appleAvailable;
+  const showClerkButton = isClerkConfigured();
   const showSocialButtons =
-    showFacebookButton || showGoogleButton || showAppleButton;
+    showClerkButton || showFacebookButton || showGoogleButton || showAppleButton;
   const googleButtonDisabled =
     googleLoading ||
     (Platform.OS === "web" && !googleWebSignInUsable) ||
@@ -601,6 +603,21 @@ export default function SignInScreen() {
               {/* SOCIAL LOGIN BUTTONS */}
               {showSocialButtons && (
                 <View style={styles.socialContainer}>
+                  {showClerkButton && (
+                    <TouchableOpacity
+                      style={styles.googleInlineButton}
+                      onPress={() => router.push("/(auth)/clerk")}
+                    >
+                      <Image source={GOOGLE_ICON} style={styles.googleInlineIcon} />
+                      <View style={styles.googleInlineCopy}>
+                        <Text style={styles.googleInlineTitle}>Continue with Google</Text>
+                        <Text style={styles.googleInlineSubtitle}>
+                          Sign in with Google through Clerk
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
+                  )}
+
                   {showFacebookButton && (
                     <TouchableOpacity
                       style={styles.socialButtonStyle}
@@ -611,7 +628,7 @@ export default function SignInScreen() {
                     </TouchableOpacity>
                   )}
 
-                  {showGoogleButton && (
+                  {showGoogleButton && !showClerkButton && (
                     <TouchableOpacity
                       style={[
                         styles.googleInlineButton,
@@ -642,7 +659,7 @@ export default function SignInScreen() {
                 </View>
               )}
 
-              {showGoogleButton && Platform.OS === "web" && (
+              {showGoogleButton && !showClerkButton && Platform.OS === "web" && (
                 <View style={styles.providerStatusCard}>
                   <Text style={styles.providerStatusTitle}>Google web status</Text>
                   <Text style={styles.providerStatusText}>{googleStatusMessage}</Text>

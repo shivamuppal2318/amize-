@@ -63,7 +63,19 @@ export function usePostUpload({
         mediaItems.find((m) => m.selectedSongId)?.selectedSongId ||
         undefined;
   
-      console.log("🎵 FINAL soundId chosen from mediaItems:", mediaSoundId);
+      // Backend validates soundId as UUID. Avoid sending non-UUID values (causes 400 "Validation error").
+      const soundId =
+        typeof mediaSoundId === "string" && uploadIdPattern.test(mediaSoundId)
+          ? mediaSoundId
+          : undefined;
+      if (mediaSoundId && !soundId) {
+        console.log(
+          "🎵 Ignoring non-UUID soundId (backend requires UUID):",
+          mediaSoundId
+        );
+      }
+
+      console.log("🎵 FINAL soundId chosen from mediaItems:", soundId);
   
 const filesToUpload = mediaItems.map((media, index) => {
         const sanitizedUri = sanitizeMediaUri(media.uri);
@@ -110,7 +122,7 @@ const filesToUpload = mediaItems.map((media, index) => {
             "Web preview can select media, but real post creation requires the Android app build."
           );
           setUploading(false);
-          router.replace("/(tabs)");
+          router.replace("/");
           return true;
         }
 
@@ -129,7 +141,7 @@ const filesToUpload = mediaItems.map((media, index) => {
           uploadId,
           title: draftPost.caption || undefined,
           description: draftPost.location || undefined,
-          soundId: mediaSoundId, // ✅ FIXED here
+          soundId,
           isPublic: draftPost.visibility === "public",
         };
   
@@ -153,7 +165,7 @@ const filesToUpload = mediaItems.map((media, index) => {
           uploadIds,
           title: draftPost.caption || "Photo post",
           description: draftPost.location || undefined,
-          soundId: mediaSoundId,
+          soundId,
           slideDuration,
           transition,
           isPublic: draftPost.visibility === "public",
@@ -188,7 +200,7 @@ const filesToUpload = mediaItems.map((media, index) => {
       }
   
       setUploading(false);
-      router.replace("/(tabs)");
+      router.replace("/");
       return true;
     } catch (error) {
       console.error("Error submitting post:", error);

@@ -1,17 +1,12 @@
-import React from "react";
-import { ActivityIndicator, View } from "react-native";
+import { useEffect } from "react";
+import { useRouter } from "expo-router";
 
 export default function RootIndexPage() {
-  return (
-    <View
-      style={{
-        flex: 1,
-        alignItems: "center",
-        justifyContent: "center",
-        backgroundColor: "#07111D",
-      }}
-    >
-      <ActivityIndicator size="large" color="#FF5A5F" />
-    </View>
-  );
+  const router = useRouter();
+
+  useEffect(() => {
+    router.replace("/(tabs)");
+  }, []);
+
+  return null;
 }

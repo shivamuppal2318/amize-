@@ -1,5 +1,6 @@
 import { ApiComment, ApiSound, ApiVideo } from '../api/types/video';
 import { VideoItemData } from '@/components/VideoFeed/VideoItem';
+import { resolveRemoteMediaUri } from '@/utils/mediaHelpers';
 
 const FALLBACK_VIDEO_URLS = [
     'https://videos.pexels.com/video-files/6646665/6646665-hd_1080_1920_24fps.mp4',
@@ -41,7 +42,7 @@ const resolveVideoUrl = (apiVideo: ApiVideo) => {
         return pickFallbackById(apiVideo.id, FALLBACK_VIDEO_URLS);
     }
 
-    return apiVideo.videoUrl;
+    return resolveRemoteMediaUri(apiVideo.videoUrl);
 };
 
 const resolvePosterUrl = (apiVideo: ApiVideo) => {
@@ -49,7 +50,7 @@ const resolvePosterUrl = (apiVideo: ApiVideo) => {
         return pickFallbackById(apiVideo.id, FALLBACK_POSTER_URLS);
     }
 
-    return apiVideo.thumbnailUrl as string;
+    return resolveRemoteMediaUri(apiVideo.thumbnailUrl as string);
 };
 
 /**

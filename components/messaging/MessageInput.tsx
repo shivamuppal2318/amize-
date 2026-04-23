@@ -29,6 +29,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
   // Use unified connection state from MessageContext
   const { sendMessage, connectionStatus } = useMessages();
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isMockConversation = conversationId.startsWith("mock-");
 
   // Debug: Log connection status changes
   useEffect(() => {
@@ -63,7 +64,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
   };
 
   const handleSend = async () => {
-    if (!messageText.trim() || isSending || !connectionStatus.isConnected) {
+    if (!messageText.trim() || isSending || (!connectionStatus.isConnected && !isMockConversation)) {
       console.log("⚠️ Cannot send message:", {
         hasText: !!messageText.trim(),
         isSending,

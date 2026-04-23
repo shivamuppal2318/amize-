@@ -23,6 +23,7 @@
     "preset": "jest-expo"
   },
   "dependencies": {
+    "@clerk/clerk-expo": "^2.19.31",
     "@expo-google-fonts/figtree": "^0.4.0",
     "@expo-google-fonts/inter": "^0.3.0",
     "@expo/vector-icons": "^15.0.3",
