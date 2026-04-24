@@ -29,17 +29,39 @@ export const isNonPlaceholderValue = (value?: string | null) => {
   );
 };
 
+const pickConfiguredValue = (
+  envValue: string | undefined,
+  extraValue: string | undefined
+) => {
+  if (isNonPlaceholderValue(envValue)) {
+    return String(envValue).trim();
+  }
+
+  if (isNonPlaceholderValue(extraValue)) {
+    return String(extraValue).trim();
+  }
+
+  return "";
+};
+
 export const authProviderConfig = {
   facebookAppId:
-    expoExtra.facebookAppId || process.env.EXPO_FACEBOOK_APP_ID || "",
+    pickConfiguredValue(process.env.EXPO_FACEBOOK_APP_ID, expoExtra.facebookAppId),
   googleWebClientId:
-    expoExtra.googleWebClientId || process.env.EXPO_GOOGLE_WEB_CLIENT_ID || "",
+    pickConfiguredValue(
+      process.env.EXPO_GOOGLE_WEB_CLIENT_ID,
+      expoExtra.googleWebClientId
+    ),
   googleAndroidClientId:
-    expoExtra.googleAndroidClientId ||
-    process.env.EXPO_GOOGLE_ANDROID_CLIENT_ID ||
-    "",
+    pickConfiguredValue(
+      process.env.EXPO_GOOGLE_ANDROID_CLIENT_ID,
+      expoExtra.googleAndroidClientId
+    ),
   googleIosClientId:
-    expoExtra.googleIosClientId || process.env.EXPO_GOOGLE_IOS_CLIENT_ID || "",
+    pickConfiguredValue(
+      process.env.EXPO_GOOGLE_IOS_CLIENT_ID,
+      expoExtra.googleIosClientId
+    ),
 };
 
 export const isFacebookConfigured = isNonPlaceholderValue(

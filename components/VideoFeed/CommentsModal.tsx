@@ -61,6 +61,8 @@ const CommentsModal: React.FC<CommentsModalProps> = ({
   const [commentText, setCommentText] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isKeyboardVisible, setKeyboardVisible] = useState(false);
+  const [replyTarget, setReplyTarget] = useState<UIComment | null>(null);
+  const [repliesVisible, setRepliesVisible] = useState(false);
   const inputRef = useRef<TextInput>(null);
   const flatListRef = useRef<FlatList>(null);
 
@@ -70,6 +72,14 @@ const CommentsModal: React.FC<CommentsModalProps> = ({
       refreshComments();
     }
   }, [visible, refreshComments]);
+
+  // Reset reply modal when parent modal closes
+  useEffect(() => {
+    if (!visible) {
+      setRepliesVisible(false);
+      setReplyTarget(null);
+    }
+  }, [visible]);
 
   // Keyboard listeners
   useEffect(() => {
@@ -119,8 +129,8 @@ const CommentsModal: React.FC<CommentsModalProps> = ({
   };
 
   const handleViewReplies = (comment: UIComment) => {
-    // This would open a nested comments modal or expand replies inline
-    console.log(`View replies for comment ${comment.id}`);
+    setReplyTarget(comment);
+    setRepliesVisible(true);
   };
 
   const handleCommentMore = (comment: UIComment) => {
@@ -128,6 +138,10 @@ const CommentsModal: React.FC<CommentsModalProps> = ({
       "Comment",
       `@${comment.user.username}`,
       [
+        {
+          text: "Reply",
+          onPress: () => handleViewReplies(comment),
+        },
         {
           text: "Report",
           onPress: () => {
@@ -171,6 +185,7 @@ const CommentsModal: React.FC<CommentsModalProps> = ({
         <TouchableOpacity
           style={styles.moreButton}
           onPress={() => handleCommentMore(item)}
+          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
           activeOpacity={0.8}
         >
           <MoreVertical size={16} color="#FFF" />
@@ -193,6 +208,13 @@ const CommentsModal: React.FC<CommentsModalProps> = ({
             <Text style={styles.likeCount}>{item.likes}</Text>
           </TouchableOpacity>
           <Text style={styles.timestamp}>{item.timestamp}</Text>
+
+          <TouchableOpacity
+            style={styles.replyButton}
+            onPress={() => handleViewReplies(item)}
+          >
+            <Text style={styles.replyText}>Reply</Text>
+          </TouchableOpacity>
 
           {item.repliesCount > 0 && (
             <TouchableOpacity
@@ -260,9 +282,13 @@ const CommentsModal: React.FC<CommentsModalProps> = ({
             <View style={styles.header}>
               <View style={styles.handle} />
               <Text style={styles.headerTitle}>
-                {totalComments === 0 && loading
-                  ? "Loading..."
-                  : `${totalComments.toLocaleString()} Comments`}
+                {parentId
+                  ? totalComments === 0 && loading
+                    ? "Loading replies..."
+                    : `${totalComments.toLocaleString()} Replies`
+                  : totalComments === 0 && loading
+                    ? "Loading..."
+                    : `${totalComments.toLocaleString()} Comments`}
               </Text>
               <TouchableOpacity style={styles.closeButton} onPress={onClose}>
                 <X size={24} color="#fff" />
@@ -332,6 +358,17 @@ const CommentsModal: React.FC<CommentsModalProps> = ({
           </View>
         </KeyboardAvoidingView>
       </SafeAreaView>
+
+      {replyTarget ? (
+        <CommentsModal
+          visible={repliesVisible}
+          onClose={() => setRepliesVisible(false)}
+          videoId={videoId}
+          commentsCount={replyTarget.repliesCount}
+          parentId={replyTarget.id}
+          parentUsername={replyTarget.user.username}
+        />
+      ) : null}
     </Modal>
   );
 };
@@ -440,6 +477,16 @@ const styles = StyleSheet.create({
   viewRepliesText: {
     color: "#999",
     fontSize: 12,
+  },
+  replyButton: {
+    marginLeft: 12,
+    paddingVertical: 2,
+    paddingHorizontal: 6,
+  },
+  replyText: {
+    color: "#9CA3AF",
+    fontSize: 12,
+    fontWeight: "600",
   },
   moreButton: {
     paddingHorizontal: 8,

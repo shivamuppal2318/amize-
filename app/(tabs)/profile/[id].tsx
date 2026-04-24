@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
+  Alert,
   View,
   Text,
   StyleSheet,
@@ -137,8 +138,8 @@ const buildMockProfileData = (profileId?: string) => {
     joinedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 365).toISOString(),
     _count: {
       videos: fallbackVideos.length,
-      following: 128,
-      followers: 12400,
+      following: 0,
+      followers: 0,
     },
   };
 
@@ -158,6 +159,7 @@ export default function ProfilePage() {
   const [user, setUser] = useState<User | null>(null);
   const [isOwnProfile, setIsOwnProfile] = useState(false);
   const [isFollowing, setIsFollowing] = useState(false);
+  const [isMockProfile, setIsMockProfile] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>("videos");
   const [videos, setVideos] = useState<Video[]>([]);
   const [likes, setLikes] = useState<Video[]>([]);
@@ -186,6 +188,7 @@ export default function ProfilePage() {
       const isOwn = Boolean(isAuthenticated && authUser?.id && authUser.id === id);
       setIsOwnProfile(isOwn);
       setIsFollowing(false);
+      setIsMockProfile(true);
       setError(null);
     },
     [authUser?.id, id, isAuthenticated]
@@ -204,6 +207,7 @@ export default function ProfilePage() {
         setUser(response.data?.user);
         setIsOwnProfile(response.data.isOwnProfile);
         setIsFollowing(response.data.isFollowing);
+        setIsMockProfile(false);
       } else {
         applyMockProfile("no data");
       }
@@ -423,6 +427,9 @@ export default function ProfilePage() {
   };
 
   const handleOpenConnections = (type: "followers" | "following") => {
+    if (isMockProfile) {
+      return;
+    }
     const profileId = user?.id ?? (id ? String(id) : "");
     router.push({
       pathname: "/(tabs)/profile/connections",
@@ -431,7 +438,28 @@ export default function ProfilePage() {
   };
 
   const handleMoreOptions = () => {
-    console.log("More options");
+    const isOwn = Boolean(isOwnProfile);
+    Alert.alert(
+      "Profile options",
+      isMockProfile ? "Some actions are unavailable while offline." : undefined,
+      [
+        ...(isOwn
+          ? [
+              { text: "Settings", onPress: () => router.push("/settings") },
+              ...(canAccessAdmin
+                ? [{ text: "Admin", onPress: () => router.push("/admin") }]
+                : []),
+            ]
+          : [
+              {
+                text: "Report user",
+                onPress: () => Alert.alert("Reported", "Thanks — we’ll review this account."),
+              },
+            ]),
+        { text: "Cancel", style: "cancel" },
+      ],
+      { cancelable: true }
+    );
   };
 
   const handleEditProfile = () => {
@@ -442,14 +470,18 @@ export default function ProfilePage() {
     router.push("/admin");
   };
 
-  const formatNumber = (num: number) => {
-    if (num >= 1000000) {
-      return (num / 1000000)?.toFixed(1) + "M";
+  const formatNumber = (num?: number | null) => {
+    if (isMockProfile) {
+      return "—";
     }
-    if (num >= 1000) {
-      return (num / 1000)?.toFixed(1) + "K";
+    const safe = typeof num === "number" && Number.isFinite(num) ? num : 0;
+    if (safe >= 1000000) {
+      return (safe / 1000000)?.toFixed(1) + "M";
     }
-    return num?.toString();
+    if (safe >= 1000) {
+      return (safe / 1000)?.toFixed(1) + "K";
+    }
+    return safe.toString();
   };
 
   const formatDuration = (seconds: number) => {
@@ -1046,7 +1078,10 @@ export default function ProfilePage() {
                           <MessageCircle size={20} color="white" />
                         </TouchableOpacity>
 
-                        <TouchableOpacity style={styles.shareButton}>
+                        <TouchableOpacity
+                          style={styles.shareButton}
+                          onPress={handleMoreOptions}
+                        >
                           <Share size={20} color="white" />
                         </TouchableOpacity>
                       </>

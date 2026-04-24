@@ -1,4 +1,10 @@
-import { SERVER_URL } from "@/lib/settings/constants";
+import { API_URL, SERVER_URL } from "@/lib/settings/constants";
+
+const DEFAULT_MEDIA_BASE_URL = (() => {
+  const api = String(API_URL || "").replace(/\/+$/, "");
+  const withoutApiSuffix = api.replace(/\/api$/i, "");
+  return withoutApiSuffix || String(SERVER_URL || "").replace(/\/+$/, "");
+})();
 
 export function sanitizeMediaUri(uri: string): string {
     if (!uri) {
@@ -26,7 +32,7 @@ export function sanitizeMediaUri(uri: string): string {
  */
 export function resolveRemoteMediaUri(
   uri?: string | null,
-  baseUrl: string = SERVER_URL
+  baseUrl: string = DEFAULT_MEDIA_BASE_URL
 ): string {
   if (!uri) return "";
 

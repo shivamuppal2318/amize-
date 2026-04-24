@@ -290,6 +290,8 @@ const VideoItemNative: React.FC<VideoItemProps> = ({
   // Component state - minimal reactive state
   const [isLiked, setIsLiked] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [playbackError, setPlaybackError] = useState<string | null>(null);
+  const [hasRenderedFirstFrame, setHasRenderedFirstFrame] = useState(false);
   const [shareModalVisible, setShareModalVisible] = useState(false);
   const [commentsModalVisible, setCommentsModalVisible] = useState(false);
   const [reportModalVisible, setReportModalVisible] = useState(false);
@@ -342,8 +344,9 @@ const VideoItemNative: React.FC<VideoItemProps> = ({
   );
 
   // Listen to player events with throttling
-  const { status } = useEvent(player, "statusChange", {
+  const { status, error: statusError } = useEvent(player, "statusChange", {
     status: player.status,
+    error: undefined,
   });
   const { isPlaying } = useEvent(player, "playingChange", {
     isPlaying: player.playing,
@@ -383,12 +386,15 @@ const VideoItemNative: React.FC<VideoItemProps> = ({
         case "loading":
           setIsLoading(true);
           playerReady.current = false;
+          setPlaybackError(null);
+          setHasRenderedFirstFrame(false);
           log(`⏳ Video loading`);
           break;
 
         case "readyToPlay":
           setIsLoading(false);
           playerReady.current = true;
+          setPlaybackError(null);
           log(`✅ Video ready to play`);
 
           // Notify parent that video is buffered
@@ -417,7 +423,12 @@ const VideoItemNative: React.FC<VideoItemProps> = ({
         case "error":
           setIsLoading(false);
           playerReady.current = false;
-          log(`❌ Video error`);
+          setPlaybackError(statusError?.message || "Unable to play this video");
+          log(`❌ Video error`, statusError);
+          captureException(statusError || new Error("expo-video unknown error"), {
+            tags: { scope: "VideoItemNative" },
+            extra: { videoId: item.id, videoUri: item.video?.uri },
+          });
           break;
 
         default:
@@ -713,17 +724,29 @@ const VideoItemNative: React.FC<VideoItemProps> = ({
         <VideoView
           style={styles.video}
           player={player}
+          surfaceType={Platform.OS === "android" ? "textureView" : undefined}
           allowsFullscreen={false}
           allowsPictureInPicture={false}
           nativeControls={false}
           contentFit="cover"
+          useExoShutter={false}
           onFirstFrameRender={() => {
             if (isMounted.current) {
               setIsLoading(false);
+              setPlaybackError(null);
+              setHasRenderedFirstFrame(true);
               log(`🎬 First frame rendered`);
             }
           }}
         />
+
+        {(!hasRenderedFirstFrame || playbackError) && (
+          <Image
+            source={{ uri: item.video?.poster || item.video?.uri }}
+            style={styles.posterImage}
+            resizeMode="cover"
+          />
+        )}
 
         {/* Overlay for better text visibility */}
         <View style={styles.overlay} />
@@ -746,6 +769,12 @@ const VideoItemNative: React.FC<VideoItemProps> = ({
                 {forcePause ? "Video paused" : "Tap to play"}
               </Text>
             )}
+          </View>
+        )}
+
+        {!!playbackError && (
+          <View style={styles.pauseContainer}>
+            <Text style={styles.pauseReasonText}>{playbackError}</Text>
           </View>
         )}
       </TouchableOpacity>
