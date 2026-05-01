@@ -582,12 +582,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         // Get device info
         const deviceDetails = await getFullDeviceDetails();
 
+        console.log("[AuthContext] Register request (sanitized):", {
+          username: userData.username,
+          email: userData.email,
+          phoneNumber: userData.phoneNumber,
+          hasPassword: Boolean(userData.password),
+          hasDob: Boolean(userData.dateOfBirth),
+          hasFirstName: Boolean(userData.firstName),
+          hasLastName: Boolean(userData.lastName),
+        });
+
         // Call register API
         const response = await authApi.register({
           ...userData,
           ...deviceDetails,
         });
-        console.log("[AuthContext] Registered user:", response);
+        console.log("[AuthContext] Register response:", {
+          success: response?.success,
+          message: response?.message,
+          hasToken: Boolean(response?.token),
+          hasRefreshToken: Boolean(response?.refreshToken),
+          userId: response?.user?.id,
+          verified: response?.user?.verified,
+          verificationCodeProvided: Boolean(response?.verificationCode),
+        });
 
         if (response.success) {
           console.log(
@@ -602,6 +620,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
               response.user,
               response.token,
               response.refreshToken
+            );
+          } else {
+            console.warn(
+              "[AuthContext] Register succeeded but did not return tokens/user. Signup may require OTP screen.",
+              {
+                hasToken: Boolean(response.token),
+                hasRefreshToken: Boolean(response.refreshToken),
+                hasUser: Boolean(response.user),
+              }
             );
           }
 
