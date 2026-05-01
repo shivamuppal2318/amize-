@@ -18,6 +18,7 @@ import {
 } from "react-native";
 import { X, Heart, Send, MoreVertical } from "lucide-react-native";
 import useComments from "@/hooks/useComments";
+import { useAuth } from "@/hooks/useAuth";
 import { UIComment } from "@/lib/adapters/videoAdapter";
 
 const { width, height } = Dimensions.get("window");
@@ -49,14 +50,14 @@ const CommentsModal: React.FC<CommentsModalProps> = ({
     loadMoreComments,
     refreshComments,
     addComment,
+    deleteComment,
     likeComment,
   } = useComments({
     videoId,
     parentId,
     autoLoad: false, // We'll load when the modal becomes visible
   });
-
-  console.log(comments);
+  const { user } = useAuth();
 
   const [commentText, setCommentText] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -133,24 +134,65 @@ const CommentsModal: React.FC<CommentsModalProps> = ({
     setRepliesVisible(true);
   };
 
+  const handleDeleteComment = async (comment: UIComment) => {
+    try {
+      await deleteComment(comment.id);
+    } catch (deleteError: any) {
+      Alert.alert(
+        "Delete failed",
+        deleteError?.response?.data?.message ||
+          deleteError?.message ||
+          "Unable to delete this comment right now."
+      );
+    }
+  };
+
   const handleCommentMore = (comment: UIComment) => {
+    const isOwnComment = comment.user.id === user?.id;
+    const actions = [
+      {
+        text: "Reply",
+        onPress: () => handleViewReplies(comment),
+      },
+    ];
+
+    if (isOwnComment) {
+      actions.push({
+        text: "Delete",
+        onPress: () => {
+          Alert.alert(
+            "Delete comment",
+            "This will permanently remove your comment.",
+            [
+              { text: "Cancel", style: "cancel" },
+              {
+                text: "Delete",
+                style: "destructive",
+                onPress: () => {
+                  handleDeleteComment(comment).catch(() => {
+                    // Error handled in helper.
+                  });
+                },
+              },
+            ]
+          );
+        },
+      } as any);
+    } else {
+      actions.push({
+        text: "Report",
+        onPress: () => {
+          Alert.alert("Reported", "Thanks — we’ll review this comment.");
+        },
+      } as any);
+    }
+
+    actions.push({ text: "Cancel", style: "cancel" } as any);
+
     Alert.alert(
       "Comment",
       `@${comment.user.username}`,
-      [
-        {
-          text: "Reply",
-          onPress: () => handleViewReplies(comment),
-        },
-        {
-          text: "Report",
-          onPress: () => {
-            // Placeholder until backend/report flow exists
-            Alert.alert("Reported", "Thanks — we’ll review this comment.");
-          },
-        },
-        { text: "Cancel", style: "cancel" },
-      ],
+      actions,
       { cancelable: true }
     );
   };

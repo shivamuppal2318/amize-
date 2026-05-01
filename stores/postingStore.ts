@@ -2,11 +2,23 @@ import { create } from 'zustand';
 
 export type MediaType = 'photo' | 'video';
 export type PostVisibility = 'public' | 'followers' | 'private';
+export type PhotoFilterName =
+    | 'none'
+    | 'sepia'
+    | 'grayscale'
+    | 'cool'
+    | 'warm'
+    | 'vintage'
+    | 'teal'
+    | 'pink'
+    | 'purple'
+    | 'orange';
 
 export interface MediaItem {
     id?: string;
     uri: string;
     type: MediaType;
+    mimeType?: string;
     width: number;
     height: number;
     size: number;
@@ -17,6 +29,7 @@ export interface MediaItem {
     selectedSongId?: string;
     postSong?: string;
     songTitle?: string;
+    filterName?: PhotoFilterName;
     webFile?: any;
 }
 

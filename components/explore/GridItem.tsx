@@ -25,7 +25,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { MixedFeedItem } from "@/lib/api/types/video";
 import { isDemoMode } from "@/lib/release/releaseConfig";
 import { canUseLocalDemoAuth } from "@/lib/auth/localDemoAuth";
-import { resolveRemoteMediaUri } from "@/utils/mediaHelpers";
+import { getSafePosterUri, getSafeVideoUri } from "@/utils/mediaHelpers";
 
 interface GridItemProps {
     item: MixedFeedItem;
@@ -113,12 +113,13 @@ const GridItem: React.FC<GridItemProps> = memo(({
     const VideoItem = ({ video }: { video: any }) => {
         // Create video player using Expo Video
         const videoSource: VideoSource = {
-            uri: resolveRemoteMediaUri(video.videoUrl || video.url || video.thumbnailUrl)
+            uri: getSafeVideoUri(video.videoUrl || video.url || video.thumbnailUrl, video.id || item.id)
         };
         const player = useVideoPlayer(videoSource, (player) => {
             player.loop = true;
             player.muted = true;
         });
+        const posterUri = getSafePosterUri(video.thumbnailUrl || video.poster || video.videoUrl, video.id || item.id);
 
         // Handle first frame render
         const handleFirstFrameRender = useCallback(() => {
@@ -170,6 +171,14 @@ const GridItem: React.FC<GridItemProps> = memo(({
                         contentFit="cover"
                         onFirstFrameRender={handleFirstFrameRender}
                     />
+
+                    {!videoReady && (
+                        <Image
+                            source={{ uri: posterUri }}
+                            style={styles.videoThumbnail}
+                            resizeMode="cover"
+                        />
+                    )}
 
                     {/* Loading indicator */}
                     {isLoading && (

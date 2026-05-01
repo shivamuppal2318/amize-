@@ -11,7 +11,7 @@ const StyledSafeAreaView = SafeAreaView;
 const StyledTouchableOpacity = TouchableOpacity;
 
 export default function ResetMethodScreen() {
-    const [selectedMethod, setSelectedMethod] = useState<'sms' | 'email'>('sms');
+    const [selectedMethod, setSelectedMethod] = useState<'sms' | 'email'>('email');
     const [identifier, setIdentifier] = useState('');
     const [loading, setLoading] = useState(false);
 
@@ -36,6 +36,14 @@ export default function ResetMethodScreen() {
     const handleContinue = async () => {
         if (!identifier.trim()) {
             Alert.alert('Missing Contact', 'Enter your email or phone first.');
+            return;
+        }
+
+        if (selectedMethod === 'sms') {
+            Alert.alert(
+                'SMS Reset Unavailable',
+                'Password reset by SMS is not available in this build yet. Use email reset instead.'
+            );
             return;
         }
 

@@ -20,22 +20,22 @@ export default function LanguageScreen() {
         router.back();
     };
 
-    const handleSelectLanguage = async (language: string) => {
-        const success = await updateLanguage(language);
+    const handleSelectLanguage = async (languageCode: string) => {
+        const success = await updateLanguage(languageCode);
         if (success) {
-            Alert.alert('Success', 'Language updated successfully');
+            Alert.alert(t('common.success'), t('settings.language.updated'));
         }
     };
 
     // Render a language option
     const renderLanguageOption = (language: Language) => {
-        const isSelected = currentLanguage === language.name;
+        const isSelected = currentLanguage === language.code;
 
         return (
             <TouchableOpacity
                 key={language.code}
                 className="flex-row items-center justify-between py-4"
-                onPress={() => handleSelectLanguage(language.name)}
+                onPress={() => handleSelectLanguage(language.code)}
                 accessibilityRole="radio"
                 accessibilityState={{ checked: isSelected }}
                 disabled={isLoading}

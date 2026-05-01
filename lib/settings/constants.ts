@@ -81,10 +81,10 @@ export const FAQ_QUESTIONS = [
 
 export const CONTACT_METHODS = [
   { id: "customer-service", label: "Customer Service", icon: "Headset" },
-  { id: "whatsapp", label: "Whatsapp", icon: "MessageCircle" },
+  { id: "whatsapp", label: "WhatsApp", icon: "MessageCircle" },
   { id: "website", label: "Website", icon: "Globe" },
   { id: "facebook", label: "Facebook", icon: "Facebook" },
-  { id: "twitter", label: "Twitter", icon: "Twitter" },
+  { id: "twitter", label: "X", icon: "Twitter" },
   { id: "instagram", label: "Instagram", icon: "Instagram" },
 ];
 

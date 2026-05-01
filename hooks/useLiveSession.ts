@@ -79,6 +79,10 @@ export function useLiveSession(payload: LiveSessionPayload) {
     });
     const previewIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const telemetryIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+    const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const reconnectAttemptsRef = useRef(0);
+    const isUnmountingRef = useRef(false);
+    const isEndingRef = useRef(false);
 
     const startPreviewSimulation = useCallback(() => {
         if (previewIntervalRef.current) {
@@ -114,7 +118,15 @@ export function useLiveSession(payload: LiveSessionPayload) {
         }
     }, []);
 
+    const clearReconnectTimeout = useCallback(() => {
+        if (reconnectTimeoutRef.current) {
+            clearTimeout(reconnectTimeoutRef.current);
+            reconnectTimeoutRef.current = null;
+        }
+    }, []);
+
     const fallbackToPreview = useCallback((errorMessage?: string) => {
+        clearReconnectTimeout();
         stopPreviewSimulation();
         setState({
             ...buildPreviewState(),
@@ -126,9 +138,237 @@ export function useLiveSession(payload: LiveSessionPayload) {
             telemetry: null,
         });
         startPreviewSimulation();
-    }, [startPreviewSimulation, stopPreviewSimulation]);
+    }, [clearReconnectTimeout, startPreviewSimulation, stopPreviewSimulation]);
+
+    const buildSocketHandlers = useCallback(
+        (
+            sessionId: string,
+            onReconnectRequest: () => void,
+            onFatalReconnectFailure: (message: string) => void
+        ) => ({
+            connect: () => {
+                reconnectAttemptsRef.current = 0;
+                clearReconnectTimeout();
+                setState((current) => ({
+                    ...current,
+                    status: 'live',
+                    error: null,
+                    connectionLabel: 'Connected to live backend',
+                }));
+            },
+            disconnect: () => {
+                if (isUnmountingRef.current || isEndingRef.current) {
+                    return;
+                }
+
+                setState((current) => ({
+                    ...current,
+                    status: 'reconnecting',
+                    connectionLabel: 'Live socket disconnected. Reconnecting...',
+                }));
+                onReconnectRequest();
+            },
+            connectError: (message: string) => {
+                if (isUnmountingRef.current || isEndingRef.current) {
+                    return;
+                }
+
+                onFatalReconnectFailure(message);
+            },
+            viewerCount: (count: number) => {
+                setState((current) => ({
+                    ...current,
+                    viewerCount: count,
+                    session: current.session
+                        ? { ...current.session, viewerCount: count }
+                        : current.session,
+                }));
+            },
+            viewersList: (viewers: Array<{ id: string; username: string }>) => {
+                setState((current) => ({
+                    ...current,
+                    viewers,
+                }));
+            },
+            likeCount: (count: number) => {
+                setState((current) => ({
+                    ...current,
+                    likeCount: count,
+                    session: current.session
+                        ? { ...current.session, likeCount: count }
+                        : current.session,
+                }));
+            },
+            commentReceived: (comment: LiveComment) => {
+                setState((current) => {
+                    const alreadyPresent = current.comments.some(
+                        (existing) => existing.id === comment.id
+                    );
+                    if (alreadyPresent) {
+                        return current;
+                    }
+
+                    return {
+                        ...current,
+                        comments: [...current.comments, comment],
+                        session: current.session
+                            ? {
+                                  ...current.session,
+                                  recentComments: [
+                                      ...(current.session.recentComments ?? []),
+                                      comment,
+                                  ].slice(-10),
+                              }
+                            : current.session,
+                    };
+                });
+            },
+            sessionEnded: () => {
+                clearReconnectTimeout();
+                setState((current) => ({
+                    ...current,
+                    status: 'ended',
+                    connectionLabel: 'Live session ended',
+                    session: current.session
+                        ? { ...current.session, status: 'ended' }
+                        : current.session,
+                }));
+            },
+            sessionUpdated: (session: LiveSession) => {
+                setState((current) => ({
+                    ...current,
+                    status: current.status === 'reconnecting' ? 'live' : current.status,
+                    error: null,
+                    viewerCount: session.viewerCount ?? current.viewerCount,
+                    likeCount: session.likeCount ?? current.likeCount,
+                    comments: session.recentComments ?? current.comments,
+                    session,
+                    hostTransport: current.hostTransport,
+                }));
+            },
+            sessionModerated: (session: LiveSession) => {
+                setState((current) => ({
+                    ...current,
+                    viewerCount: session.viewerCount ?? current.viewerCount,
+                    likeCount: session.likeCount ?? current.likeCount,
+                    comments: session.recentComments ?? current.comments,
+                    session,
+                    hostTransport: current.hostTransport,
+                }));
+            },
+            moderationNotice: (action: LiveModerationAction) => {
+                if (action === 'block' || action === 'remove_viewer') {
+                    clearReconnectTimeout();
+                    liveSocketClient.disconnect();
+                    setState((current) => ({
+                        ...current,
+                        status: 'error',
+                        connectionLabel:
+                            action === 'block'
+                                ? 'You were blocked from this live session'
+                                : 'You were removed from this live session',
+                        error:
+                            action === 'block'
+                                ? 'The host blocked you from this session.'
+                                : 'The host removed you from this session.',
+                    }));
+                    return;
+                }
+
+                if (action === 'mute') {
+                    setState((current) => ({
+                        ...current,
+                        connectionLabel: 'You were muted in this live session',
+                        error: 'The host muted your comments for this session.',
+                    }));
+                }
+            },
+        }),
+        [clearReconnectTimeout]
+    );
+
+    const connectSocket = useCallback(
+        async (
+            sessionId: string,
+            {
+                onReconnectRequest,
+                onFatalReconnectFailure,
+            }: {
+                onReconnectRequest: () => void;
+                onFatalReconnectFailure: (message: string) => void;
+            }
+        ) => {
+            await liveSocketClient.connect(
+                sessionId,
+                buildSocketHandlers(
+                    sessionId,
+                    onReconnectRequest,
+                    onFatalReconnectFailure
+                )
+            );
+        },
+        [buildSocketHandlers]
+    );
+
+    const scheduleReconnect = useCallback(
+        (sessionId: string) => {
+            clearReconnectTimeout();
+
+            const nextAttempt = reconnectAttemptsRef.current + 1;
+            reconnectAttemptsRef.current = nextAttempt;
+
+            if (nextAttempt > 3) {
+                fallbackToPreview('Lost connection to live backend');
+                return;
+            }
+
+            const delayMs = Math.min(15000, 2000 * nextAttempt);
+            reconnectTimeoutRef.current = setTimeout(async () => {
+                if (isUnmountingRef.current || isEndingRef.current) {
+                    return;
+                }
+
+                setState((current) => ({
+                    ...current,
+                    status: 'reconnecting',
+                    connectionLabel: `Reconnecting to live backend (attempt ${nextAttempt}/3)`,
+                }));
+
+                try {
+                    await joinLiveSession(sessionId).catch(() => undefined);
+                    await connectSocket(sessionId, {
+                        onReconnectRequest: () => scheduleReconnect(sessionId),
+                        onFatalReconnectFailure: (message) => {
+                            setState((current) => ({
+                                ...current,
+                                error: message,
+                                connectionLabel: `Reconnect failed. Retrying...`,
+                            }));
+                            scheduleReconnect(sessionId);
+                        },
+                    });
+                } catch (error) {
+                    const message =
+                        error instanceof Error
+                            ? error.message
+                            : 'Unable to reconnect to live backend';
+                    setState((current) => ({
+                        ...current,
+                        error: message,
+                        connectionLabel: 'Reconnect failed. Retrying...',
+                    }));
+                    scheduleReconnect(sessionId);
+                }
+            }, delayMs);
+        },
+        [clearReconnectTimeout, connectSocket, fallbackToPreview]
+    );
 
     const startSession = useCallback(async () => {
+        isUnmountingRef.current = false;
+        isEndingRef.current = false;
+        reconnectAttemptsRef.current = 0;
+        clearReconnectTimeout();
         setState((current) => ({
             ...current,
             status: 'creating',
@@ -159,124 +399,16 @@ export function useLiveSession(payload: LiveSessionPayload) {
                 hostTransport,
                 telemetry: null,
             });
-
             try {
                 await joinLiveSession(session.id);
             } catch {
                 // Keep going. Socket join may still work even if REST join is absent.
             }
 
-            await liveSocketClient.connect(session.id, {
-                connect: () => {
-                    setState((current) => ({
-                        ...current,
-                        status: 'live',
-                        connectionLabel: 'Connected to live backend',
-                    }));
-                },
-                disconnect: () => {
-                    setState((current) => ({
-                        ...current,
-                        connectionLabel: 'Live socket disconnected',
-                    }));
-                },
-                connectError: (message) => {
+            await connectSocket(session.id, {
+                onReconnectRequest: () => scheduleReconnect(session.id),
+                onFatalReconnectFailure: (message) => {
                     fallbackToPreview(message);
-                },
-                viewerCount: (count) => {
-                    setState((current) => ({
-                        ...current,
-                        viewerCount: count,
-                        session: current.session
-                            ? { ...current.session, viewerCount: count }
-                            : current.session,
-                    }));
-                },
-                viewersList: (viewers) => {
-                    setState((current) => ({
-                        ...current,
-                        viewers,
-                    }));
-                },
-                likeCount: (count) => {
-                    setState((current) => ({
-                        ...current,
-                        likeCount: count,
-                        session: current.session
-                            ? { ...current.session, likeCount: count }
-                            : current.session,
-                    }));
-                },
-                commentReceived: (comment) => {
-                    setState((current) => ({
-                        ...current,
-                        comments: [...current.comments, comment],
-                        session: current.session
-                            ? {
-                                  ...current.session,
-                                  recentComments: [
-                                      ...(current.session.recentComments ?? []),
-                                      comment,
-                                  ].slice(-10),
-                              }
-                            : current.session,
-                    }));
-                },
-                sessionEnded: () => {
-                    setState((current) => ({
-                        ...current,
-                        status: 'ended',
-                        connectionLabel: 'Live session ended',
-                        session: current.session
-                            ? { ...current.session, status: 'ended' }
-                            : current.session,
-                    }));
-                },
-                sessionUpdated: (session) => {
-                    setState((current) => ({
-                        ...current,
-                        viewerCount: session.viewerCount ?? current.viewerCount,
-                        likeCount: session.likeCount ?? current.likeCount,
-                        comments: session.recentComments ?? current.comments,
-                        session,
-                        hostTransport: current.hostTransport,
-                    }));
-                },
-                sessionModerated: (session) => {
-                    setState((current) => ({
-                        ...current,
-                        viewerCount: session.viewerCount ?? current.viewerCount,
-                        likeCount: session.likeCount ?? current.likeCount,
-                        comments: session.recentComments ?? current.comments,
-                        session,
-                        hostTransport: current.hostTransport,
-                    }));
-                },
-                moderationNotice: (action) => {
-                    if (action === 'block' || action === 'remove_viewer') {
-                        liveSocketClient.disconnect();
-                        setState((current) => ({
-                            ...current,
-                            status: 'error',
-                            connectionLabel:
-                                action === 'block'
-                                    ? 'You were blocked from this live session'
-                                    : 'You were removed from this live session',
-                            error:
-                                action === 'block'
-                                    ? 'The host blocked you from this session.'
-                                    : 'The host removed you from this session.',
-                        }));
-                        return;
-                    }
-
-                    if (action === 'mute') {
-                        setState((current) => ({
-                            ...current,
-                            connectionLabel: 'You were muted in this live session',
-                            error: 'The host muted your comments for this session.',
-                        }));
-                    }
                 },
             });
         } catch (error) {
@@ -284,9 +416,11 @@ export function useLiveSession(payload: LiveSessionPayload) {
                 error instanceof Error ? error.message : 'Unable to start backend live session';
             fallbackToPreview(message);
         }
-    }, [fallbackToPreview, payload]);
+    }, [clearReconnectTimeout, connectSocket, fallbackToPreview, payload, scheduleReconnect]);
 
     const endSession = useCallback(async () => {
+        isEndingRef.current = true;
+        clearReconnectTimeout();
         stopPreviewSimulation();
         if (telemetryIntervalRef.current) {
             clearInterval(telemetryIntervalRef.current);
@@ -325,7 +459,7 @@ export function useLiveSession(payload: LiveSessionPayload) {
             hostTransport: current.hostTransport,
             telemetry: current.telemetry,
         }));
-    }, [state.mode, state.sessionId, stopPreviewSimulation]);
+    }, [clearReconnectTimeout, state.mode, state.sessionId, stopPreviewSimulation]);
 
     const sendComment = useCallback(
         async (text: string, username: string) => {
@@ -447,6 +581,8 @@ export function useLiveSession(payload: LiveSessionPayload) {
         startSession();
 
         return () => {
+            isUnmountingRef.current = true;
+            clearReconnectTimeout();
             stopPreviewSimulation();
             if (telemetryIntervalRef.current) {
                 clearInterval(telemetryIntervalRef.current);
@@ -454,7 +590,7 @@ export function useLiveSession(payload: LiveSessionPayload) {
             }
             liveSocketClient.disconnect();
         };
-    }, [startSession, stopPreviewSimulation]);
+    }, [clearReconnectTimeout, startSession, stopPreviewSimulation]);
 
     useEffect(() => {
         if (state.mode !== 'backend' || state.status !== 'live' || !state.sessionId) {

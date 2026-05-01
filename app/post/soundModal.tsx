@@ -16,6 +16,8 @@ import axios, { AxiosError } from "axios";
 import { Search, Play, Pause } from "lucide-react-native";
 import { Audio } from "expo-av";
 import { API_URL } from "@/lib/settings/constants";
+import apiClient from "@/lib/api/client";
+import { resolveRemoteMediaUri } from "@/utils/mediaHelpers";
 
 const { width, height } = Dimensions.get("window");
 
@@ -30,6 +32,18 @@ interface Sound {
   createdAt: string;
   updatedAt: string;
 }
+
+const normalizeSoundItem = (sound: Sound): Sound | null => {
+  const normalizedUrl = resolveRemoteMediaUri(sound.soundUrl);
+  if (!normalizedUrl) {
+    return null;
+  }
+
+  return {
+    ...sound,
+    soundUrl: normalizedUrl,
+  };
+};
 
 interface Pagination {
   totalItems: number;
@@ -204,6 +218,12 @@ export default function SoundModal({
 
       setLoadingAudio(null);
       isLoadingAudio.current = false;
+      setSounds((currentSounds) =>
+        currentSounds.filter((currentSound) => currentSound.id !== sound.id)
+      );
+      if (selectedSound?.id === sound.id) {
+        setSelectedSound(null);
+      }
       setPlayingSound(null);
       setIsPlaying(false);
 
@@ -278,22 +298,31 @@ export default function SoundModal({
     setLoading(true);
 
     try {
-      const response = await axios.get<SoundsApiResponse>(
-        `${API_URL}/sound`,
-        {
+      let response;
+
+      try {
+        response = await apiClient.get<SoundsApiResponse>("/sound", {
+          timeout: 10000,
+        });
+      } catch (primaryError) {
+        console.warn("Primary sound endpoint failed, retrying with absolute URL", primaryError);
+        response = await axios.get<SoundsApiResponse>(`${API_URL}/sound`, {
           timeout: 10000,
           headers: {
             "Content-Type": "application/json",
           },
-        }
-      );
+        });
+      }
 
       if (response.data && response.data.success) {
         if (Array.isArray(response.data.sounds)) {
-          setSounds(response.data.sounds);
+          const normalizedSounds = response.data.sounds
+            .map(normalizeSoundItem)
+            .filter((sound): sound is Sound => Boolean(sound));
+          setSounds(normalizedSounds);
           console.log(
             "✅ Sounds fetched successfully:",
-            response.data.sounds.length
+            normalizedSounds.length
           );
         } else {
           throw new Error("Invalid response format: sounds is not an array");

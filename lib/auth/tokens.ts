@@ -132,5 +132,6 @@ export const clearAuthData = async (): Promise<void> => {
         STORAGE_KEYS.USER_DATA,
         STORAGE_KEYS.ONBOARDING_COMPLETED,
         STORAGE_KEYS.SIGNUP_FLOW,
+        STORAGE_KEYS.REGISTRATION_DATA,
     ]);
 };

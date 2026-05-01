@@ -94,13 +94,21 @@ export default function SignInScreen() {
   const [appleLoading, setAppleLoading] = useState(false);
   const [appleAvailable, setAppleAvailable] = useState(false);
   const [hasAutoSubmitted, setHasAutoSubmitted] = useState(false);
-  const isEmailIdentifier = /\S+@\S+\.\S+/.test(email.trim());
+  const trimmedIdentifier = email.trim();
+  const isEmailIdentifier = /\S+@\S+\.\S+/.test(trimmedIdentifier);
+  const normalizedPhoneIdentifier = trimmedIdentifier.replace(/[^\d+]/g, "");
+  const isPhoneIdentifier = /^\+?\d{7,15}$/.test(normalizedPhoneIdentifier);
+  const isUsernameIdentifier = /^[a-zA-Z0-9_.]{3,30}$/.test(trimmedIdentifier);
   const normalizedIdentifier = isEmailIdentifier
-    ? email.trim().toLowerCase()
-    : email.trim().replace(/[^\d+]/g, "");
+    ? trimmedIdentifier.toLowerCase()
+    : isPhoneIdentifier
+      ? normalizedPhoneIdentifier
+      : trimmedIdentifier;
 
   useEffect(() => {
-    if (!isAuthenticated && isInSignupFlow) {
+    // Only clear a stale signup-flow flag when the user is already authenticated.
+    // Unauthenticated users may legitimately still be in the signup journey.
+    if (isAuthenticated && isInSignupFlow) {
       completeSignupFlow().catch((error) => {
         console.error("[SignIn] Failed to clear stale signup flow:", error);
       });
@@ -175,14 +183,15 @@ export default function SignInScreen() {
     return null;
   };
 
+  const showClerkButton = isClerkConfigured();
   const showFacebookButton =
-    Boolean(facebookAuthState.request) && isFacebookConfigured;
+    !showClerkButton && Boolean(facebookAuthState.request) && isFacebookConfigured;
   const googleConfiguredForPlatform = isGoogleConfiguredForCurrentPlatform();
   const googleWebSignInUsable = isGoogleWebSignInUsable();
   const showGoogleButton =
-    googleConfiguredForPlatform || (Platform.OS === "web" && isAnyGoogleProviderConfigured);
-  const showAppleButton = appleAvailable;
-  const showClerkButton = isClerkConfigured();
+    !showClerkButton &&
+    (googleConfiguredForPlatform || (Platform.OS === "web" && isAnyGoogleProviderConfigured));
+  const showAppleButton = !showClerkButton && appleAvailable;
   const showSocialButtons =
     showClerkButton || showFacebookButton || showGoogleButton || showAppleButton;
   const googleButtonDisabled =
@@ -341,15 +350,12 @@ export default function SignInScreen() {
 
   const validateForm = () => {
     const nextErrors = { email: "", password: "" };
-    const trimmedIdentifier = email.trim();
 
     if (!trimmedIdentifier) {
-      nextErrors.email = "Email or phone number is required";
+      nextErrors.email = "Email, phone number, or username is required";
     } else {
-      const normalizedPhone = trimmedIdentifier.replace(/[^\d+]/g, "");
-      const isPhoneIdentifier = /^\+?\d{7,15}$/.test(normalizedPhone);
-      if (!isEmailIdentifier && !isPhoneIdentifier) {
-        nextErrors.email = "Enter a valid email address or phone number";
+      if (!isEmailIdentifier && !isPhoneIdentifier && !isUsernameIdentifier) {
+        nextErrors.email = "Enter a valid email address, phone number, or username";
       }
     }
 
@@ -371,7 +377,7 @@ export default function SignInScreen() {
         return;
       }
 
-      router.replace("/(tabs)");
+      router.replace("/(tabs)/index");
     } catch (e) {
       console.error("Google login failed:", e);
       Alert.alert("Login Failed", "Google authentication failed");
@@ -390,7 +396,7 @@ export default function SignInScreen() {
         return;
       }
 
-      router.replace("/(tabs)");
+      router.replace("/(tabs)/index");
     } catch (e) {
       console.error("Facebook login failed:", e);
       Alert.alert("Login Failed", "Facebook authentication failed");
@@ -441,7 +447,7 @@ export default function SignInScreen() {
         return;
       }
 
-      router.replace("/(tabs)");
+      router.replace("/(tabs)/index");
     } catch (error: any) {
       if (error?.code === "ERR_REQUEST_CANCELED") {
         return;
@@ -466,7 +472,7 @@ export default function SignInScreen() {
     try {
       const result = await login(identifier, secret);
       if (result.success) {
-        router.replace("/(tabs)");
+        router.replace("/(tabs)/index");
         return;
       }
 
@@ -477,7 +483,7 @@ export default function SignInScreen() {
   };
 
   const handleBack = () => {
-    router.replace("/(auth)/get-started");
+    router.replace("/get-started");
   };
 
   const handleForgotPassword = () => {
@@ -485,7 +491,7 @@ export default function SignInScreen() {
   };
 
   const handleSignUp = () => {
-    router.push("/(auth)/sign-up");
+    router.push("/sign-up");
   };
 
   const handleFacebookPress = async () => {
@@ -606,13 +612,13 @@ export default function SignInScreen() {
                   {showClerkButton && (
                     <TouchableOpacity
                       style={styles.googleInlineButton}
-                      onPress={() => router.push("/(auth)/clerk")}
+                      onPress={() => router.push("/clerk")}
                     >
                       <Image source={GOOGLE_ICON} style={styles.googleInlineIcon} />
                       <View style={styles.googleInlineCopy}>
                         <Text style={styles.googleInlineTitle}>Continue with Google</Text>
                         <Text style={styles.googleInlineSubtitle}>
-                          Sign in with Google through Clerk
+                          Google, Facebook, X, and Apple through Clerk
                         </Text>
                       </View>
                     </TouchableOpacity>
@@ -659,7 +665,7 @@ export default function SignInScreen() {
                 </View>
               )}
 
-              {showGoogleButton && !showClerkButton && Platform.OS === "web" && (
+              {showGoogleButton && Platform.OS === "web" && (
                 <View style={styles.providerStatusCard}>
                   <Text style={styles.providerStatusTitle}>Google web status</Text>
                   <Text style={styles.providerStatusText}>{googleStatusMessage}</Text>
@@ -674,7 +680,6 @@ export default function SignInScreen() {
                 accessibilityRole="button"
               >
                   <Text style={styles.footerLink}>
-                    {" "}
                     {t("auth.signIn.signUp")}
                   </Text>
                 </TouchableOpacity>

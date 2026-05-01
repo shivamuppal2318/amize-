@@ -34,11 +34,12 @@ import {
 } from "lucide-react-native";
 import { Audio } from "expo-av";
 import { useCameraPermissions } from "@/hooks/useCameraPermissions";
-import { usePostingStore } from "@/stores/postingStore";
+import { PhotoFilterName, usePostingStore } from "@/stores/postingStore";
 import { useToast } from "@/hooks/useToast";
 import { SafeAreaView } from "react-native-safe-area-context";
 import SoundModal from "./soundModal";
 import { Sound } from "@/types/addSound";
+import { getPhotoFilterPreviewLayers } from "@/utils/photoFilters";
 // import ARCameraView from './ARCameraView';
 
 const { width, height } = Dimensions.get("window");
@@ -81,18 +82,7 @@ export default function CameraScreen() {
   );
 
   const [showFilters, setShowFilters] = useState(false);
-  const [filter, setFilter] = useState<
-    | "none"
-    | "sepia"
-    | "grayscale"
-    | "cool"
-    | "warm"
-    | "vintage"
-    | "teal"
-    | "pink"
-    | "purple"
-    | "orange"
-  >("none");
+  const [filter, setFilter] = useState<PhotoFilterName>("none");
 
   const filters: { name: string; color: string }[] = [
     { name: "none", color: "transparent" },
@@ -248,20 +238,44 @@ export default function CameraScreen() {
   }, [isRecording]);
 
   const getFileSize = async (fileUri: string): Promise<number> => {
-    const info = await FileSystem.getInfoAsync(fileUri);
-    return info.exists && "size" in info ? info.size ?? 0 : 0;
+    try {
+      const info = await FileSystem.getInfoAsync(fileUri);
+      return info.exists && "size" in info ? info.size ?? 0 : 0;
+    } catch (error) {
+      console.warn("[Post Camera] Failed to read file size, defaulting to 0", {
+        fileUri,
+        error,
+      });
+      return 0;
+    }
   };
 
-  const getFilterColor = (filterName: string) => {
-    switch (filterName) {
-      case "sepia":
-        return "rgba(112, 66, 20, 0.3)";
-      case "grayscale":
-        return "rgba(255, 255, 255, 0.5)";
-      case "cool":
-        return "rgba(0, 128, 255, 0.2)";
-      default:
-        return "transparent";
+  const persistCapturedMedia = async (
+    sourceUri: string,
+    fileName: string
+  ): Promise<string> => {
+    const cacheDirectory =
+      FileSystem.cacheDirectory ?? FileSystem.documentDirectory;
+
+    if (!cacheDirectory) {
+      return sourceUri;
+    }
+
+    const destinationUri = `${cacheDirectory}${fileName}`;
+
+    try {
+      await FileSystem.copyAsync({
+        from: sourceUri,
+        to: destinationUri,
+      });
+      return destinationUri;
+    } catch (error) {
+      console.warn("[Post Camera] Failed to copy captured media to cache", {
+        sourceUri,
+        destinationUri,
+        error,
+      });
+      return sourceUri;
     }
   };
 
@@ -307,8 +321,7 @@ export default function CameraScreen() {
 
       const timestamp = new Date().getTime();
       const fileName = `photo_${timestamp}.jpg`;
-      const fileUri = `${(FileSystem as any).cacheDirectory ?? ""}${fileName}`;
-      await FileSystem.copyAsync({ from: filteredPhoto.uri, to: fileUri });
+      const fileUri = await persistCapturedMedia(filteredPhoto.uri, fileName);
 
       addMedia({
         uri: fileUri,
@@ -321,6 +334,7 @@ export default function CameraScreen() {
         selectedSongId: selectedSongId,
         soundId: soundId,
         songTitle: songTitle,
+        filterName: filter,
       });
 
       router.push("/post/edit");
@@ -343,7 +357,6 @@ export default function CameraScreen() {
     try {
       await pauseMusic();
       setIsRecording(true);
-      setProcessingCapture(true);
       cameraRef.current
         .recordAsync({
           maxDuration: 60,
@@ -351,8 +364,7 @@ export default function CameraScreen() {
         .then(async (video: any) => {
           const timestamp = new Date().getTime();
           const fileName = `video_${timestamp}.mp4`;
-          const fileUri = `${(FileSystem as any).cacheDirectory ?? ""}${fileName}`;
-          await FileSystem.copyAsync({ from: video.uri, to: fileUri });
+          const fileUri = await persistCapturedMedia(video.uri, fileName);
           addMedia({
             uri: fileUri,
             type: "video",
@@ -366,11 +378,13 @@ export default function CameraScreen() {
             soundId: soundId,
             songTitle: songTitle,
           });
+          setIsRecording(false);
           router.push("/post/edit");
         })
         .catch((error: any) => {
           console.error("Error processing recording:", error);
           toast.show("Error", "Failed to process video: " + error.message);
+          setIsRecording(false);
         })
         .finally(() => {
           setProcessingCapture(false);
@@ -519,14 +533,13 @@ export default function CameraScreen() {
           ref={cameraRef}
         />
 
-        {filter !== "none" && (
+        {getPhotoFilterPreviewLayers(filter).map((layerStyle, index) => (
           <View
-            style={[
-              StyleSheet.absoluteFill,
-              { backgroundColor: getFilterColor(filter), opacity: 0.3 },
-            ]}
+            key={`${filter}-preview-layer-${index}`}
+            pointerEvents="none"
+            style={[StyleSheet.absoluteFill, layerStyle]}
           />
-        )}
+        ))}
 
         <View style={StyleSheet.absoluteFill}>
           <View style={styles.cameraControlsContainer}>
@@ -702,7 +715,10 @@ export default function CameraScreen() {
               )}
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.bottomButton}>
+            <TouchableOpacity
+              style={styles.bottomButton}
+              onPress={toggleFilterMenu}
+            >
               <AlignJustify size={26} color="white" />
               <Text style={styles.bottomButtonText}>Effects</Text>
             </TouchableOpacity>

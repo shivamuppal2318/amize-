@@ -2,7 +2,7 @@
   "expo": {
     "name": "Amize",
     "slug": "shivam",
-    "newArchEnabled": false,
+    "newArchEnabled": true,
     "version": "1.0.1",
     "runtimeVersion": "1.0.1",
     "orientation": "portrait",
@@ -97,14 +97,6 @@
         }
       ],
       [
-        "expo-image-picker",
-        {
-          "photosPermission": "Allow $(PRODUCT_NAME) to access your photos and videos",
-          "cameraPermission": "Allow $(PRODUCT_NAME) to access your camera",
-          "microphonePermission": "Allow $(PRODUCT_NAME) to access your microphone for video capture"
-        }
-      ],
-      [
         "expo-video",
         {
           "supportsBackgroundPlayback": true,
@@ -123,10 +115,10 @@
         "expo-build-properties",
         {
           "ios": {
-            "newArchEnabled": false
+            "newArchEnabled": true
           },
           "android": {
-            "newArchEnabled": false,
+            "newArchEnabled": true,
             "extraGradlePlugins": [
               {
                 "plugin": "com.google.gms.google-services",
@@ -186,12 +178,12 @@
       "admobIosAppId": "",
       "enableLiveStreaming": false,
       "demoMode": false,
-      "allowVerificationBypass": false,
+      "allowVerificationBypass": true,
       "clerkPublishableKey": "pk_test_aW4tcmFwdG9yLTU0LmNsZXJrLmFjY291bnRzLmRldiQ",
       "eas": {
-        "projectId": "36bf88f7-fe19-4382-95e7-3142b8fa1be6"
+        "projectId": "d3b1d201-a075-4f9a-811a-73f7c3b6bd2e"
       }
     },
-    "owner": "sdcsdfdfd"
+    "owner": "shivammmmmmmmuppal"
   }
 }

@@ -1,4 +1,43 @@
+# EAS build upload ignore list (applies to `eas build`, not git)
+# Keep this focused: ignoring required runtime assets will break builds.
+
+# Dependencies / local caches
 node_modules/
-android/build/
-ios/build/
 .expo/
+.metro-health-check*
+
+# Build outputs / exports
+dist*/
+web-build/
+*.log
+expo-*.log
+
+# Android / iOS build artifacts (safe to exclude from upload)
+android/build/
+android/app/build/
+android/.gradle/
+android/.idea/
+ios/build/
+ios/DerivedData/
+ios/Pods/
+
+# Local-only directories
+.idea/
+.initial/
+extracted_apks/
+
+# Local config files
+local.properties
+android/local.properties
+
+# Secrets / signing material (should be provided via EAS credentials/secrets)
+.env
+.env.*
+!.env.release.example
+*.jks
+*.keystore
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.pem

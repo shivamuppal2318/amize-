@@ -40,14 +40,15 @@ export default function GetStartedScreen() {
     const { t } = useI18n();
     const { isAuthenticated, isInSignupFlow, completeSignupFlow } = useAuth();
     const demoMode = isDemoMode();
-    const showFacebookLogin = isFacebookConfigured;
+    const showClerkLogin = isClerkConfigured();
+    const showFacebookLogin = !showClerkLogin && isFacebookConfigured;
     const hasCurrentPlatformGoogleConfig = isGoogleConfiguredForCurrentPlatform();
     const googleWebSignInUsable = isGoogleWebSignInUsable();
     const showGoogleLogin =
-      hasCurrentPlatformGoogleConfig ||
-      (Platform.OS === 'web' && isAnyGoogleProviderConfigured);
-    const showAppleLogin = Platform.OS === 'ios';
-    const showClerkLogin = isClerkConfigured();
+      !showClerkLogin &&
+      (hasCurrentPlatformGoogleConfig ||
+      (Platform.OS === 'web' && isAnyGoogleProviderConfigured));
+    const showAppleLogin = !showClerkLogin && Platform.OS === 'ios';
     const showSocialLogin =
       showClerkLogin || showFacebookLogin || showGoogleLogin || showAppleLogin;
     const webGoogleStatusMessage =
@@ -58,7 +59,9 @@ export default function GetStartedScreen() {
             : 'Google sign-in is not configured for this platform in this build.';
 
     useEffect(() => {
-        if (!isAuthenticated && isInSignupFlow) {
+        // Only clear a stale signup-flow flag when the user is already authenticated.
+        // Unauthenticated users may legitimately still be in the signup journey.
+        if (isAuthenticated && isInSignupFlow) {
             completeSignupFlow().catch((error) => {
                 console.error('[GetStarted] Failed to clear stale signup flow:', error);
             });
@@ -66,12 +69,12 @@ export default function GetStartedScreen() {
     }, [completeSignupFlow, isAuthenticated, isInSignupFlow]);
 
     const handleContinueWithEmail = () => {
-        router.push('/(auth)/sign-up');
+        router.push('/sign-up');
         // router.push('/account-setup/verify');
     };
 
     const handleSignIn = () => {
-        router.push('/(auth)/sign-in');
+        router.push('/sign-in');
     };
 
     const handleFacebookLogin = () => {
@@ -81,7 +84,7 @@ export default function GetStartedScreen() {
         }
 
         router.push({
-            pathname: '/(auth)/sign-in',
+            pathname: '/sign-in',
             params: {
                 autoProvider: 'facebook',
             },
@@ -103,7 +106,7 @@ export default function GetStartedScreen() {
         }
 
         router.push({
-            pathname: '/(auth)/sign-in',
+            pathname: '/sign-in',
             params: {
                 autoProvider: 'google',
             },
@@ -112,7 +115,7 @@ export default function GetStartedScreen() {
 
     const handleAppleLogin = () => {
         router.push({
-            pathname: '/(auth)/sign-in',
+            pathname: '/sign-in',
             params: {
                 autoProvider: 'apple',
             },
@@ -196,7 +199,7 @@ export default function GetStartedScreen() {
                                 <View style={{ width: '100%', maxWidth: 400, marginBottom: 32 }}>
                                     {showClerkLogin && (
                                         <TouchableOpacity
-                                            onPress={() => router.push('/(auth)/clerk')}
+                                            onPress={() => router.push('/clerk')}
                                             style={styles.googleButton}
                                         >
                                             <Image
@@ -206,7 +209,7 @@ export default function GetStartedScreen() {
                                             <View style={styles.googleCopy}>
                                                 <Text style={styles.googleTitle}>Continue with Google</Text>
                                                 <Text style={styles.googleSubtitle}>
-                                                    Sign in with Google through Clerk
+                                                    Google, Facebook, X, and Apple through Clerk
                                                 </Text>
                                             </View>
                                         </TouchableOpacity>
@@ -267,7 +270,7 @@ export default function GetStartedScreen() {
                                         </TouchableOpacity>
                                     )}
 
-                                    {showGoogleLogin && !showClerkLogin && Platform.OS === 'web' && (
+                                    {showGoogleLogin && Platform.OS === 'web' && (
                                         <View style={styles.statusCard}>
                                             <Text style={styles.statusTitle}>Google web status</Text>
                                             <Text style={styles.statusText}>{webGoogleStatusMessage}</Text>

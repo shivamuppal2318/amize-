@@ -3,6 +3,7 @@ import {
   isAnyGoogleProviderConfigured,
   isFacebookConfigured,
 } from '@/lib/auth/providerConfig';
+import { isClerkConfigured } from '@/lib/auth/clerkConfig';
 import {
     View,
     Text,
@@ -21,7 +22,9 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { useAuth } from '@/hooks/useAuth';
 import { useRegistration } from '@/context/RegistrationContext';
+import { useI18n } from '@/hooks/useI18n';
 import { appLinks } from '@/lib/config/appLinks';
+import { canBypassVerification } from '@/lib/release/releaseConfig';
 import { LinearGradient } from 'expo-linear-gradient';
 
 // @ts-ignore
@@ -39,10 +42,7 @@ const APPLE_ICON = AppleIcon;
 const AMIZE_LOGO = AmizeLogo;
 
 const showProviderNotConfigured = (provider: 'Google' | 'Facebook') => {
-  Alert.alert(
-    `${provider} Signup`,
-    `${provider} signup is not configured for this build yet.`
-  );
+  Alert.alert(`${provider} Signup`, `${provider} signup is not configured for this build yet.`);
 };
 
 type PasswordChecks = {
@@ -62,17 +62,27 @@ const getPasswordChecks = (value: string): PasswordChecks => ({
 });
 
 export default function SignUpScreen() {
-    const showFacebookSignup = isFacebookConfigured;
-    const showGoogleSignup = isAnyGoogleProviderConfigured;
-    const showAppleSignup = Platform.OS === 'ios';
+    const { t } = useI18n();
+    const showClerkSignup = isClerkConfigured();
+    const showFacebookSignup = !showClerkSignup && isFacebookConfigured;
+    const showGoogleSignup = !showClerkSignup && isAnyGoogleProviderConfigured;
+    const showAppleSignup = !showClerkSignup && Platform.OS === 'ios';
     const showSocialSignup = showFacebookSignup || showGoogleSignup || showAppleSignup;
 
-    const { loading, startSignupFlow, isAuthenticated, isInSignupFlow, completeSignupFlow } = useAuth();
+    const {
+        loading,
+        isAuthenticated,
+        isInSignupFlow,
+        completeSignupFlow,
+        startSignupFlow,
+    } = useAuth();
     const {
         registrationData,
         updateRegistrationData,
         validateField,
         registrationErrors,
+        setCurrentStep,
+        clearRegistrationData,
     } = useRegistration();
 
     const [processingSignup, setProcessingSignup] = useState(false);
@@ -86,17 +96,20 @@ export default function SignUpScreen() {
 
     const passwordRequirements = useMemo(
         () => [
-            { key: 'length', text: 'At least 8 characters', check: passwordChecks.length },
-            { key: 'uppercase', text: 'At least one uppercase letter', check: passwordChecks.uppercase },
-            { key: 'lowercase', text: 'At least one lowercase letter', check: passwordChecks.lowercase },
-            { key: 'number', text: 'At least one number', check: passwordChecks.number },
-            { key: 'special', text: 'At least one special character', check: passwordChecks.special },
+            { key: 'length', text: t('auth.signUp.requirement.length'), check: passwordChecks.length },
+            { key: 'uppercase', text: t('auth.signUp.requirement.uppercase'), check: passwordChecks.uppercase },
+            { key: 'lowercase', text: t('auth.signUp.requirement.lowercase'), check: passwordChecks.lowercase },
+            { key: 'number', text: t('auth.signUp.requirement.number'), check: passwordChecks.number },
+            { key: 'special', text: t('auth.signUp.requirement.special'), check: passwordChecks.special },
         ],
-        [passwordChecks]
+        [passwordChecks, t]
     );
 
     useEffect(() => {
-        if (!isAuthenticated && isInSignupFlow) {
+        // If a signed-in user somehow lands back on sign-up with a stale signup-flow flag,
+        // clear it. Do not clear the flag for unauthenticated users because that is the
+        // expected state during the multi-step registration flow.
+        if (isAuthenticated && isInSignupFlow) {
             completeSignupFlow().catch((error) => {
                 console.error('[SignUp] Failed to clear stale signup flow:', error);
             });
@@ -133,7 +146,7 @@ export default function SignUpScreen() {
         const formValid = validateForm();
 
         if (!acceptedTerms) {
-            setTermsError('Agree to the Terms of Service and Privacy Policy to continue.');
+            setTermsError(t('auth.signUp.termsError'));
         } else if (termsError) {
             setTermsError('');
         }
@@ -144,10 +157,21 @@ export default function SignUpScreen() {
 
         try {
             setProcessingSignup(true);
+            const username = (registrationData.username || '').trim();
+            const email = (registrationData.email || '').trim();
+            const password = registrationData.password || '';
+            const confirmPassword = registrationData.confirmPassword || '';
+            updateRegistrationData({
+                username,
+                email,
+                password,
+                confirmPassword,
+            });
             await startSignupFlow();
-            router.replace('/account-setup/birthday');
+            setCurrentStep(2);
+            router.push('/account-setup/birthday');
         } catch (error) {
-            Alert.alert('Error', 'An unexpected error occurred. Please try again.');
+            Alert.alert(t('auth.signUp.errorTitle'), t('auth.signUp.genericError'));
         } finally {
             setProcessingSignup(false);
         }
@@ -168,39 +192,38 @@ export default function SignUpScreen() {
             documentName === 'Terms of Service'
                 ? appLinks.termsOfServiceUrl
                 : appLinks.privacyPolicyUrl;
+        const unavailableMessage = t('auth.signUp.documentOpenUnavailable').replace('{{document}}', documentName);
+        const failedMessage = t('auth.signUp.documentOpenFailed').replace('{{document}}', documentName);
 
         try {
             const supported = await Linking.canOpenURL(targetUrl);
 
             if (!supported) {
-                Alert.alert(
-                    documentName,
-                    `Unable to open ${documentName} on this device right now.`
-                );
+                Alert.alert(documentName, unavailableMessage);
                 return;
             }
 
             await Linking.openURL(targetUrl);
         } catch (error) {
-            Alert.alert(
-                documentName,
-                `Unable to open ${documentName} right now.`
-            );
+            Alert.alert(documentName, failedMessage);
         }
     };
 
     const handleSignIn = () => {
-        router.push('/(auth)/sign-in');
+        router.push('/sign-in');
     };
 
     const handleFacebookSignup = () => {
         if (!isFacebookConfigured) {
-            showProviderNotConfigured('Facebook');
+            Alert.alert(
+                t('auth.signUp.providerTitle'),
+                t('auth.signUp.providerNotConfigured').replace('{{provider}}', 'Facebook')
+            );
             return;
         }
 
         router.push({
-            pathname: '/(auth)/sign-in',
+            pathname: '/sign-in',
             params: {
                 autoProvider: 'facebook',
             },
@@ -209,12 +232,15 @@ export default function SignUpScreen() {
 
     const handleGoogleSignup = () => {
         if (!isAnyGoogleProviderConfigured) {
-            showProviderNotConfigured('Google');
+            Alert.alert(
+                t('auth.signUp.providerTitle'),
+                t('auth.signUp.providerNotConfigured').replace('{{provider}}', 'Google')
+            );
             return;
         }
 
         router.push({
-            pathname: '/(auth)/sign-in',
+            pathname: '/sign-in',
             params: {
                 autoProvider: 'google',
             },
@@ -223,11 +249,15 @@ export default function SignUpScreen() {
 
     const handleAppleSignup = () => {
         router.push({
-            pathname: '/(auth)/sign-in',
+            pathname: '/sign-in',
             params: {
                 autoProvider: 'apple',
             },
         });
+    };
+
+    const handleClerkSignup = () => {
+        router.push('/clerk');
     };
 
     if (processingSignup) {
@@ -249,7 +279,7 @@ export default function SignUpScreen() {
                         fontFamily: 'Figtree',
                     }}
                 >
-                    Preparing your profile setup...
+                    {t('auth.signUp.preparingTitle')}
                 </Text>
                 <Text
                     style={{
@@ -260,7 +290,7 @@ export default function SignUpScreen() {
                         fontFamily: 'Figtree',
                     }}
                 >
-                    Please wait while we prepare your account setup process.
+                    {t('auth.signUp.preparingText')}
                 </Text>
             </SafeAreaView>
         );
@@ -337,14 +367,26 @@ export default function SignUpScreen() {
                                         textAlign: 'center',
                                     }}
                                 >
-                                    Create your Account
+                                    {t('auth.signUp.title')}
+                                </Text>
+                                <Text
+                                    style={{
+                                        color: '#9CA3AF',
+                                        fontSize: 15,
+                                        lineHeight: 22,
+                                        textAlign: 'center',
+                                        fontFamily: 'Figtree',
+                                        maxWidth: 320,
+                                    }}
+                                >
+                                    {t('auth.signUp.subtitle')}
                                 </Text>
                             </View>
 
                             <View style={{ width: '100%', maxWidth: 400 }}>
                                 <Input
-                                    label="Username"
-                                    placeholder="Enter your username"
+                                    label={t('auth.signUp.usernameLabel')}
+                                    placeholder={t('auth.signUp.usernamePlaceholder')}
                                     value={registrationData.username || ''}
                                     onChangeText={handleUsernameChange}
                                     autoCapitalize="none"
@@ -354,8 +396,8 @@ export default function SignUpScreen() {
                                 />
 
                                 <Input
-                                    label="Email"
-                                    placeholder="Enter your email"
+                                    label={t('auth.signUp.emailLabel')}
+                                    placeholder={t('auth.signUp.emailPlaceholder')}
                                     value={registrationData.email || ''}
                                     onChangeText={handleEmailChange}
                                     keyboardType="email-address"
@@ -366,8 +408,8 @@ export default function SignUpScreen() {
                                 />
 
                                 <Input
-                                    label="Password"
-                                    placeholder="Enter your password"
+                                    label={t('auth.signUp.passwordLabel')}
+                                    placeholder={t('auth.signUp.passwordPlaceholder')}
                                     value={registrationData.password || ''}
                                     onChangeText={handlePasswordChange}
                                     secureTextEntry
@@ -396,7 +438,7 @@ export default function SignUpScreen() {
                                                 fontWeight: '500',
                                             }}
                                         >
-                                            Password requirements:
+                                            {t('auth.signUp.passwordRequirements')}
                                         </Text>
 
                                         <View style={{ marginLeft: 8 }}>
@@ -440,8 +482,8 @@ export default function SignUpScreen() {
                                 )}
 
                                 <Input
-                                    label="Confirm Password"
-                                    placeholder="Confirm your password"
+                                    label={t('auth.signUp.confirmPasswordLabel')}
+                                    placeholder={t('auth.signUp.confirmPasswordPlaceholder')}
                                     value={registrationData.confirmPassword || ''}
                                     onChangeText={handleConfirmPasswordChange}
                                     secureTextEntry
@@ -496,19 +538,19 @@ export default function SignUpScreen() {
                                                 lineHeight: 20,
                                             }}
                                         >
-                                            I agree to the{' '}
+                                            {t('auth.signUp.termsAgreementPrefix')}
                                             <Text
                                                 style={{ color: '#FF5A5F' }}
                                                 onPress={() => handleTermsInfo('Terms of Service')}
                                             >
-                                                Terms of Service
+                                                {t('auth.signUp.termsLink')}
                                             </Text>
-                                            {' '}and{' '}
+                                            {t('auth.signUp.termsAgreementMiddle')}
                                             <Text
                                                 style={{ color: '#FF5A5F' }}
                                                 onPress={() => handleTermsInfo('Privacy Policy')}
                                             >
-                                                Privacy Policy
+                                                {t('auth.signUp.privacyLink')}
                                             </Text>
                                         </Text>
                                     </TouchableOpacity>
@@ -528,7 +570,7 @@ export default function SignUpScreen() {
                                 )}
 
                                 <Button
-                                    label="Create Account"
+                                    label={t('auth.signUp.continue')}
                                     onPress={handleSignUp}
                                     variant="primary"
                                     fullWidth
@@ -536,7 +578,7 @@ export default function SignUpScreen() {
                                     disabled={loading || processingSignup}
                                 />
 
-                                {showSocialSignup && (
+                                {(showClerkSignup || showSocialSignup) && (
                                     <>
                                         <View
                                             style={{
@@ -559,7 +601,7 @@ export default function SignUpScreen() {
                                                     fontFamily: 'Figtree',
                                                 }}
                                             >
-                                                or continue with
+                                                {t('auth.signUp.orContinueWith')}
                                             </Text>
                                             <View
                                                 style={{
@@ -577,6 +619,50 @@ export default function SignUpScreen() {
                                                 marginBottom: 32,
                                             }}
                                         >
+                                            {showClerkSignup && (
+                                                <TouchableOpacity
+                                                    style={{
+                                                        flexDirection: 'row',
+                                                        alignItems: 'center',
+                                                        backgroundColor: '#141B30',
+                                                        borderRadius: 18,
+                                                        paddingVertical: 16,
+                                                        paddingHorizontal: 18,
+                                                        borderWidth: 1,
+                                                        borderColor: 'rgba(255,255,255,0.12)',
+                                                        width: '100%',
+                                                    }}
+                                                    onPress={handleClerkSignup}
+                                                >
+                                                    <Image
+                                                        source={GOOGLE_ICON}
+                                                        style={{ width: 24, height: 24, marginRight: 14 }}
+                                                    />
+                                                    <View style={{ flex: 1 }}>
+                                                        <Text
+                                                            style={{
+                                                                color: 'white',
+                                                                fontSize: 16,
+                                                                fontWeight: '700',
+                                                                fontFamily: 'Figtree',
+                                                            }}
+                                                        >
+                                                            {t('auth.signUp.continueGoogle')}
+                                                        </Text>
+                                                        <Text
+                                                            style={{
+                                                                color: '#94A3B8',
+                                                                fontSize: 12,
+                                                                marginTop: 2,
+                                                                fontFamily: 'Figtree',
+                                                            }}
+                                                        >
+                                                            {t('auth.signUp.clerkProviders')}
+                                                        </Text>
+                                                    </View>
+                                                </TouchableOpacity>
+                                            )}
+
                                             {showFacebookSignup && (
                                                 <TouchableOpacity
                                                     style={{
@@ -652,7 +738,7 @@ export default function SignUpScreen() {
                                             fontFamily: 'Figtree',
                                         }}
                                     >
-                                        Already have an account?
+                                        {t('auth.signUp.haveAccount')}
                                     </Text>
                                     <TouchableOpacity 
                                     onPress={handleSignIn}
@@ -666,7 +752,7 @@ export default function SignUpScreen() {
                                                 fontFamily: 'Figtree',
                                             }}
                                         >
-                                            {' '}Sign in
+                                            {' '}{t('auth.signUp.signIn')}
                                         </Text>
                                     </TouchableOpacity>
                                 </View>

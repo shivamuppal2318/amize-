@@ -31,7 +31,7 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({
   const loadLanguage = useCallback(async () => {
     const stored = await secureStorage.get(STORAGE_KEYS.LANGUAGE);
     if (stored) {
-      setLanguageCode(resolveLanguageCode(stored) || stored);
+      setLanguageCode(resolveLanguageCode(stored));
     }
     setReady(true);
   }, []);
@@ -43,7 +43,7 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({
   const setLanguage = useCallback(async (language: string) => {
     const code = resolveLanguageCode(language);
     setLanguageCode(code);
-    await secureStorage.set(STORAGE_KEYS.LANGUAGE, language);
+    await secureStorage.set(STORAGE_KEYS.LANGUAGE, code);
   }, []);
 
   const value = useMemo<LanguageContextValue>(() => {

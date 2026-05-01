@@ -31,12 +31,41 @@ export function usePostUpload({
     setUploading,
     setUploadProgress,
     isUploading,
+    resetMedia,
   } = usePostingStore();
 
   const { createPost, createMultiplePosts, createSlideshow } = usePostApi();
   const { uploadMultipleFiles } = useUploadApi();
   const uploadIdPattern =
     /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+  const resolveMimeType = (media: MediaItem) => {
+    const lowerUri = media.uri.toLowerCase();
+    const providedMime = media.mimeType?.toLowerCase();
+
+    if (media.type === "video") {
+      if (providedMime?.startsWith("video/") && providedMime !== "application/octet-stream") {
+        return providedMime;
+      }
+      if (lowerUri.endsWith(".mov")) return "video/quicktime";
+      if (lowerUri.endsWith(".webm")) return "video/webm";
+      return "video/mp4";
+    }
+
+    if (providedMime?.startsWith("image/")) {
+      return providedMime;
+    }
+    if (lowerUri.endsWith(".png")) return "image/png";
+    if (lowerUri.endsWith(".webp")) return "image/webp";
+    return "image/jpeg";
+  };
+
+  const finalizeSuccessfulPost = () => {
+    setUploading(false);
+    setUploadProgress(100);
+    resetMedia();
+    router.replace("/(tabs)");
+  };
 
   const submitPost = async () => {
     if (mediaItems.length === 0) {
@@ -77,18 +106,20 @@ export function usePostUpload({
 
       console.log("🎵 FINAL soundId chosen from mediaItems:", soundId);
   
-const filesToUpload = mediaItems.map((media, index) => {
+      const filesToUpload = mediaItems.map((media, index) => {
         const sanitizedUri = sanitizeMediaUri(media.uri);
+        const mimeType = resolveMimeType(media);
         return {
           uri: sanitizedUri,
           name:
             media.uri.split("/").pop() ||
             `media_${index}.${media.type === "photo" ? "jpg" : "mp4"}`,
-          type: media.type === "photo" ? "image/jpeg" : "video/mp4",
-          // Photos are uploaded as OTHER so the backend can treat them as slideshow inputs.
-          // THUMBNAIL is reserved for video thumbnail uploads.
-          uploadType: (media.type === "photo" ? "OTHER" : "VIDEO") as
-            | "OTHER"
+          type: mimeType,
+          // The current backend accepts images for PROFILE_PHOTO but rejects
+          // images sent as OTHER. Slideshow creation only needs completed image
+          // uploads, so PROFILE_PHOTO is the safest image-capable upload type.
+          uploadType: (media.type === "photo" ? "PROFILE_PHOTO" : "VIDEO") as
+            | "PROFILE_PHOTO"
             | "VIDEO",
           // Pass web File object if available
           ...(media.webFile && { webFile: media.webFile }),
@@ -122,7 +153,7 @@ const filesToUpload = mediaItems.map((media, index) => {
             "Web preview can select media, but real post creation requires the Android app build."
           );
           setUploading(false);
-          router.replace("/");
+          router.replace("/(tabs)");
           return true;
         }
 
@@ -166,6 +197,9 @@ const filesToUpload = mediaItems.map((media, index) => {
           title: draftPost.caption || "Photo post",
           description: draftPost.location || undefined,
           soundId,
+          photoFilters: mediaItems.map((item) =>
+            item.type === "photo" ? item.filterName || "none" : "none"
+          ),
           slideDuration,
           transition,
           isPublic: draftPost.visibility === "public",
@@ -199,8 +233,7 @@ const filesToUpload = mediaItems.map((media, index) => {
         console.log("Cross-posting enabled for:", draftPost.crossPost);
       }
   
-      setUploading(false);
-      router.replace("/");
+      finalizeSuccessfulPost();
       return true;
     } catch (error) {
       console.error("Error submitting post:", error);
@@ -210,6 +243,7 @@ const filesToUpload = mediaItems.map((media, index) => {
       toast.show("Upload Failed", errorMessage);
   
       setUploading(false);
+      setUploadProgress(0);
       return false;
     } finally {
       setIsSubmitting(false);

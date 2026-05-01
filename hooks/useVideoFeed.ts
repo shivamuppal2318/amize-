@@ -544,6 +544,12 @@ export default function useVideoFeed(options: UseVideoFeedOptions = {}) {
         );
     }, []);
 
+    const removeVideo = useCallback((videoId: string) => {
+        setVideos(currentVideos => currentVideos.filter(video => video.id !== videoId));
+        setApiVideos(currentVideos => currentVideos.filter(video => video.id !== videoId));
+        setFocusedIndex((currentIndex) => Math.max(0, currentIndex - 1));
+    }, []);
+
     // Clear cache and reset
     const clearCache = useCallback(() => {
         feedCache.current = {
@@ -596,6 +602,7 @@ export default function useVideoFeed(options: UseVideoFeedOptions = {}) {
         refresh,
         changeFeedType,
         updateVideo,
+        removeVideo,
         loadSpecificVideo,
         jumpToVideo,
         clearCache,

@@ -50,29 +50,12 @@ import { isDemoMode } from "@/lib/release/releaseConfig";
 const minimumWithdrawal = 25;
 
 const DEFAULT_WALLET_STATE: WalletState = {
-  coinBalance: 2450,
-  cashBalance: 128.5,
-  giftInventory: { roses: 18, stars: 6, crowns: 1 },
-  payoutMethod: "Bank transfer",
+  coinBalance: 0,
+  cashBalance: 0,
+  giftInventory: { roses: 0, stars: 0, crowns: 0 },
+  payoutMethod: "",
   payoutDestination: "",
-  transactions: [
-    {
-      id: "t1",
-      title: "Gift revenue settled",
-      amount: 42.5,
-      asset: "cash",
-      type: "credit",
-      createdAt: "2026-04-05",
-    },
-    {
-      id: "t2",
-      title: "Coins purchased",
-      amount: 500,
-      asset: "coins",
-      type: "credit",
-      createdAt: "2026-04-04",
-    },
-  ],
+  transactions: [],
 };
 
 const coinPackages = [
@@ -342,14 +325,24 @@ export default function WalletScreen() {
         tags: { screen: "wallet", stage: "load" },
       });
       syncWalletState(DEFAULT_WALLET_STATE);
-      setWithdrawals(buildLocalWalletWithdrawals());
-      setPaymentAttempts(buildLocalPaymentAttempts("wallet_top_up", 3));
       setPaymentConfig(defaultPaymentConfig);
       setConnectStatus(defaultConnectStatus);
-      setPreviewMode(true);
-      setLoadError(
-        "Wallet backend data is unavailable. This screen is showing local preview balances and actions."
-      );
+
+      if (demoMode) {
+        setWithdrawals(buildLocalWalletWithdrawals());
+        setPaymentAttempts(buildLocalPaymentAttempts("wallet_top_up", 3));
+        setPreviewMode(true);
+        setLoadError(
+          "Wallet backend data is unavailable. This screen is showing local preview balances and actions."
+        );
+      } else {
+        setWithdrawals([]);
+        setPaymentAttempts([]);
+        setPreviewMode(false);
+        setLoadError(
+          "Wallet backend data is unavailable right now. Balances are hidden until live wallet data loads."
+        );
+      }
     } finally {
       setLoading(false);
     }

@@ -6,6 +6,7 @@ import React, {
   useMemo,
 } from "react";
 import {
+  Alert,
   ActivityIndicator,
   Animated,
   Dimensions,
@@ -34,6 +35,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useVideoContext } from "@/context/VideoContext";
 import AuthPromptModal from "@/components/VideoFeed/partial/AuthPromptModal";
 import { captureException } from "@/utils/errorReporting";
+import { getSafePosterUri, getSafeVideoUri, sanitizeMediaUri } from "@/utils/mediaHelpers";
 
 const { width, height } = Dimensions.get("window");
 
@@ -85,6 +87,7 @@ interface VideoItemProps {
   onProfilePress: () => void;
   onBuffered?: () => void;
   onAuthRequired?: (action: string) => void;
+  onDeleted?: () => void;
   index?: number;
 }
 
@@ -280,10 +283,11 @@ const VideoItemNative: React.FC<VideoItemProps> = ({
   onProfilePress,
   onBuffered,
   onAuthRequired,
+  onDeleted,
   index = -1,
 }) => {
   // Authentication and context
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const { showAuthModal } = useAuthModal();
   const { getLocalVideoPath, isVideoPreloaded } = useVideoContext();
 
@@ -309,6 +313,7 @@ const VideoItemNative: React.FC<VideoItemProps> = ({
   const lastFocusChange = useRef(0);
   const statusChangeInProgress = useRef(false);
   const playerReady = useRef(false);
+  const isOwnVideo = user?.id === item.user.id;
 
   // Static logging function to avoid recreation
   const log = useRef((message: string, ...args: any[]) => {
@@ -322,19 +327,22 @@ const VideoItemNative: React.FC<VideoItemProps> = ({
   const videoSource = useMemo((): VideoSource => {
     const localPath = getLocalVideoPath(item.id);
     const isPreloaded = isVideoPreloaded(item.id);
-    console.log("Video urls", item.video.uri);
+
     if (localPath && isPreloaded) {
-      console.log(
-        `🎥 [${componentId.current}] Using cached video: ${localPath}`
-      );
-      return { uri: localPath };
-    } else {
-      console.log(
-        `🎥 [${componentId.current}] Using remote video: ${item.video.uri}`
-      );
-      return { uri: item.video.uri };
+      const cachedUri = sanitizeMediaUri(localPath);
+      console.log(`🎥 [${componentId.current}] Using cached video: ${cachedUri}`);
+      return { uri: cachedUri };
     }
+
+    const safeRemoteUri = getSafeVideoUri(item.video?.uri, item.id);
+    console.log(`🎥 [${componentId.current}] Using remote video: ${safeRemoteUri}`);
+    return { uri: safeRemoteUri };
   }, [item.id, item.video.uri, getLocalVideoPath, isVideoPreloaded]);
+
+  const posterUri = useMemo(
+    () => getSafePosterUri(item.video?.poster || item.video?.uri, item.id),
+    [item.id, item.video?.poster, item.video?.uri]
+  );
 
   const player = useVideoPlayer(videoSource, (player) => {
       player.loop = true;
@@ -622,41 +630,72 @@ const VideoItemNative: React.FC<VideoItemProps> = ({
     log(`👎 Not interested`);
   }, []);
 
-  const handleSaveVideoPress = useCallback(() => {
-    setShareModalVisible(false);
-    log(`💾 Save video`);
-  }, []);
-
-  const handleSetWallpaperPress = useCallback(() => {
-    setShareModalVisible(false);
-    log(`🖼️ Set wallpaper`);
-  }, []);
-
-  const handleDuetPress = useCallback(() => {
-    setShareModalVisible(false);
-    log(`🎭 Duet`);
-  }, []);
-
-  const handleStitchPress = useCallback(() => {
-    setShareModalVisible(false);
-    log(`✂️ Stitch`);
-  }, []);
-
   const handleAddToFavoritesPress = useCallback(() => {
     setShareModalVisible(false);
     onBookmark(true);
     log(`⭐ Add to favorites`);
   }, [onBookmark]);
 
-  const handleShareAsGifPress = useCallback(() => {
-    setShareModalVisible(false);
-    log(`🎞️ Share as GIF`);
-  }, []);
+  const handleDeletePostPress = useCallback(() => {
+    Alert.alert(
+      "Delete post",
+      "This will permanently remove this post from your profile and feed.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              setShareModalVisible(false);
+              await VideoService.deleteVideo(item.id);
+              onDeleted?.();
+              Alert.alert("Deleted", "The post was deleted successfully.");
+              log(`🗑️ Deleted post: ${item.id}`);
+            } catch (error: any) {
+              captureException(error, {
+                tags: { component: "video-item", stage: "delete-video" },
+                extra: { videoId: item.id },
+              });
+              Alert.alert(
+                "Delete Failed",
+                error?.response?.data?.message || error?.message || "Unable to delete this post right now."
+              );
+            }
+          },
+        },
+      ]
+    );
+  }, [item.id, log, onDeleted]);
 
-  const handleUserSharePress = useCallback((userId: string) => {
+  const handleRepostPress = useCallback(async () => {
+    if (!isAuthenticated) {
+      showAuthPrompt("repost");
+      return;
+    }
+
     setShareModalVisible(false);
-    log(`📤 Share with user: ${userId}`);
-  }, []);
+
+    try {
+      const result = await VideoService.repostVideo(item.id);
+      if (result.success) {
+        Alert.alert("Reposted", "This video was reposted to your profile.");
+        log(`🔁 Reposted video: ${item.id}`);
+        return;
+      }
+
+      Alert.alert("Repost Failed", "Unable to repost this video right now.");
+    } catch (error: any) {
+      captureException(error, {
+        tags: { component: "video-item", stage: "repost-video" },
+        extra: { videoId: item.id },
+      });
+      Alert.alert(
+        "Repost Failed",
+        error?.response?.data?.message || error?.message || "Unable to repost this video right now."
+      );
+    }
+  }, [isAuthenticated, item.id, log, showAuthPrompt]);
 
   const handleSocialSharePress = useCallback(
     (platform: ApiSharePlatform) => {
@@ -742,7 +781,7 @@ const VideoItemNative: React.FC<VideoItemProps> = ({
 
         {(!hasRenderedFirstFrame || playbackError) && (
           <Image
-            source={{ uri: item.video?.poster || item.video?.uri }}
+            source={{ uri: posterUri }}
             style={styles.posterImage}
             resizeMode="cover"
           />
@@ -911,16 +950,13 @@ const VideoItemNative: React.FC<VideoItemProps> = ({
           <ShareModal
             visible={shareModalVisible}
             onClose={() => setShareModalVisible(false)}
+            onRepostPress={handleRepostPress}
             onReportPress={handleReportPress}
             onNotInterestedPress={handleNotInterestedPress}
-            onSaveVideoPress={handleSaveVideoPress}
-            onSetWallpaperPress={handleSetWallpaperPress}
-            onDuetPress={handleDuetPress}
-            onStitchPress={handleStitchPress}
             onAddToFavoritesPress={handleAddToFavoritesPress}
-            onShareAsGifPress={handleShareAsGifPress}
-            onUserSharePress={handleUserSharePress}
             onSocialSharePress={handleSocialSharePress}
+            onDeletePress={isOwnVideo ? handleDeletePostPress : undefined}
+            canDelete={isOwnVideo}
             videoId={item.id}
           />
 

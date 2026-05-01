@@ -154,6 +154,81 @@ export interface ApiExploreResponse {
     };
 }
 
+const mapMixedFeedToSearchResults = (feed: MixedFeedItem[]): SearchResults => {
+    const users: SearchUser[] = [];
+    const videos: SearchVideo[] = [];
+    const sounds: SearchSound[] = [];
+
+    feed.forEach((item) => {
+        if (!item?.data) return;
+
+        if (item.type === 'user') {
+            users.push({
+                id: item.data.id,
+                username: item.data.username,
+                fullName: item.data.fullName || item.data.username,
+                bio: item.data.bio,
+                profilePhotoUrl: item.data.profilePhotoUrl,
+                verified: Boolean(item.data.creatorVerified || item.data.verified),
+                category: item.data.category,
+                followersCount: item.data.followersCount || 0,
+                videosCount: item.data.videosCount || 0,
+                type: 'user',
+            });
+            return;
+        }
+
+        if (item.type === 'video') {
+            videos.push({
+                id: item.data.id,
+                title: item.data.title,
+                description: item.data.description,
+                videoUrl: item.data.videoUrl,
+                thumbnailUrl: item.data.thumbnailUrl,
+                duration: item.data.duration || 0,
+                user: {
+                    id: item.data.user?.id,
+                    username: item.data.user?.username,
+                    fullName: item.data.user?.fullName || item.data.user?.username,
+                    profilePhotoUrl: item.data.user?.profilePhotoUrl,
+                    creatorVerified: Boolean(item.data.user?.creatorVerified),
+                },
+                sound: item.data.sound || undefined,
+                likesCount: item.data.likesCount || 0,
+                commentsCount: item.data.commentsCount || 0,
+                viewsCount: item.data.viewsCount || 0,
+                sharesCount: item.data.sharesCount || 0,
+                createdAt: item.data.createdAt || new Date().toISOString(),
+                trendingScore: item.data.trendingScore,
+                type: 'video',
+            });
+            return;
+        }
+
+        if (item.type === 'sound') {
+            sounds.push({
+                id: item.data.id,
+                title: item.data.title,
+                artistName: item.data.artistName || undefined,
+                soundUrl: item.data.soundUrl,
+                duration: item.data.duration || 0,
+                isOriginal: Boolean(item.data.isOriginal),
+                videosCount: item.data.videosCount || 0,
+                recentEngagement: item.data.recentEngagement,
+                createdAt: item.data.createdAt || new Date().toISOString(),
+                type: 'sound',
+            });
+        }
+    });
+
+    return {
+        users,
+        videos,
+        sounds,
+        total: users.length + videos.length + sounds.length,
+    };
+};
+
 type StoredSearchHistoryItem = {
     id: string;
     query: string;
@@ -307,7 +382,17 @@ const SearchService = {
             return response.data.results;
         } catch (error) {
             console.error('Search failed:', error);
-            return { users: [], videos: [], sounds: [], total: 0 };
+            try {
+                const fallbackResponse = await SearchService.searchMixed(params.q, {
+                    limit: params.limit,
+                    offset: params.offset,
+                    type: params.type === 'all' ? undefined : params.type,
+                });
+                return mapMixedFeedToSearchResults(fallbackResponse.feed);
+            } catch (fallbackError) {
+                console.error('Search fallback failed:', fallbackError);
+                return { users: [], videos: [], sounds: [], total: 0 };
+            }
         }
     },
 

@@ -31,45 +31,6 @@ const toCoarseCoordinate = (value: number) => Math.round(value * 100) / 100;
 const withPrivacySafeJitter = (value: number, seed: number) =>
     Number((value + seed * 0.0008).toFixed(6));
 
-const createNearbyItems = (latitude: number, longitude: number): NearbyDiscoveryItem[] => [
-    {
-        id: '1',
-        title: 'Street Food Reels',
-        type: 'Video',
-        distanceKm: 0.4,
-        latitude: latitude + 0.0024,
-        longitude: longitude + 0.0018,
-        imageUrl: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=400',
-        subtitle: 'Trending clips near your area',
-        targetId: 'fallback-video-1',
-        targetType: 'video',
-    },
-    {
-        id: '2',
-        title: '@citycreator',
-        type: 'Creator',
-        distanceKm: 1.1,
-        latitude: latitude - 0.0031,
-        longitude: longitude + 0.0025,
-        imageUrl: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400',
-        subtitle: 'Lifestyle creator nearby',
-        targetId: 'fallback-user-1',
-        targetType: 'user',
-    },
-    {
-        id: '3',
-        title: 'Night Market Live Cuts',
-        type: 'Video',
-        distanceKm: 2.3,
-        latitude: latitude + 0.0049,
-        longitude: longitude - 0.0034,
-        imageUrl: 'https://images.unsplash.com/photo-1523906630133-f6934a1ab2b9?w=400',
-        subtitle: 'Fresh uploads around your city',
-        targetId: 'fallback-video-2',
-        targetType: 'video',
-    },
-];
-
 export default function NearbyScreen() {
     const [locationPermission, setLocationPermission] = useState<
         'granted' | 'denied' | 'undetermined'
@@ -78,10 +39,12 @@ export default function NearbyScreen() {
     const [locationLabel, setLocationLabel] = useState('Fetching location');
     const [region, setRegion] = useState<Region | null>(null);
     const [nearbyItems, setNearbyItems] = useState<NearbyDiscoveryItem[]>([]);
+    const [loadError, setLoadError] = useState<string | null>(null);
 
     const loadNearby = async () => {
         try {
             setLoading(true);
+            setLoadError(null);
             const permission = await Location.requestForegroundPermissionsAsync();
 
             if (permission.status !== 'granted') {
@@ -139,23 +102,17 @@ export default function NearbyScreen() {
                                   index % 2 === 0 ? 1 : -1
                               ),
                           }))
-                        : createNearbyItems(
-                              coarseLatitude,
-                              coarseLongitude
-                          )
+                        : []
                 );
             } catch (apiError) {
-                console.warn('Nearby discovery API unavailable, using fallback:', apiError);
-                setNearbyItems(
-                    createNearbyItems(
-                        coarseLatitude,
-                        coarseLongitude
-                    )
-                );
+                console.warn('Nearby discovery API unavailable:', apiError);
+                setNearbyItems([]);
+                setLoadError('Nearby discovery is unavailable right now.');
             }
         } catch (error) {
             console.error('Failed to load nearby discovery:', error);
             setLocationPermission('denied');
+            setLoadError('Failed to load nearby discovery.');
         } finally {
             setLoading(false);
         }
@@ -226,6 +183,30 @@ export default function NearbyScreen() {
                         </Text>
                         <Button
                             label="Try Again"
+                            onPress={loadNearby}
+                            variant="primary"
+                        />
+                    </View>
+                ) : loadError ? (
+                    <View style={styles.centerState}>
+                        <MapPin size={42} color="#FF5A5F" />
+                        <Text style={styles.stateTitle}>Nearby unavailable</Text>
+                        <Text style={styles.stateText}>{loadError}</Text>
+                        <Button
+                            label="Try Again"
+                            onPress={loadNearby}
+                            variant="primary"
+                        />
+                    </View>
+                ) : nearbyItems.length === 0 ? (
+                    <View style={styles.centerState}>
+                        <MapPin size={42} color="#74A9D9" />
+                        <Text style={styles.stateTitle}>No nearby results</Text>
+                        <Text style={styles.stateText}>
+                            We could not find nearby creators or videos for this area yet.
+                        </Text>
+                        <Button
+                            label="Refresh"
                             onPress={loadNearby}
                             variant="primary"
                         />

@@ -18,7 +18,6 @@ export default function VerifyCodeScreen() {
     const [timer, setTimer] = useState(60);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
-    const [attemptsLeft, setAttemptsLeft] = useState(5);
 
     const deliveryMethod = method === 'email' ? 'email' : 'sms';
     const deliveryTarget =
@@ -81,8 +80,11 @@ export default function VerifyCodeScreen() {
     };
 
     const handleContinue = () => {
-        if (attemptsLeft <= 0) {
-            setError('Too many incorrect attempts. Please resend code.');
+        if (deliveryMethod === 'email') {
+            Alert.alert(
+                'Use The Reset Link',
+                'Open the password reset link sent to your email, then continue from that secure link.'
+            );
             return;
         }
 
@@ -91,26 +93,10 @@ export default function VerifyCodeScreen() {
             return;
         }
 
-        // Partial fallback validation until backend issues a mobile reset OTP flow.
-        if (code !== '1234') {
-            setAttemptsLeft((prev) => Math.max(0, prev - 1));
-            setCode('');
-            setError('Incorrect code. Try 1234 for demo flow or use email reset link.');
-            return;
-        }
-
-        setLoading(true);
-
-        setTimeout(() => {
-            setLoading(false);
-            router.push({
-                pathname: '/password-reset/create-password',
-                params: {
-                    method: deliveryMethod,
-                    target: deliveryTarget,
-                },
-            });
-        }, 600);
+        Alert.alert(
+            'SMS Reset Unavailable',
+            'Password reset verification by SMS is not available in this build yet. Use email reset instead.'
+        );
     };
 
     return (
@@ -131,23 +117,27 @@ export default function VerifyCodeScreen() {
 
                 <StyledView className="mb-6">
                     <Text className="text-gray-400 mb-6">
-                        Code has been sent by {deliveryMethod.toUpperCase()} to {deliveryTarget}
+                        {deliveryMethod === 'email'
+                            ? `A secure reset link has been sent to ${deliveryTarget}. Open that email to continue.`
+                            : `Code has been sent by ${deliveryMethod.toUpperCase()} to ${deliveryTarget}`}
                     </Text>
 
-                    <StyledView className="flex-row justify-center mb-6">
-                        {[...Array(4)].map((_, index) => (
-                            <StyledView
-                                key={index}
-                                className={`w-12 h-12 rounded-lg mx-2 items-center justify-center ${
-                                    index < code.length ? 'bg-[#FF5A5F]' : 'bg-[#2A2A2A]'
-                                }`}
-                            >
-                                {index < code.length && (
-                                    <Text className="text-white text-lg font-bold">*</Text>
-                                )}
-                            </StyledView>
-                        ))}
-                    </StyledView>
+                    {deliveryMethod !== 'email' && (
+                        <StyledView className="flex-row justify-center mb-6">
+                            {[...Array(4)].map((_, index) => (
+                                <StyledView
+                                    key={index}
+                                    className={`w-12 h-12 rounded-lg mx-2 items-center justify-center ${
+                                        index < code.length ? 'bg-[#FF5A5F]' : 'bg-[#2A2A2A]'
+                                    }`}
+                                >
+                                    {index < code.length && (
+                                        <Text className="text-white text-lg font-bold">*</Text>
+                                    )}
+                                </StyledView>
+                            ))}
+                        </StyledView>
+                    )}
 
                     <StyledView className="flex-row justify-center mb-6">
                         <Text className="text-gray-400 mr-1">Resend code in</Text>
@@ -166,69 +156,68 @@ export default function VerifyCodeScreen() {
                     {!!error && (
                         <Text className="text-[#FCA5A5] text-center mb-4">{error}</Text>
                     )}
-                    <Text className="text-gray-500 text-center mb-4">
-                        Attempts left: {attemptsLeft}
-                    </Text>
                 </StyledView>
 
-                <StyledView className="mb-6">
-                    <StyledView className="flex-row justify-around mb-4">
-                        {['1', '2', '3'].map((value) => (
+                {deliveryMethod !== 'email' && (
+                    <StyledView className="mb-6">
+                        <StyledView className="flex-row justify-around mb-4">
+                            {['1', '2', '3'].map((value) => (
+                                <TouchableOpacity
+                                    key={value}
+                                    className="w-16 h-16 bg-[#2A2A2A] rounded-lg items-center justify-center"
+                                    onPress={() => handleNumberPress(value)}
+                                >
+                                    <Text className="text-white text-2xl">{value}</Text>
+                                </TouchableOpacity>
+                            ))}
+                        </StyledView>
+                        <StyledView className="flex-row justify-around mb-4">
+                            {['4', '5', '6'].map((value) => (
+                                <TouchableOpacity
+                                    key={value}
+                                    className="w-16 h-16 bg-[#2A2A2A] rounded-lg items-center justify-center"
+                                    onPress={() => handleNumberPress(value)}
+                                >
+                                    <Text className="text-white text-2xl">{value}</Text>
+                                </TouchableOpacity>
+                            ))}
+                        </StyledView>
+                        <StyledView className="flex-row justify-around mb-4">
+                            {['7', '8', '9'].map((value) => (
+                                <TouchableOpacity
+                                    key={value}
+                                    className="w-16 h-16 bg-[#2A2A2A] rounded-lg items-center justify-center"
+                                    onPress={() => handleNumberPress(value)}
+                                >
+                                    <Text className="text-white text-2xl">{value}</Text>
+                                </TouchableOpacity>
+                            ))}
+                        </StyledView>
+                        <StyledView className="flex-row justify-around">
+                            <StyledView className="w-16 h-16" />
                             <TouchableOpacity
-                                key={value}
                                 className="w-16 h-16 bg-[#2A2A2A] rounded-lg items-center justify-center"
-                                onPress={() => handleNumberPress(value)}
+                                onPress={() => handleNumberPress('0')}
                             >
-                                <Text className="text-white text-2xl">{value}</Text>
+                                <Text className="text-white text-2xl">0</Text>
                             </TouchableOpacity>
-                        ))}
-                    </StyledView>
-                    <StyledView className="flex-row justify-around mb-4">
-                        {['4', '5', '6'].map((value) => (
                             <TouchableOpacity
-                                key={value}
                                 className="w-16 h-16 bg-[#2A2A2A] rounded-lg items-center justify-center"
-                                onPress={() => handleNumberPress(value)}
+                                onPress={handleDeletePress}
                             >
-                                <Text className="text-white text-2xl">{value}</Text>
+                                <Text className="text-white text-lg font-semibold">Del</Text>
                             </TouchableOpacity>
-                        ))}
+                        </StyledView>
                     </StyledView>
-                    <StyledView className="flex-row justify-around mb-4">
-                        {['7', '8', '9'].map((value) => (
-                            <TouchableOpacity
-                                key={value}
-                                className="w-16 h-16 bg-[#2A2A2A] rounded-lg items-center justify-center"
-                                onPress={() => handleNumberPress(value)}
-                            >
-                                <Text className="text-white text-2xl">{value}</Text>
-                            </TouchableOpacity>
-                        ))}
-                    </StyledView>
-                    <StyledView className="flex-row justify-around">
-                        <StyledView className="w-16 h-16" />
-                        <TouchableOpacity
-                            className="w-16 h-16 bg-[#2A2A2A] rounded-lg items-center justify-center"
-                            onPress={() => handleNumberPress('0')}
-                        >
-                            <Text className="text-white text-2xl">0</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                            className="w-16 h-16 bg-[#2A2A2A] rounded-lg items-center justify-center"
-                            onPress={handleDeletePress}
-                        >
-                            <Text className="text-white text-lg font-semibold">Del</Text>
-                        </TouchableOpacity>
-                    </StyledView>
-                </StyledView>
+                )}
 
                 <Button
-                    label="Continue"
+                    label={deliveryMethod === 'email' ? 'Open Email Link' : 'Continue'}
                     onPress={handleContinue}
                     variant="primary"
                     fullWidth
                     loading={loading}
-                    disabled={code.length < 4}
+                    disabled={deliveryMethod !== 'email' && code.length < 4}
                 />
             </StyledView>
         </StyledSafeAreaView>

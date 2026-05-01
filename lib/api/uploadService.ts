@@ -1,5 +1,6 @@
 import { Platform } from 'react-native';
 import { AxiosProgressEvent, isAxiosError } from 'axios';
+import * as FileSystem from 'expo-file-system/legacy';
 import { uploadClient } from './client';
 import { API_CONFIG, UPLOAD_ENDPOINTS } from './config';
 import { getTokens } from '../auth/tokens';
@@ -67,6 +68,101 @@ type ReactNativeFile = {
     type: string;
 }
 
+function buildAbsoluteUploadUrl(path: string) {
+    const baseUrl = String(API_CONFIG.BASE_URL || "").replace(/\/+$/, "");
+    const normalizedPath = String(path || "").startsWith("/") ? path : `/${path}`;
+    return `${baseUrl}${normalizedPath}`;
+}
+
+function extensionFromMimeType(mimeType: string, uploadType: FileUploadOptions["uploadType"]) {
+    const normalized = String(mimeType || "").toLowerCase();
+
+    switch (normalized) {
+        case "image/jpeg":
+            return "jpg";
+        case "image/png":
+            return "png";
+        case "image/webp":
+            return "webp";
+        case "video/mp4":
+            return "mp4";
+        case "video/quicktime":
+            return "mov";
+        case "video/webm":
+            return "webm";
+        case "audio/mpeg":
+            return "mp3";
+        case "audio/mp4":
+            return "m4a";
+        default:
+            return uploadType === "VIDEO" ? "mp4" : "jpg";
+    }
+}
+
+function ensureFilenameExtension(filename: string, mimeType: string, uploadType: FileUploadOptions["uploadType"]) {
+    if (/\.[a-z0-9]+$/i.test(filename)) {
+        return filename;
+    }
+
+    return `${filename}.${extensionFromMimeType(mimeType, uploadType)}`;
+}
+
+async function normalizeNativeUploadUri(
+    uri: string,
+    filename: string,
+    mimeType: string,
+    uploadType: FileUploadOptions["uploadType"]
+) {
+    const cacheDirectory = FileSystem.cacheDirectory || FileSystem.documentDirectory;
+    if (!cacheDirectory) {
+        return {
+            uri,
+            filename: ensureFilenameExtension(filename, mimeType, uploadType),
+        };
+    }
+
+    const normalizedFilename = ensureFilenameExtension(filename, mimeType, uploadType);
+    const normalizedCacheDirectory = String(cacheDirectory);
+    const shouldPreferCachedCopy =
+        uri.startsWith("content://") ||
+        uri.startsWith("ph://") ||
+        uri.startsWith("asset://") ||
+        (uri.startsWith("file://") && !uri.startsWith(normalizedCacheDirectory));
+
+    if (!shouldPreferCachedCopy) {
+        return {
+            uri,
+            filename: normalizedFilename,
+        };
+    }
+
+    const nextFilename = ensureFilenameExtension(`upload-${Date.now()}`, mimeType, uploadType);
+    const destination = `${cacheDirectory}${nextFilename}`;
+
+    try {
+        await FileSystem.copyAsync({
+            from: uri,
+            to: destination,
+        });
+
+        return {
+            uri: destination,
+            filename: nextFilename,
+        };
+    } catch (error) {
+        console.warn("[Native Upload] Failed to copy picker asset to cache, using original URI", {
+            uri,
+            destination,
+            error,
+        });
+
+        return {
+            uri,
+            filename: normalizedFilename,
+        };
+    }
+}
+
 /**
  * Dedicated service for handling file uploads from React Native
  */
@@ -82,7 +178,8 @@ export const uploadService = {
         onProgress,
         webFile,
       }: FileUploadOptions): Promise<UploadResponse> {
-        const filename = name || uri.split("/").pop() || "file";
+        const filenameFromUri = uri.split("/").pop() || "file";
+        let filename = name || filenameFromUri || "file";
       
         // Detect mime type if not provided
         let mimeType = type;
@@ -109,6 +206,8 @@ export const uploadService = {
               mimeType = uploadType === "VIDEO" ? "video/mp4" : "image/jpeg";
           }
         }
+
+        filename = ensureFilenameExtension(filename, mimeType, uploadType);
       
         let finalUri = uri;
         if (Platform.OS === "ios" && uri.startsWith("file://")) {
@@ -128,48 +227,121 @@ export const uploadService = {
         let formData: FormData;
         
         if (IS_WEB) {
-          // For web, check if we have a native File object or need to fetch
+          // For web, ensure we upload a real File with a non-empty, correct mime type.
           try {
-            // Use the native File object from ImagePicker if available
+            let fileToUpload: File;
+
             if (webFile) {
-              formData = new FormData();
-              formData.append("file", webFile);
-              formData.append("uploadType", uploadType);
-            } else if (finalUri.startsWith('blob:')) {
-              // If it's a blob URL and no File object, we can't proceed
-              console.log('[Web Upload] Blob URL without File object - using fallback');
-              throw new Error('Blob URLs require File object handling from ImagePicker');
+              const rawType = typeof webFile.type === "string" ? webFile.type : "";
+              const needsNormalization =
+                !rawType ||
+                rawType === "application/octet-stream" ||
+                rawType === "binary/octet-stream" ||
+                !rawType.includes("/") ||
+                (!rawType.startsWith("image/") &&
+                  !rawType.startsWith("video/") &&
+                  !rawType.startsWith("audio/"));
+
+              fileToUpload = needsNormalization
+                ? new File([webFile], filename, { type: mimeType })
+                : new File([webFile], filename, { type: rawType });
             } else {
-              // Regular URL - fetch and upload
+              // `blob:` URLs are fetchable in the browser; this works for expo-image-picker on web too.
               const response = await fetch(finalUri);
               const blob = await response.blob();
-              const file = new File([blob], filename, { type: mimeType });
-              formData = new FormData();
-              formData.append("file", file);
-              formData.append("uploadType", uploadType);
+              fileToUpload = new File([blob], filename, {
+                type: (blob as any)?.type || mimeType,
+              });
             }
+
+            formData = new FormData();
+            formData.append("file", fileToUpload);
+            formData.append("uploadType", uploadType);
           } catch (error) {
             console.error('[Web Upload] Failed to process file:', error);
-            // Web uploads are not fully supported - throw error instead of mock
-            throw new Error('Web file uploads are not currently supported. Please use the mobile app for video uploads.');
+            throw new Error(
+              "Web upload failed to prepare the selected file. Please try selecting the media again."
+            );
           }
         } else {
+          const normalizedNativeFile = await normalizeNativeUploadUri(
+            finalUri,
+            filename,
+            mimeType,
+            uploadType
+          );
+
           // Native platforms
           formData = new FormData();
           console.log("[Native Upload] Preparing file:", {
             originalUri: uri,
             finalUri,
+            normalizedUri: normalizedNativeFile.uri,
             uploadType,
             mimeType,
-            filename,
+            filename: normalizedNativeFile.filename,
           });
 
           formData.append("file", {
-            uri: finalUri,
+            uri: normalizedNativeFile.uri,
             type: mimeType,
-            name: filename,
+            name: normalizedNativeFile.filename,
           } as any);
           formData.append("uploadType", uploadType);
+
+          const nativeUploadUrl = buildAbsoluteUploadUrl(UPLOAD_ENDPOINTS.UPLOAD);
+          try {
+            onProgress?.(5);
+
+            const response = await fetch(nativeUploadUrl, {
+              method: "POST",
+              headers: {
+                ...(token?.accessToken
+                  ? { Authorization: `Bearer ${token.accessToken}` }
+                  : {}),
+              },
+              body: formData,
+            });
+
+            const rawBody = await response.text();
+            let responseData: UploadResponse | { message?: string; success?: boolean } | null = null;
+
+            try {
+              responseData = rawBody ? JSON.parse(rawBody) : null;
+            } catch {
+              responseData = null;
+            }
+
+            onProgress?.(100);
+
+            if ((response.status === 200 || response.status === 201) && responseData && "success" in responseData && responseData.success) {
+              return responseData as UploadResponse;
+            }
+
+            if (response.status === 413) {
+              throw new Error("File too large. Please select a smaller file.");
+            }
+            if (response.status === 415) {
+              throw new Error("Unsupported file type. Please select a different file.");
+            }
+            if (response.status === 401) {
+              throw new Error("Session expired. Please log in again.");
+            }
+            if (response.status === 429) {
+              throw new Error("Upload rate-limited. Please wait and retry.");
+            }
+
+            const serverMessage =
+              responseData && typeof responseData === "object" && "message" in responseData
+                ? responseData.message
+                : undefined;
+
+            throw new Error(serverMessage || `Upload failed with status ${response.status}`);
+          } catch (error) {
+            const message =
+              error instanceof Error ? error.message : "Unknown error occurred during native upload";
+            throw new Error(message === "Network request failed" ? "Upload failed: Network Error" : message);
+          }
         }
       
         const maxRetries = 2;
@@ -183,7 +355,6 @@ export const uploadService = {
               {
                 timeout: API_CONFIG.UPLOAD_TIMEOUT,
                 headers: {
-                  "Content-Type": "multipart/form-data",
                   Authorization: `Bearer ${token?.accessToken}`,
                 },
                 onUploadProgress: (progressEvent: AxiosProgressEvent) => {

@@ -67,18 +67,18 @@ export default function FingerprintScreen() {
             updateRegistrationData({ useFingerprint: true });
 
             setTimeout(() => {
-                router.push('/account-setup/success');
+                router.replace('/account-setup/verify');
             }, 1500);
         }, 3000);
     };
 
     const handleSkip = () => {
         updateRegistrationData({ useFingerprint: false });
-        router.push('/account-setup/success');
+        router.replace('/account-setup/verify');
     };
 
     const handleContinue = () => {
-        router.push('/account-setup/success');
+        router.replace('/account-setup/verify');
     };
 
     return (

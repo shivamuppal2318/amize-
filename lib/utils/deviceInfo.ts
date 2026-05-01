@@ -26,6 +26,13 @@ export const getDeviceInfo = async (): Promise<DeviceInfo> => {
 
 // Get full device details for API requests
 export const getFullDeviceDetails = async () => {
+    // Web previews do not have a stable device identifier. Sending the
+    // synthetic fallback ("unknown-device") can trigger backend-side device
+    // history conflicts while native sign-in works normally.
+    if (Platform.OS === 'web') {
+        return {};
+    }
+
     const deviceId = await getDeviceId();
     const deviceInfo = await getDeviceInfo();
 

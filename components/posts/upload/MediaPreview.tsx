@@ -13,6 +13,7 @@ import { Audio } from "expo-av";
 import { Video as VideoIcon } from "lucide-react-native";
 import { sanitizeMediaUri } from "@/utils/mediaHelpers";
 import { MediaItem } from "@/stores/postingStore";
+import { getPhotoFilterPreviewLayers } from "@/utils/photoFilters";
 
 const { width } = Dimensions.get("window");
 
@@ -129,11 +130,22 @@ export default function MediaPreview({
     return (
       <View style={styles.mediaItemContainer}>
         {item.type === "photo" ? (
-          <Image
-            source={{ uri: sanitizedUri }}
-            style={styles.mediaPreview}
-            resizeMode="cover"
-          />
+          <View style={styles.mediaPreview}>
+            <Image
+              source={{ uri: sanitizedUri }}
+              style={styles.mediaPreview}
+              resizeMode="cover"
+            />
+            {getPhotoFilterPreviewLayers(item.filterName).map(
+              (layerStyle, layerIndex) => (
+                <View
+                  key={`${item.id || index}-filter-layer-${layerIndex}`}
+                  pointerEvents="none"
+                  style={[StyleSheet.absoluteFillObject, layerStyle]}
+                />
+              )
+            )}
+          </View>
         ) : (
           <TouchableOpacity
             style={styles.mediaPreview}

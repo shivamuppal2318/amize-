@@ -49,7 +49,7 @@ import { isDemoMode } from "@/lib/release/releaseConfig";
 
 export default function SettingsScreen() {
   const { user, isAuthenticated, loading, logout } = useAuth();
-  const { languageName } = useI18n();
+  const { languageName, t } = useI18n();
   const { settings, updateSetting } = useSettings();
   const demoMode = isDemoMode();
   const [logoutModalVisible, setLogoutModalVisible] = useState(false);
@@ -238,7 +238,7 @@ export default function SettingsScreen() {
             <View style={styles.loadingSpinner}>
               <ActivityIndicator size="large" color="#FF5A5F" />
             </View>
-            <Text style={styles.loadingText}>Loading settings...</Text>
+            <Text style={styles.loadingText}>{t("settings.loading")}</Text>
           </View>
         </LinearGradient>
       </SafeAreaView>
@@ -270,12 +270,11 @@ export default function SettingsScreen() {
               </View>
 
               <Text style={styles.unauthenticatedTitle}>
-                Authentication Required
+                {t("settings.authRequired")}
               </Text>
 
               <Text style={styles.unauthenticatedSubtitle}>
-                You need to sign in to access your settings and profile
-                information.
+                {t("settings.authRequiredSubtitle")}
               </Text>
 
               <TouchableOpacity
@@ -287,7 +286,7 @@ export default function SettingsScreen() {
                   colors={["#FF5A5F", "#FF7A7F"]}
                   style={styles.signInGradient}
                 >
-                  <Text style={styles.signInButtonText}>Sign In</Text>
+                  <Text style={styles.signInButtonText}>{t("settings.signIn")}</Text>
                 </LinearGradient>
               </TouchableOpacity>
             </Animated.View>
@@ -322,7 +321,7 @@ export default function SettingsScreen() {
           >
             {/* Header */}
             <View style={styles.header}>
-              <Text style={styles.headerTitle}>Settings</Text>
+              <Text style={styles.headerTitle}>{t("settings.title")}</Text>
               <View style={styles.headerIcon}>
                 <SettingsIcon size={28} color="#fff" />
               </View>
@@ -408,7 +407,7 @@ export default function SettingsScreen() {
                   >
                     <View style={styles.editProfileContent}>
                       <Edit3 size={18} color="#FF5A5F" />
-                      <Text style={styles.editProfileText}>Edit Profile</Text>
+                      <Text style={styles.editProfileText}>{t("settings.editProfile")}</Text>
                     </View>
                   </TouchableOpacity>
                 </View>
@@ -419,58 +418,58 @@ export default function SettingsScreen() {
             <View style={styles.settingsContainer}>
               {/* Account Section */}
               <View style={styles.settingsSection}>
-                <Text style={styles.sectionTitle}>Account</Text>
+                <Text style={styles.sectionTitle}>{t("settings.account.section")}</Text>
                 <View style={styles.sectionContent}>
                   <EnhancedMenuItem
                     // icon={<User size={22} color="#FF5A5F"/>}
                     icon={<User size={22} color="rgb(255,255,255)" />}
-                    label="Manage Account"
-                    subtitle="Personal information, email, phone"
+                    label={t("settings.account.manage")}
+                    subtitle={t("settings.account.manageSubtitle")}
                     onPress={() => handleNavigate("/settings/manage-accounts")}
                   />
                   <EnhancedMenuItem
                     icon={<Shield size={22} color="rgb(255,255,255)" />}
-                    label="Security"
-                    subtitle="Password, two-factor authentication"
+                    label={t("settings.account.security")}
+                    subtitle={t("settings.account.securitySubtitle")}
                     onPress={() => handleNavigate("/settings/security")}
                   />
 <EnhancedMenuItem
                     icon={<Gift size={22} color="#FF5A5F" />}
-                    label="Gifts & Coins"
+                    label={t("settings.account.gifts")}
                     subtitle={
                       demoMode
-                        ? "Demo: 18 Roses, 6 Stars, 1 Crown"
-                        : "Send and receive gifts"
+                        ? t("settings.account.giftsDemoSubtitle")
+                        : t("settings.account.giftsSubtitle")
                     }
                     onPress={() => handleNavigate("/settings/wallet")}
                   />
                   <EnhancedMenuItem
                     icon={<Wallet size={22} color="rgb(255,255,255)" />}
-                    label="Wallet & Payouts"
+                    label={t("settings.account.wallet")}
                     subtitle={
                       demoMode
-                        ? "Demo preview (no real payouts)"
-                        : "Coins, gifts, withdrawal requests"
+                        ? t("settings.account.walletDemoSubtitle")
+                        : t("settings.account.walletSubtitle")
                     }
                     onPress={() => handleNavigate("/settings/wallet")}
                   />
                   <EnhancedMenuItem
                     icon={<Star size={22} color="rgb(255,255,255)" />}
-                    label="Premium"
+                    label={t("settings.account.premium")}
                     subtitle={
                       demoMode
-                        ? "Demo preview (subscriptions mocked)"
-                        : "Upgrade to unlock more features"
+                        ? t("settings.account.premiumDemoSubtitle")
+                        : t("settings.account.premiumSubtitle")
                     }
                     onPress={() => handleNavigate("/settings/premium")}
                   />
                   <EnhancedMenuItem
                     icon={<BadgeDollarSign size={22} color="rgb(255,255,255)" />}
-                    label="Creator Earnings"
+                    label={t("settings.account.earnings")}
                     subtitle={
                       demoMode
-                        ? "Demo preview (analytics mocked)"
-                        : "Subscribers, revenue, creator monetization"
+                        ? t("settings.account.earningsDemoSubtitle")
+                        : t("settings.account.earningsSubtitle")
                     }
                     onPress={() => handleNavigate("/settings/creator-earnings")}
                   />
@@ -479,27 +478,27 @@ export default function SettingsScreen() {
 
               {/* Preferences Section */}
               <View style={styles.settingsSection}>
-                <Text style={styles.sectionTitle}>Preferences</Text>
+                <Text style={styles.sectionTitle}>{t("settings.preferences.section")}</Text>
                 <View style={styles.sectionContent}>
                   <EnhancedMenuItem
                     icon={<Bell size={22} color="rgb(255,255,255)" />}
-                    label="Notifications"
-                    subtitle="Push notifications, email alerts"
+                    label={t("settings.preferences.notifications")}
+                    subtitle={t("settings.preferences.notificationsSubtitle")}
                     onPress={() => handleNavigate("/settings/notifications")}
                   />
                   <EnhancedMenuItem
                     icon={<Globe size={22} color="rgb(255,255,255)" />}
-                    label="Language"
+                    label={t("settings.preferences.language")}
                     subtitle={languageName}
                     onPress={() => handleNavigate("/settings/language")}
                   />
                   <EnhancedMenuItem
                     icon={<MapPin size={22} color="rgb(255,255,255)" />}
-                    label="Nearby Discovery"
+                    label={t("settings.preferences.nearby")}
                     subtitle={
                       demoMode
-                        ? "Demo preview (local fallback data)"
-                        : "Discover local creators and posts"
+                        ? t("settings.preferences.nearbyDemoSubtitle")
+                        : t("settings.preferences.nearbySubtitle")
                     }
                     onPress={() => handleNavigate("/nearby")}
                   />
@@ -512,8 +511,8 @@ export default function SettingsScreen() {
                   /> */}
                   <EnhancedMenuItem
                     icon={<Download size={22} color="rgb(255,255,255)" />}
-                    label="Data & Storage"
-                    subtitle="Download data, clear cache"
+                    label={t("settings.preferences.data")}
+                    subtitle={t("settings.preferences.dataSubtitle")}
                     onPress={() => handleNavigate("/settings/data-storage")}
                   />
                 </View>
@@ -521,24 +520,24 @@ export default function SettingsScreen() {
 
               {/* Support Section */}
               <View style={styles.settingsSection}>
-                <Text style={styles.sectionTitle}>Support</Text>
+                <Text style={styles.sectionTitle}>{t("settings.support.section")}</Text>
                 <View style={styles.sectionContent}>
                   <EnhancedMenuItem
                     icon={<HelpCircle size={22} color="rgb(255,255,255)" />}
-                    label="Help Center"
-                    subtitle="FAQs, contact support"
+                    label={t("settings.support.helpCenter")}
+                    subtitle={t("settings.support.helpCenterSubtitle")}
                     onPress={() => handleNavigate("/settings/help-center")}
                   />
                   <EnhancedMenuItem
                     icon={<FileText size={22} color="rgb(255,255,255)" />}
-                    label="Privacy Policy"
-                    subtitle="Privacy policy and data handling"
+                    label={t("settings.support.privacy")}
+                    subtitle={t("settings.support.privacySubtitle")}
                     onPress={() => handleNavigate("/settings/privacy-policy")}
                   />
                   <EnhancedMenuItem
                     icon={<FileText size={22} color="rgb(255,255,255)" />}
-                    label="Terms of Service"
-                    subtitle="Usage terms and platform rules"
+                    label={t("settings.support.terms")}
+                    subtitle={t("settings.support.termsSubtitle")}
                     onPress={() => handleNavigate("/settings/terms")}
                   />
                 </View>
@@ -546,20 +545,20 @@ export default function SettingsScreen() {
 
               {/* Danger Zone */}
               <View style={styles.settingsSection}>
-                <Text style={[styles.sectionTitle]}>Account Actions</Text>
+                <Text style={[styles.sectionTitle]}>{t("settings.actions.section")}</Text>
                 <View style={styles.sectionContent}>
                   <EnhancedMenuItem
                     icon={<LogOut size={22} color="rgb(255,255,255)" />}
-                    label="Sign Out"
-                    subtitle="Sign out of your account"
+                    label={t("settings.actions.signOut")}
+                    subtitle={t("settings.actions.signOutSubtitle")}
                     onPress={handleLogoutPress}
                     danger={false}
                     showChevron={false}
                   />
                   <EnhancedMenuItem
                     icon={<Trash2 size={22} color="rgb(255,255,255)" />}
-                    label="Delete Account"
-                    subtitle="Permanently delete your account"
+                    label={t("settings.actions.deleteAccount")}
+                    subtitle={t("settings.actions.deleteAccountSubtitle")}
                     onPress={() => handleNavigate("/settings/delete-account")}
                     danger={false}
                   />
@@ -569,7 +568,7 @@ export default function SettingsScreen() {
 
             {/* App Version */}
             <View style={styles.appVersion}>
-              <Text style={styles.appVersionText}>App Version 1.0.0</Text>
+              <Text style={styles.appVersionText}>{t("settings.version")}</Text>
             </View>
           </Animated.View>
         </ScrollView>
@@ -578,15 +577,15 @@ export default function SettingsScreen() {
         <CustomModal
           visible={logoutModalVisible}
           onClose={handleCloseModal}
-          title="Sign Out"
-          message="Are you sure you want to sign out of your account?"
+          title={t("settings.logout.title")}
+          message={t("settings.logout.message")}
           primaryAction={{
-            label: loggingOut ? "Signing out..." : "Yes, Sign Out",
+            label: loggingOut ? t("settings.logout.loading") : t("settings.logout.confirm"),
             onPress: handleLogoutConfirm,
             destructive: true,
           }}
           secondaryAction={{
-            label: "Cancel",
+            label: t("common.cancel"),
             onPress: handleCloseModal,
           }}
         />

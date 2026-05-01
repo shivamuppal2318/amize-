@@ -1,56 +1,13 @@
 import { ApiComment, ApiSound, ApiVideo } from '../api/types/video';
 import { VideoItemData } from '@/components/VideoFeed/VideoItem';
-import { resolveRemoteMediaUri } from '@/utils/mediaHelpers';
-
-const FALLBACK_VIDEO_URLS = [
-    'https://videos.pexels.com/video-files/6646665/6646665-hd_1080_1920_24fps.mp4',
-    'https://videos.pexels.com/video-files/6624853/6624853-uhd_1440_2560_30fps.mp4',
-    'https://videos.pexels.com/video-files/8344235/8344235-uhd_1440_2560_25fps.mp4',
-    'https://videos.pexels.com/video-files/3099415/3099415-uhd_2560_1440_30fps.mp4',
-    'https://videos.pexels.com/video-files/7247861/7247861-hd_1080_1920_30fps.mp4',
-];
-
-const FALLBACK_POSTER_URLS = [
-    'https://images.pexels.com/photos/31313204/pexels-photo-31313204/free-photo-of-charming-narrow-street-in-gorlitz-germany.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2',
-    'https://images.pexels.com/photos/30910224/pexels-photo-30910224/free-photo-of-delicious-chocolate-cake-with-pistachios.jpeg?auto=compress&cs=tinysrgb&w=1200&lazy=load',
-    'https://images.pexels.com/photos/31085625/pexels-photo-31085625/free-photo-of-small-bird-perched-on-wire-against-soft-background.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2',
-    'https://images.pexels.com/photos/29957631/pexels-photo-29957631/free-photo-of-serene-evening-coffee-in-golden-light.jpeg?auto=compress&cs=tinysrgb&w=1200&lazy=load',
-    'https://images.pexels.com/photos/31249687/pexels-photo-31249687/free-photo-of-elegant-coffee-and-dessert-display-in-cafe.jpeg?auto=compress&cs=tinysrgb&w=1200&lazy=load',
-];
-
-const pickFallbackById = (id: string, values: string[]) => {
-    const seed = id.split('').reduce((total, char) => total + char.charCodeAt(0), 0);
-    return values[seed % values.length];
-};
-
-const isPlaceholderMediaUrl = (value?: string | null) => {
-    if (!value) {
-        return true;
-    }
-
-    const normalized = value.trim().toLowerCase();
-    return (
-        !normalized ||
-        normalized.includes('example.com/videos') ||
-        normalized.includes('example.com/thumbnails') ||
-        normalized.includes('via.placeholder.com')
-    );
-};
+import { getSafePosterUri, getSafeVideoUri } from '@/utils/mediaHelpers';
 
 const resolveVideoUrl = (apiVideo: ApiVideo) => {
-    if (isPlaceholderMediaUrl(apiVideo.videoUrl)) {
-        return pickFallbackById(apiVideo.id, FALLBACK_VIDEO_URLS);
-    }
-
-    return resolveRemoteMediaUri(apiVideo.videoUrl);
+    return getSafeVideoUri(apiVideo.videoUrl, apiVideo.id);
 };
 
 const resolvePosterUrl = (apiVideo: ApiVideo) => {
-    if (isPlaceholderMediaUrl(apiVideo.thumbnailUrl)) {
-        return pickFallbackById(apiVideo.id, FALLBACK_POSTER_URLS);
-    }
-
-    return resolveRemoteMediaUri(apiVideo.thumbnailUrl as string);
+    return getSafePosterUri(apiVideo.thumbnailUrl, apiVideo.id);
 };
 
 /**

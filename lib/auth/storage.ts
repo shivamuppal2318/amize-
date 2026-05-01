@@ -41,6 +41,7 @@ export const STORAGE_KEYS = {
     USER_DATA: 'user_data',
     ONBOARDING_COMPLETED: 'onboarding_completed',
     SIGNUP_FLOW: 'signup_flow',
+    REGISTRATION_DATA: 'registration_data',
     LANGUAGE: 'app_language',
 };
 

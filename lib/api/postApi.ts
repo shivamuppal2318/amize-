@@ -5,7 +5,6 @@ import { useToast } from "@/hooks/useToast";
 import axios from "axios";
 import { API_CONFIG } from "@/lib/api/config";
 import { getTokens } from "@/lib/auth/tokens";
-import { API_URL } from "../settings/constants";
 
 // Create a separate client for heavy operations like slideshow creation
 const heavyOperationsClient = axios.create({
@@ -36,6 +35,7 @@ interface CreateSlideshowData {
   title?: string;
   description?: string;
   soundId?: string;
+  photoFilters?: string[];
   slideDuration?: number;
   transition?: string;
   isPublic?: boolean;
@@ -112,6 +112,10 @@ export const usePostApi = () => {
           errorMessage = typeof first?.message === "string" ? first.message : "Validation error";
         } else if (error.response?.data?.message) {
           errorMessage = error.response.data.message;
+          if (errorMessage === "Internal server error") {
+            errorMessage =
+              "Server failed while processing the video. Please try a shorter clip or retry in a moment.";
+          }
         } else if (error.message) {
           errorMessage = error.message;
         }
@@ -182,13 +186,14 @@ export const usePostApi = () => {
         const token = await getTokens();
 
         // Use the heavy operations client with longer timeout
-        const response = await axios.post<PostResponse>(
-          API_URL + "/videos/slideshow",
+        const response = await heavyOperationsClient.post<PostResponse>(
+          VIDEO_ENDPOINTS.SLIDESHOW,
           {
             uploadIds: data.uploadIds,
             title: data.title,
             description: data.description,
             soundId: data.soundId,
+            photoFilters: data.photoFilters,
             slideDuration: data.slideDuration || 3,
             transition: data.transition || "fade",
             isPublic: data.isPublic !== undefined ? data.isPublic : true,
@@ -217,6 +222,10 @@ export const usePostApi = () => {
           errorMessage = typeof first?.message === "string" ? first.message : "Validation error";
         } else if (error.response?.data?.message) {
           errorMessage = error.response.data.message;
+          if (errorMessage === "Internal server error") {
+            errorMessage =
+              "Server failed while building the photo post. Please retry without music first or try fewer photos.";
+          }
         } else if (error.message === "Network Error") {
           errorMessage =
             "Network error. Please check your connection and try again.";

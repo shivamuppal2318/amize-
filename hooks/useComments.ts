@@ -106,6 +106,21 @@ export default function useComments({
     [videoId, parentId]
   );
 
+  const deleteComment = useCallback(async (commentId: string) => {
+    try {
+      await VideoService.deleteComment(videoId, commentId);
+
+      setComments((prev) => prev.filter((comment) => comment.id !== commentId));
+      setApiComments((prev) =>
+        prev.filter((comment) => comment.id !== commentId)
+      );
+      setTotalComments((prev) => Math.max(0, prev - 1));
+    } catch (err: any) {
+      console.error("Error deleting comment:", err);
+      throw err;
+    }
+  }, [videoId]);
+
   const likeComment = useCallback((commentId: string, liked: boolean) => {
     setComments((prev) =>
       prev.map((comment) =>
@@ -135,6 +150,7 @@ export default function useComments({
     loadMoreComments,
     refreshComments,
     addComment,
+    deleteComment,
     likeComment,
   };
 }

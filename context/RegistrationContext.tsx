@@ -1,6 +1,7 @@
 //context/RegistrationContext.tsx
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState } from 'react';
 import { RegisterRequest } from '@/lib/api/types';
+import { secureStorage, STORAGE_KEYS } from '@/lib/auth/storage';
 
 export interface RegistrationData {
     username?: string;
@@ -14,6 +15,7 @@ export interface RegistrationData {
     bio?: string;
     gender?: string;
     dateOfBirth?: string;
+    birthdayConfirmed?: boolean;
     interests?: string[];
     profilePhotoUrl?: string;
     usePin?: boolean;
@@ -38,6 +40,7 @@ export interface RegistrationErrors {
 interface RegistrationContextType {
     registrationData: RegistrationData;
     registrationErrors: RegistrationErrors;
+    isHydrated: boolean;
     updateRegistrationData: (data: Partial<RegistrationData>) => void;
     clearRegistrationData: () => void;
     validateField: (field: keyof RegistrationData) => boolean;
@@ -50,6 +53,7 @@ interface RegistrationContextType {
 const RegistrationContext = createContext<RegistrationContextType>({
     registrationData: {},
     registrationErrors: {},
+    isHydrated: false,
     updateRegistrationData: () => {},
     clearRegistrationData: () => {},
     validateField: () => false,
@@ -63,9 +67,47 @@ export const RegistrationProvider: React.FC<{children: React.ReactNode}> = ({ ch
     const [registrationData, setRegistrationData] = useState<RegistrationData>({});
     const [registrationErrors, setRegistrationErrors] = useState<RegistrationErrors>({});
     const [currentStep, setCurrentStep] = useState<number>(1);
+    const [isHydrated, setIsHydrated] = useState(false);
+
+    useEffect(() => {
+        let cancelled = false;
+
+        const hydrate = async () => {
+            try {
+                const stored = await secureStorage.get(STORAGE_KEYS.REGISTRATION_DATA);
+                if (!stored || cancelled) {
+                    if (!cancelled) {
+                        setIsHydrated(true);
+                    }
+                    return;
+                }
+
+                const parsed = JSON.parse(stored) as RegistrationData;
+                if (parsed && typeof parsed === 'object' && !cancelled) {
+                    setRegistrationData(parsed);
+                }
+            } catch (error) {
+                // Ignore corrupted state but clear it so it doesn't keep breaking startup.
+                await secureStorage.remove(STORAGE_KEYS.REGISTRATION_DATA);
+            } finally {
+                if (!cancelled) {
+                    setIsHydrated(true);
+                }
+            }
+        };
+
+        hydrate();
+        return () => {
+            cancelled = true;
+        };
+    }, []);
 
     const updateRegistrationData = (data: Partial<RegistrationData>) => {
-        setRegistrationData(prev => ({ ...prev, ...data }));
+        setRegistrationData(prev => {
+            const next = { ...prev, ...data };
+            secureStorage.set(STORAGE_KEYS.REGISTRATION_DATA, JSON.stringify(next));
+            return next;
+        });
 
         // Clear errors for updated fields
         const updatedFields = Object.keys(data) as Array<keyof RegistrationData>;
@@ -86,6 +128,7 @@ export const RegistrationProvider: React.FC<{children: React.ReactNode}> = ({ ch
         setRegistrationData({});
         setRegistrationErrors({});
         setCurrentStep(1);
+        secureStorage.remove(STORAGE_KEYS.REGISTRATION_DATA);
     };
 
     // New function to prepare registration request data
@@ -112,10 +155,14 @@ export const RegistrationProvider: React.FC<{children: React.ReactNode}> = ({ ch
 
     // Validation functions
     const isValidUsername = (username: string): boolean => {
-        // Only allow alphanumeric characters, underscores, and periods
-        // Must be 3-30 characters long
-        const usernameRegex = /^[a-zA-Z0-9_.]{3,30}$/;
-        return usernameRegex.test(username);
+        const normalized = username.trim();
+
+        // Allow common social username characters.
+        // - 3–30 chars
+        // - letters/numbers + separators: _ . -
+        // - must start/end with a letter or number
+        const usernameRegex = /^(?=.{3,30}$)[a-zA-Z0-9](?:[a-zA-Z0-9._-]*[a-zA-Z0-9])$/;
+        return usernameRegex.test(normalized);
     };
 
     const isStrongPassword = (password: string): { isValid: boolean; message: string } => {
@@ -164,11 +211,12 @@ export const RegistrationProvider: React.FC<{children: React.ReactNode}> = ({ ch
 
         switch (field) {
             case 'username':
-                if (!registrationData.username) {
+                const username = (registrationData.username || '').trim();
+                if (!username) {
                     errors.username = 'Username is required';
                     isValid = false;
-                } else if (!isValidUsername(registrationData.username)) {
-                    errors.username = 'Username can only contain letters, numbers, underscores, and periods';
+                } else if (!isValidUsername(username)) {
+                    errors.username = 'Username must be 3-30 characters and use only letters, numbers, ".", "_", or "-"';
                     isValid = false;
                 }
                 break;
@@ -264,11 +312,12 @@ export const RegistrationProvider: React.FC<{children: React.ReactNode}> = ({ ch
         let isValid = true;
 
         // Basic registration fields (step 1)
-        if (!registrationData.username) {
+        const username = (registrationData.username || '').trim();
+        if (!username) {
             errors.username = 'Username is required';
             isValid = false;
-        } else if (!isValidUsername(registrationData.username)) {
-            errors.username = 'Username can only contain letters, numbers, underscores, and periods';
+        } else if (!isValidUsername(username)) {
+            errors.username = 'Username must be 3-30 characters and use only letters, numbers, ".", "_", or "-"';
             isValid = false;
         }
 
@@ -335,6 +384,7 @@ export const RegistrationProvider: React.FC<{children: React.ReactNode}> = ({ ch
             value={{
                 registrationData,
                 registrationErrors,
+                isHydrated,
                 updateRegistrationData,
                 clearRegistrationData,
                 validateField,

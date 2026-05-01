@@ -33,6 +33,7 @@ interface MediaItem {
     id: string;
     uri: string;
     type: 'photo' | 'video';
+    mimeType?: string;
     width: number;
     height: number;
     duration?: number;
@@ -40,6 +41,22 @@ interface MediaItem {
     assetId?: string; 
     webFile?: File;
 }
+
+function inferMimeType(uri: string, isVideo: boolean) {
+    const lowerUri = uri.toLowerCase();
+
+    if (lowerUri.endsWith('.mov')) return 'video/quicktime';
+    if (lowerUri.endsWith('.webm')) return 'video/webm';
+    if (lowerUri.endsWith('.mp4')) return 'video/mp4';
+    if (lowerUri.endsWith('.png')) return 'image/png';
+    if (lowerUri.endsWith('.webp')) return 'image/webp';
+    if (lowerUri.endsWith('.jpg') || lowerUri.endsWith('.jpeg')) return 'image/jpeg';
+
+    return isVideo ? 'video/mp4' : 'image/jpeg';
+}
+
+const PICKER_MEDIA_TYPES: ImagePicker.MediaType[] = ['images', 'videos'];
+const IMAGE_ONLY_MEDIA_TYPES: ImagePicker.MediaType[] = ['images'];
 
 export default function MediaSelectScreen() {
     const router = useRouter();
@@ -57,6 +74,7 @@ export default function MediaSelectScreen() {
     const [hasNextPage, setHasNextPage] = useState(true);
     const [endCursor, setEndCursor] = useState<string | undefined>(undefined);
     const [galleryPermission, setGalleryPermission] = useState(false);
+    const [isProcessingSelection, setIsProcessingSelection] = useState(false);
 
     useEffect(() => {
         resetMedia();
@@ -84,6 +102,7 @@ export default function MediaSelectScreen() {
             id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
             uri: asset.uri,
             type: isVideo ? 'video' : 'photo',
+            mimeType: asset.mimeType || inferMimeType(asset.uri, isVideo),
             width: asset.width || 0,
             height: asset.height || 0,
             duration: isVideo ? asset.duration || 0 : undefined,
@@ -97,14 +116,13 @@ export default function MediaSelectScreen() {
         try {
             setLoading(true);
 
-            const mediaTypes = ImagePicker.MediaTypeOptions.All;
-
             const result = await ImagePicker.launchImageLibraryAsync({
-                mediaTypes: mediaTypes as any,
+                mediaTypes: PICKER_MEDIA_TYPES,
                 quality: 0.8,
                 allowsMultipleSelection: !isStoryMode,
                 selectionLimit,
                 exif: false,
+                ...(Platform.OS === 'android' ? { legacy: true } : {}),
             });
 
             console.log('[DEBUG] ImagePicker result:', result);
@@ -144,8 +162,12 @@ export default function MediaSelectScreen() {
                 return;
             }
 
-            const galleryStatus = await MediaLibrary.requestPermissionsAsync();
-            if (galleryStatus.granted) {
+            const [galleryStatus, pickerStatus] = await Promise.all([
+                MediaLibrary.requestPermissionsAsync(),
+                ImagePicker.requestMediaLibraryPermissionsAsync(),
+            ]);
+
+            if (galleryStatus.granted && pickerStatus.granted) {
                 setGalleryPermission(true);
             } else {
                 setGalleryPermission(false);
@@ -307,6 +329,7 @@ export default function MediaSelectScreen() {
                 id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
                 uri: mediaUri,
                 type: asset.mediaType === 'video' ? 'video' : 'photo',
+                mimeType: inferMimeType(mediaUri, asset.mediaType === 'video'),
                 width: asset.width || 0,
                 height: asset.height || 0,
                 duration: asset.mediaType === 'video' ? asset.duration : undefined,
@@ -353,10 +376,8 @@ export default function MediaSelectScreen() {
 
             setLoading(true);
 
-            const cameraMediaTypes = ImagePicker.MediaTypeOptions.All;
-
             const result = await ImagePicker.launchCameraAsync({
-                mediaTypes: cameraMediaTypes as any,
+                mediaTypes: PICKER_MEDIA_TYPES,
                 quality: 0.8,
                 allowsEditing: true,
                 exif: false,
@@ -399,10 +420,12 @@ export default function MediaSelectScreen() {
         }
 
         try {
+            setIsProcessingSelection(true);
             selectedItems.forEach(item => {
                 addMedia({
                     uri: item.uri,
                     type: item.type,
+                    mimeType: item.mimeType,
                     width: item.width,
                     height: item.height,
                     size: item.size,
@@ -422,6 +445,7 @@ export default function MediaSelectScreen() {
         } catch (error) {
             console.error('Error proceeding to next screen:', error);
             Alert.alert('Error', 'Failed to process selected media');
+            setIsProcessingSelection(false);
         }
     };
 
@@ -729,10 +753,10 @@ export default function MediaSelectScreen() {
                         : 'Tap items to select, tap again to deselect'}
                 </Text>
                 <ActionButton
-                    label={isStoryMode ? 'Continue Story' : 'Next'}
+                    label={isStoryMode ? 'Continue Story' : 'Continue'}
                     onPress={handleNext}
-                    disabled={selectedItems.length === 0}
-                    loading={loading}
+                    disabled={selectedItems.length === 0 || isProcessingSelection}
+                    loading={isProcessingSelection}
                     fullWidth
                 />
             </View>

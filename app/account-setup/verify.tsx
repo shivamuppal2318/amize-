@@ -9,7 +9,6 @@ import {
   ScrollView,
   Image,
   StyleSheet,
-  Platform,
 } from "react-native";
 import { StatusBar } from "react-native";
 import { router } from "expo-router";
@@ -32,8 +31,9 @@ export default function VerifyScreen() {
     verifyCode,
     resendVerificationCode,
     completeSignupFlow,
+    hasCompletedOnboarding,
   } = useAuth();
-  const { registrationData } = useRegistration();
+  const { registrationData, clearRegistrationData, isHydrated } = useRegistration();
 
   const [code, setCode] = useState("");
   const [verifying, setVerifying] = useState(false);
@@ -48,8 +48,17 @@ export default function VerifyScreen() {
     user?.email ||
     "";
   const isEmailTarget = Boolean(registrationData.email || user?.email);
-  const allowLocalBypass =
-    Platform.OS === "web" || isDemoMode() || canBypassVerification();
+  const allowLocalBypass = isDemoMode() || canBypassVerification();
+
+  useEffect(() => {
+    if (!isHydrated) {
+      return;
+    }
+
+    if (!verificationTarget && !user) {
+      router.replace("/sign-up");
+    }
+  }, [isHydrated, verificationTarget, user]);
 
   useEffect(() => {
     if (timer <= 0) {
@@ -117,7 +126,8 @@ export default function VerifyScreen() {
       if (allowLocalBypass) {
         updateUser({ verified: true });
         await completeSignupFlow();
-        router.replace("/(tabs)");
+        clearRegistrationData();
+        router.replace(hasCompletedOnboarding ? "/(tabs)" : "/onboarding/step1");
         return;
       }
 
@@ -132,7 +142,8 @@ export default function VerifyScreen() {
       }
 
       await completeSignupFlow();
-      router.replace("/(tabs)");
+      clearRegistrationData();
+      router.replace(hasCompletedOnboarding ? "/(tabs)" : "/onboarding/step1");
     } catch (error) {
       Alert.alert("Error", "An unexpected error occurred. Please try again.");
     } finally {

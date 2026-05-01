@@ -102,6 +102,8 @@ export default function ConnectionsScreen() {
         setHasMore(nextItems.length >= LIMIT);
       } catch (e: any) {
         setError(e?.message ?? "Failed to load");
+        // Prevent endless pagination retries when backend doesn't support this endpoint (404).
+        setHasMore(false);
       } finally {
         setLoading(false);
       }
@@ -381,4 +383,3 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
 });
-

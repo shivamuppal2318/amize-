@@ -22,6 +22,7 @@ export interface LoginResult {
 export interface RegisterResult {
     success: boolean;
     message?: string;
+    verificationCode?: string;
 }
 
 // Update this interface to match the actual parameters we're using

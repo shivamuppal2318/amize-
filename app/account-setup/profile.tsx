@@ -6,6 +6,7 @@ import {
   Image,
   ScrollView,
   Alert,
+  Platform,
 } from "react-native";
 import { router } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -17,20 +18,67 @@ import { Input } from "@/components/ui/Input";
 import { useAuth } from "@/hooks/useAuth";
 import { useRegistration } from "@/context/RegistrationContext";
 import { LinearGradient } from "expo-linear-gradient";
+import { canBypassVerification } from "@/lib/release/releaseConfig";
+
+const buildStoredFullName = (
+  firstName?: string,
+  lastName?: string,
+  username?: string
+) => {
+  const joined = [firstName, lastName].filter(Boolean).join(" ").trim();
+  if (!joined) {
+    return "";
+  }
+
+  const normalizedUsername = (username || "").trim().toLowerCase();
+  const normalizedJoined = joined.toLowerCase();
+
+  // Ignore stale values where signup username leaked into name fields.
+  if (
+    normalizedUsername &&
+    (normalizedJoined === normalizedUsername ||
+      normalizedJoined.replace(/\s+/g, "") === normalizedUsername.replace(/\s+/g, ""))
+  ) {
+    return "";
+  }
+
+  const parts = joined.split(/\s+/).filter(Boolean);
+  if (parts.length < 2) {
+    return "";
+  }
+
+  return joined;
+};
 
 export default function ProfileScreen() {
-  const { register, loading } = useAuth();
-  const { registrationData, updateRegistrationData } = useRegistration();
+  const {
+    register,
+    verifyCode,
+    completeSignupFlow,
+    hasCompletedOnboarding,
+    updateUser,
+    loading,
+  } = useAuth();
+  const { registrationData, updateRegistrationData, clearRegistrationData, isHydrated } = useRegistration();
 
   const initialFullName = useMemo(() => {
-    const names = [registrationData.firstName, registrationData.lastName]
-      .filter(Boolean)
-      .join(" ")
-      .trim();
-    return names;
-  }, [registrationData.firstName, registrationData.lastName]);
+    return buildStoredFullName(
+      registrationData.firstName,
+      registrationData.lastName,
+      registrationData.username
+    );
+  }, [
+    registrationData.firstName,
+    registrationData.lastName,
+    registrationData.username,
+  ]);
 
-  const [fullName, setFullName] = useState(initialFullName);
+  const [firstNameInput, setFirstNameInput] = useState(
+    registrationData.firstName || ""
+  );
+  const [lastNameInput, setLastNameInput] = useState(
+    registrationData.lastName || ""
+  );
   const [email, setEmail] = useState(registrationData.email || "");
   const [phoneNumber, setPhoneNumber] = useState(
     registrationData.phoneNumber || ""
@@ -45,28 +93,61 @@ export default function ProfileScreen() {
     !!value && /^https?:\/\//i.test(value);
 
   useEffect(() => {
+    if (!isHydrated) {
+      return;
+    }
+
     if (!registrationData.username || !registrationData.password) {
       router.replace("/(auth)/sign-up");
       return;
     }
 
-    if (!registrationData.dateOfBirth) {
+    if (!registrationData.dateOfBirth || !registrationData.birthdayConfirmed) {
       router.replace("/account-setup/birthday");
     }
-  }, [registrationData.username, registrationData.password, registrationData.dateOfBirth]);
+  }, [
+    isHydrated,
+    registrationData.username,
+    registrationData.password,
+    registrationData.dateOfBirth,
+    registrationData.birthdayConfirmed,
+  ]);
+
+  useEffect(() => {
+    if (!isHydrated) {
+      return;
+    }
+
+    const nameParts = initialFullName.split(/\s+/).filter(Boolean);
+    setFirstNameInput(nameParts[0] || registrationData.firstName || "");
+    setLastNameInput(
+      nameParts.slice(1).join(" ") || registrationData.lastName || ""
+    );
+  }, [
+    initialFullName,
+    isHydrated,
+    registrationData.firstName,
+    registrationData.lastName,
+  ]);
 
   const isEmailValid = /\S+@\S+\.\S+/.test(email.trim());
-  const nameParts = fullName.trim().split(/\s+/).filter(Boolean);
-  const firstName = nameParts[0] || "";
-  const lastName = nameParts.slice(1).join(" ");
+  const normalizedPhoneNumber = phoneNumber.trim();
+  const isPhoneValid = /^\+?\d{7,15}$/.test(
+    normalizedPhoneNumber.replace(/[^\d+]/g, "")
+  );
+  const firstName = firstNameInput.trim();
+  const lastName = lastNameInput.trim();
   const isFormValid =
-    firstName.length >= 2 && lastName.length >= 2 && isEmailValid;
+    firstName.length >= 2 &&
+    lastName.length >= 2 &&
+    isEmailValid &&
+    isPhoneValid;
 
   const handleContinue = async () => {
     if (!isFormValid) {
       Alert.alert(
         "Incomplete Profile",
-        "Enter your full name and a valid email address to continue."
+        "Enter your first name, last name, a valid email address, and a valid phone number to continue."
       );
       return;
     }
@@ -75,7 +156,7 @@ export default function ProfileScreen() {
     const registrationRequest = {
       username: registrationData.username || "",
       email: trimmedEmail,
-      phoneNumber: phoneNumber.trim() || undefined,
+      phoneNumber: normalizedPhoneNumber,
       address: address.trim() || undefined,
       password: registrationData.password || "",
       confirmPassword: registrationData.confirmPassword || "",
@@ -89,7 +170,7 @@ export default function ProfileScreen() {
 
     updateRegistrationData({
       email: trimmedEmail,
-      phoneNumber: phoneNumber.trim() || undefined,
+      phoneNumber: normalizedPhoneNumber,
       address: address.trim() || undefined,
       firstName,
       lastName,
@@ -108,6 +189,35 @@ export default function ProfileScreen() {
         return;
       }
 
+      // Internal/dev shortcut: skip OTP entirely when bypass is enabled.
+      // Backend already returns tokens for newly registered users, so we can
+      // proceed with onboarding and keep sign-in/Clerk flows intact.
+      if (canBypassVerification()) {
+        updateUser({ verified: true });
+        await completeSignupFlow();
+        clearRegistrationData();
+        router.replace(hasCompletedOnboarding ? "/(tabs)" : "/onboarding/step1");
+        return;
+      }
+
+      if (result.verificationCode) {
+        const verificationResult = await verifyCode(trimmedEmail, result.verificationCode);
+
+        if (!verificationResult.success) {
+          Alert.alert(
+            "Verification Failed",
+            verificationResult.message || "Unable to verify this account automatically. Enter the code manually on the next screen."
+          );
+          router.replace("/account-setup/verify");
+          return;
+        }
+
+        await completeSignupFlow();
+        clearRegistrationData();
+        router.replace(hasCompletedOnboarding ? "/(tabs)" : "/onboarding/step1");
+        return;
+      }
+
       router.replace("/account-setup/verify");
     } catch (error) {
       Alert.alert("Error", "An unexpected error occurred. Please try again.");
@@ -117,7 +227,10 @@ export default function ProfileScreen() {
   };
 
   const handleSkip = () => {
-    router.push("/account-setup/pin");
+    Alert.alert(
+      "Profile Required",
+      "Complete your profile and finish registration before continuing."
+    );
   };
 
   const handleImagePicker = async () => {
@@ -134,10 +247,11 @@ export default function ProfileScreen() {
       }
 
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: "images",
+        mediaTypes: ["images"],
         allowsEditing: true,
         aspect: [1, 1],
         quality: 0.8,
+        ...(Platform.OS === "android" ? { legacy: true } : {}),
       });
 
       if (!result.canceled && result.assets?.length) {
@@ -208,7 +322,7 @@ export default function ProfileScreen() {
                       fontFamily: "Figtree",
                     }}
                   >
-                    Skip
+                    Info
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -304,14 +418,27 @@ export default function ProfileScreen() {
 
                 <View style={{ width: "100%", maxWidth: 400 }}>
                   <Input
-                    label="Full Name"
-                    placeholder="Enter your full name"
-                    value={fullName}
-                    onChangeText={setFullName}
+                    label="First Name"
+                    placeholder="Enter your first name"
+                    value={firstNameInput}
+                    onChangeText={setFirstNameInput}
                     icon={<User size={20} color="#9CA3AF" />}
                     error={
-                      fullName.trim().length > 0 && !isFormValid
-                        ? "Enter first and last name"
+                      firstNameInput.trim().length > 0 && firstName.length < 2
+                        ? "Enter a valid first name"
+                        : ""
+                    }
+                  />
+
+                  <Input
+                    label="Last Name"
+                    placeholder="Enter your last name"
+                    value={lastNameInput}
+                    onChangeText={setLastNameInput}
+                    icon={<User size={20} color="#9CA3AF" />}
+                    error={
+                      lastNameInput.trim().length > 0 && lastName.length < 2
+                        ? "Enter a valid last name"
                         : ""
                     }
                   />

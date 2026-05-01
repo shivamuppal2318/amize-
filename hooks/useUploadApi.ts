@@ -171,7 +171,7 @@ export const useUploadApi = () => {
       if (errors.length > 0) {
         if (errors.length === files.length) {
           // All uploads failed
-          throw new Error("All uploads failed");
+          throw errors[0] || new Error("All uploads failed");
         } else {
           // Some uploads failed
           toast.show(

@@ -45,7 +45,7 @@ import {
 import { LinearGradient } from "expo-linear-gradient";
 import apiClient from "@/lib/api/client";
 import { getTokens } from "@/lib/auth/tokens";
-import { mockApiVideos } from "@/data/mockVideos";
+import VideoService from "@/lib/api/videoService";
 
 const { width } = Dimensions.get("window");
 const ITEM_WIDTH = (width - 18) / 3;
@@ -71,6 +71,7 @@ interface User {
   isEligibleForCreator: boolean;
   location?: string;
   joinedAt?: string;
+  createdAt?: string;
   _count: {
     videos: number;
     following: number;
@@ -100,56 +101,6 @@ export interface Video {
   };
 }
 
-const buildMockProfileData = (profileId?: string) => {
-  const fallbackVideos: Video[] = mockApiVideos.map((video) => ({
-    id: video.id,
-    title: video.title || "",
-    description: video.description,
-    thumbnailUrl: video.thumbnailUrl,
-    videoUrl: video.videoUrl,
-    duration: video.duration,
-    isPublic: video.isPublic,
-    createdAt: video.createdAt,
-    user: {
-      id: profileId || video.user.id,
-      username: video.user.username,
-      profilePhotoUrl: video.user.profilePhotoUrl || undefined,
-      creatorVerified: video.user.creatorVerified,
-    },
-    _count: {
-      likes: video.likesCount,
-      comments: video.commentsCount,
-      views: video.viewsCount,
-    },
-  }));
-
-  const baseUser = mockApiVideos[0]?.user;
-  const mockUser: User = {
-    id: profileId || baseUser?.id || "demo-user",
-    username: baseUser?.username || "demo_user",
-    fullName: baseUser?.fullName || "Demo Creator",
-    bio: "Creator profile preview.",
-    profilePhotoUrl: baseUser?.profilePhotoUrl || undefined,
-    creatorVerified: baseUser?.creatorVerified || false,
-    creatorCategory: "Lifestyle",
-    role: "user",
-    isEligibleForCreator: true,
-    location: "Mumbai, IN",
-    joinedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 365).toISOString(),
-    _count: {
-      videos: fallbackVideos.length,
-      following: 0,
-      followers: 0,
-    },
-  };
-
-  return {
-    user: mockUser,
-    videos: fallbackVideos,
-    likes: fallbackVideos.slice(0, Math.min(6, fallbackVideos.length)),
-  };
-};
-
 export default function ProfilePage() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { user: authUser, isAuthenticated } = useAuth();
@@ -178,22 +129,6 @@ export default function ProfilePage() {
   const profileImageScale = useRef(new Animated.Value(0.8)).current;
   const statsOpacity = useRef(new Animated.Value(0)).current;
 
-  const applyMockProfile = useCallback(
-    (reason: string) => {
-      const mockData = buildMockProfileData(id);
-      console.warn(`[Profile] Using mock profile (${reason})`);
-      setUser(mockData.user);
-      setVideos(mockData.videos);
-      setLikes(mockData.likes);
-      const isOwn = Boolean(isAuthenticated && authUser?.id && authUser.id === id);
-      setIsOwnProfile(isOwn);
-      setIsFollowing(false);
-      setIsMockProfile(true);
-      setError(null);
-    },
-    [authUser?.id, id, isAuthenticated]
-  );
-
   const fetchUserProfile = useCallback(async () => {
     try {
       setLoading(true);
@@ -209,15 +144,27 @@ export default function ProfilePage() {
         setIsFollowing(response.data.isFollowing);
         setIsMockProfile(false);
       } else {
-        applyMockProfile("no data");
+        setUser(null);
+        setVideos([]);
+        setLikes([]);
+        setIsOwnProfile(false);
+        setIsFollowing(false);
+        setIsMockProfile(false);
+        setError("Profile data is unavailable right now.");
       }
     } catch (err) {
       console.error("Error fetching profile:", err);
-      applyMockProfile("request failed");
+      setUser(null);
+      setVideos([]);
+      setLikes([]);
+      setIsOwnProfile(false);
+      setIsFollowing(false);
+      setIsMockProfile(false);
+      setError("Failed to load profile. Please try again.");
     } finally {
       setLoading(false);
     }
-  }, [id, applyMockProfile]);
+  }, [id]);
 
   const fetchTabContent = useCallback(
     async (tab: TabType) => {
@@ -323,14 +270,39 @@ export default function ProfilePage() {
 
   const fetchUserVideos = useCallback(async () => {
     try {
-      const response = await apiClient.get(`/users/${id}/videos`);
-      if (response.data.success) {
-        setVideos(response.data.videos);
+      // Backend endpoint `/users/:id/videos` is unstable (500 in production).
+      // Use the stable feed endpoint with userId filtering, then map to this screen's Video shape.
+      const response = await VideoService.getFeed(1, 50, id);
+      if (response.success) {
+        const mapped: Video[] = (response.videos || []).map((v: any) => ({
+          id: String(v.id),
+          title: v.title ?? "",
+          description: v.description ?? null,
+          thumbnailUrl: v.thumbnailUrl ?? null,
+          videoUrl: v.videoUrl,
+          duration: Number(v.duration ?? 0),
+          isPublic: Boolean(v.isPublic),
+          createdAt: v.createdAt,
+          user: {
+            id: String(v.user?.id ?? ""),
+            username: String(v.user?.username ?? ""),
+            profilePhotoUrl: v.user?.profilePhotoUrl ?? undefined,
+            creatorVerified: Boolean(v.user?.creatorVerified),
+          },
+          _count: {
+            likes: Number(v.likesCount ?? v._count?.likes ?? 0),
+            comments: Number(v.commentsCount ?? v._count?.comments ?? 0),
+            views: Number(v.viewsCount ?? v._count?.views ?? 0),
+          },
+        }));
+
+        setVideos(mapped);
+      } else {
+        setVideos([]);
       }
     } catch (err) {
       console.error("Error fetching videos:", err);
-      const mockData = buildMockProfileData(id);
-      setVideos(mockData.videos);
+      setVideos([]);
     }
   }, [id]);
 
@@ -349,8 +321,7 @@ export default function ProfilePage() {
       }
     } catch (err) {
       console.error("Error fetching videos:", err);
-      const mockData = buildMockProfileData(id);
-      setLikes(mockData.likes);
+      setLikes([]);
     }
   }, [id]);
 
@@ -492,8 +463,9 @@ export default function ProfilePage() {
   };
 
   const formatJoinDate = (dateString?: string) => {
-    if (!dateString) return "Member since 2024";
+    if (!dateString) return "New member";
     const date = new Date(dateString);
+    if (Number.isNaN(date.getTime())) return "New member";
     const monthNames = [
       "Jan",
       "Feb",
@@ -981,7 +953,7 @@ export default function ProfilePage() {
                     <View style={styles.infoItem}>
                       <Calendar size={14} color="#9CA3AF" />
                       <Text style={styles.infoText}>
-                        {formatJoinDate(user.joinedAt)}
+                        {formatJoinDate(user.joinedAt || user.createdAt)}
                       </Text>
                     </View>
                   </View>

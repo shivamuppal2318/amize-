@@ -21,9 +21,17 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
         // Create a minimal fallback state if socket fails
         socketState = {
             isConnected: false,
-            sendMessage: async () => {},
-            onMessageReceived: null,
+            connectionStatus: {
+                state: 'disconnected',
+                isConnected: false,
+                reconnectAttempts: 0,
+                error: 'Socket unavailable',
+            },
+            connectionState: 'disconnected',
+            reconnect: async () => {},
             disconnect: () => {},
+            reconnectAttempts: 0,
+            error: 'Socket unavailable',
         } as UseSocketReturn;
     }
 

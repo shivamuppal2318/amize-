@@ -7,6 +7,7 @@ export type LiveSessionStatus =
     | 'idle'
     | 'creating'
     | 'connecting'
+    | 'reconnecting'
     | 'live'
     | 'preview'
     | 'ending'

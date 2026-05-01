@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, Text, TouchableOpacity, Image, ScrollView } from "react-native";
+import { View, Text, TouchableOpacity, Image, ScrollView, Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "react-native";
 import { router } from "expo-router";
@@ -55,8 +55,21 @@ export default function BirthdayScreen() {
   const { updateUser, user } = useAuth();
   const { updateRegistrationData } = useRegistration();
 
-  // Create a proper Date object from user.birthday if it exists
-  const userBirthday = user?.dateOfBirth ? user.dateOfBirth : null;
+  // `dateOfBirth` may arrive as either a Date or an ISO string depending on
+  // whether it came from storage, the API, or in-memory state.
+  const userBirthday = (() => {
+    const rawBirthday = user?.dateOfBirth;
+    if (!rawBirthday) {
+      return null;
+    }
+
+    if (rawBirthday instanceof Date) {
+      return Number.isNaN(rawBirthday.getTime()) ? null : rawBirthday;
+    }
+
+    const parsedBirthday = new Date(rawBirthday);
+    return Number.isNaN(parsedBirthday.getTime()) ? null : parsedBirthday;
+  })();
 
   const [selectedMonth, setSelectedMonth] = useState<number>(
     userBirthday?.getMonth() ?? 0
@@ -68,16 +81,55 @@ export default function BirthdayScreen() {
     userBirthday?.getFullYear() ?? 2000
   );
 
+  const calculateAge = (dateOfBirth: Date) => {
+    const today = new Date();
+    let age = today.getFullYear() - dateOfBirth.getFullYear();
+    const monthDifference = today.getMonth() - dateOfBirth.getMonth();
+
+    if (
+      monthDifference < 0 ||
+      (monthDifference === 0 && today.getDate() < dateOfBirth.getDate())
+    ) {
+      age--;
+    }
+
+    return age;
+  };
+
   const handleContinue = () => {
-    const birthday = new Date(selectedYear, selectedMonth, selectedDay);
-    const formattedDate = birthday?.toISOString().split("T")[0]; // Format as YYYY-MM-DD
-    updateRegistrationData({ dateOfBirth: formattedDate });
+    // Clamp the day to match the month/year the user sees on screen.
+    const maxDays = new Date(selectedYear, selectedMonth + 1, 0).getDate();
+    const day = Math.min(selectedDay, maxDays);
+
+    const birthday = new Date(selectedYear, selectedMonth, day);
+
+    if (Number.isNaN(birthday.getTime())) {
+      Alert.alert("Invalid Birthday", "Please select a valid date.");
+      return;
+    }
+
+    if (calculateAge(birthday) < 13) {
+      Alert.alert(
+        "Invalid Birthday",
+        "You must be at least 13 years old to continue."
+      );
+      return;
+    }
+
+    const formattedDate = birthday.toISOString().split("T")[0]; // YYYY-MM-DD
+    updateRegistrationData({
+      dateOfBirth: formattedDate,
+      birthdayConfirmed: true,
+    });
 
     router.push("/account-setup/profile");
   };
 
   const handleSkip = () => {
-    router.push("/account-setup/profile");
+    Alert.alert(
+      "Birthday Required",
+      "Enter your birthday before continuing. The app creates your account on the next step and needs this value."
+    );
   };
 
   // Get days in the selected month
@@ -167,7 +219,7 @@ export default function BirthdayScreen() {
                       fontFamily: "Figtree",
                     }}
                   >
-                    Skip
+                    Info
                   </Text>
                 </TouchableOpacity>
               </View>

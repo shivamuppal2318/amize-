@@ -5,63 +5,41 @@ import {
     TouchableOpacity,
     StyleSheet,
     Modal,
-    Image,
     Dimensions,
     Platform,
     SafeAreaView,
     ActivityIndicator,
 } from 'react-native';
 import {
-    MessageCircle,
+    ArrowDownUp,
     X,
     Flag,
-    Save,
-    Image as ImageIcon,
-    Scissors,
     Bookmark,
-    Gift,
-    ArrowDownUp, Search, HeartCrack, Download, Wallpaper, Users
+    HeartCrack,
+    Trash2,
 } from 'lucide-react-native';
-import Svg, {Defs, G, Circle, LinearGradient, Stop, Path, Rect} from "react-native-svg";
+import Svg, {Defs, G, Circle, LinearGradient, Stop, Path} from "react-native-svg";
 import { ApiSharePlatform } from '@/lib/api/types/video';
 
 const {width} = Dimensions.get('window');
 
-interface UserShareOption {
-    id: string;
-    name: string;
-    avatar: string;
-}
-
 interface ShareModalProps {
     visible: boolean;
     onClose: () => void;
+    onRepostPress: () => void;
     onReportPress: () => void;
     onNotInterestedPress: () => void;
-    onSaveVideoPress: () => void;
-    onSetWallpaperPress: () => void;
-    onDuetPress: () => void;
-    onStitchPress: () => void;
     onAddToFavoritesPress: () => void;
-    onShareAsGifPress: () => void;
-    onUserSharePress: (userId: string) => void;
     onSocialSharePress: (platform: ApiSharePlatform) => void;
+    onDeletePress?: () => void;
+    canDelete?: boolean;
     videoId: string;
 }
 
-const ShareModal: React.FC<ShareModalProps> = ({visible, onClose, onReportPress, onNotInterestedPress, onSaveVideoPress, onSetWallpaperPress, onDuetPress, onStitchPress, onAddToFavoritesPress, onShareAsGifPress, onUserSharePress, onSocialSharePress, videoId,
+const ShareModal: React.FC<ShareModalProps> = ({visible, onClose, onRepostPress, onReportPress, onNotInterestedPress, onAddToFavoritesPress, onSocialSharePress, onDeletePress, canDelete = false, videoId,
                                                }) => {
     // Track sharing state for UI feedback
     const [sharingPlatform, setSharingPlatform] = useState<string | null>(null);
-
-    // Sample user data - in a real app, this would come from props or an API
-    const userShareOptions: UserShareOption[] = [
-        {id: 'repost', name: 'Repost', avatar: 'https://randomuser.me/api/portraits/men/32.jpg'},
-        {id: 'johnson', name: 'Johnson', avatar: 'https://randomuser.me/api/portraits/men/32.jpg'},
-        {id: 'michal', name: 'Michal', avatar: 'https://randomuser.me/api/portraits/women/44.jpg'},
-        {id: 'andrew', name: 'Andrew', avatar: 'https://randomuser.me/api/portraits/men/85.jpg'},
-        {id: 'search', name: 'Search', avatar: ''},
-    ];
 
     // Wrapper for social shares to show loading state
     const handleSocialShareWithFeedback = (platform: ApiSharePlatform) => {
@@ -69,19 +47,6 @@ const ShareModal: React.FC<ShareModalProps> = ({visible, onClose, onReportPress,
 
         // Call the actual share handler
         onSocialSharePress(platform);
-
-        // Reset sharing state after a short delay
-        setTimeout(() => {
-            setSharingPlatform(null);
-        }, 1000);
-    };
-
-    // Wrapper for user shares to show loading state
-    const handleUserShareWithFeedback = (userId: string) => {
-        setSharingPlatform(userId);
-
-        // Call the actual share handler
-        onUserSharePress(userId);
 
         // Reset sharing state after a short delay
         setTimeout(() => {
@@ -175,35 +140,6 @@ const ShareModal: React.FC<ShareModalProps> = ({visible, onClose, onReportPress,
                         </TouchableOpacity>
                     </View>
 
-                    {/* User Share Options */}
-                    <View style={styles.userShareContainer}>
-                        {userShareOptions.map((user) => (
-                            <TouchableOpacity
-                                key={user.id}
-                                style={styles.userShareOption}
-                                onPress={() => handleUserShareWithFeedback(user.id)}
-                                disabled={Boolean(sharingPlatform)}
-                            >
-                                {sharingPlatform === user.id ? (
-                                    <View style={[styles.userAvatar, {backgroundColor: 'rgba(255, 79, 91, 0.2)'}]}>
-                                        <ActivityIndicator size="small" color="#FF4F5B" />
-                                    </View>
-                                ) : user.id === 'repost' ? (
-                                    <View style={[styles.userAvatar, styles.repostCircle]}>
-                                        <ArrowDownUp size={24} color="white"/>
-                                    </View>
-                                ) : user.id === 'search' ? (
-                                    <View style={[styles.userAvatar, styles.searchCircle]}>
-                                        <Search size={24} color="#FF4F5B"/>
-                                    </View>
-                                ) : (
-                                    <Image source={{uri: user.avatar}} style={styles.userAvatar}/>
-                                )}
-                                <Text style={styles.userName}>{user.name}</Text>
-                            </TouchableOpacity>
-                        ))}
-                    </View>
-
                     {/* Social Media Share Options */}
                     <View style={styles.socialShareContainer}>
                         <TouchableOpacity
@@ -218,57 +154,23 @@ const ShareModal: React.FC<ShareModalProps> = ({visible, onClose, onReportPress,
                                     <WhatsappIcon color={'white'}/>
                                 )}
                             </View>
-                            <Text style={styles.socialText}>Whatsapp</Text>
+                            <Text style={styles.socialText}>WhatsApp</Text>
                         </TouchableOpacity>
 
-                        <TouchableOpacity
-                            style={styles.socialButton}
-                            onPress={() => handleSocialShareWithFeedback('facebook')}
-                            disabled={Boolean(sharingPlatform)}
-                        >
-                            <View style={[styles.socialIcon, styles.facebookBg]}>
-                                {sharingPlatform === 'facebook' ? (
-                                    <ActivityIndicator size="small" color="white" />
-                                ) : (
-                                    <FacebookIcon color={'white'}/>
-                                )}
-                            </View>
-                            <Text style={styles.socialText}>Facebook</Text>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity
-                            style={styles.socialButton}
-                            onPress={() => handleSocialShareWithFeedback('twitter')}
-                            disabled={Boolean(sharingPlatform)}
-                        >
-                            <View style={[styles.socialIcon, styles.twitterBg]}>
-                                {sharingPlatform === 'twitter' ? (
-                                    <ActivityIndicator size="small" color="white" />
-                                ) : (
-                                    <TwitterIcon color={'white'}/>
-                                )}
-                            </View>
-                            <Text style={styles.socialText}>Twitter</Text>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity
-                            style={styles.socialButton}
-                            onPress={() => handleSocialShareWithFeedback('instagram')}
-                            disabled={Boolean(sharingPlatform)}
-                        >
-                            <View style={[styles.socialIcon, styles.instagramBg]}>
-                                {sharingPlatform === 'instagram' ? (
-                                    <ActivityIndicator size="small" color="white" />
-                                ) : (
-                                    <InstagramIcon color={'white'}/>
-                                )}
-                            </View>
-                            <Text style={styles.socialText}>Instagram</Text>
-                        </TouchableOpacity>
                     </View>
 
                     {/* Action Buttons - First Row */}
                     <View style={styles.actionRow}>
+                        <TouchableOpacity
+                            style={styles.actionButton}
+                            onPress={onRepostPress}
+                        >
+                            <View style={styles.actionIcon}>
+                                <ArrowDownUp size={20} color="#FF4F5B"/>
+                            </View>
+                            <Text style={styles.actionText}>Repost</Text>
+                        </TouchableOpacity>
+
                         <TouchableOpacity
                             style={styles.actionButton}
                             onPress={onReportPress}
@@ -289,51 +191,21 @@ const ShareModal: React.FC<ShareModalProps> = ({visible, onClose, onReportPress,
                             <Text style={styles.actionText}>Not Interested</Text>
                         </TouchableOpacity>
 
-                        <TouchableOpacity
-                            style={styles.actionButton}
-                            onPress={onSaveVideoPress}
-                        >
-                            <View style={styles.actionIcon}>
-                                <Download size={20} color="#FF4F5B"/>
-                            </View>
-                            <Text style={styles.actionText}>Save Video</Text>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity
-                            style={styles.actionButton}
-                            onPress={onSetWallpaperPress}
-                        >
-                            <View style={styles.actionIcon}>
-                                <Wallpaper size={20} color="#FF4F5B"/>
-                            </View>
-                            <Text style={styles.actionText}>Set as wallpaper</Text>
-                        </TouchableOpacity>
+                        {canDelete && onDeletePress ? (
+                            <TouchableOpacity
+                                style={styles.actionButton}
+                                onPress={onDeletePress}
+                            >
+                                <View style={styles.actionIcon}>
+                                    <Trash2 size={20} color="#FF4F5B"/>
+                                </View>
+                                <Text style={styles.actionText}>Delete Post</Text>
+                            </TouchableOpacity>
+                        ) : null}
                     </View>
 
                     {/* Action Buttons - Second Row */}
                     <View style={styles.actionRow}>
-                        <TouchableOpacity
-                            style={styles.actionButton}
-                            onPress={onDuetPress}
-                        >
-                            <View style={styles.actionIcon}>
-                                <View style={styles.duetIcon}>
-                                    <Users size={20} color="#FF4F5B"/>
-                                </View>
-                            </View>
-                            <Text style={styles.actionText}>Duet</Text>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity
-                            style={styles.actionButton}
-                            onPress={onStitchPress}
-                        >
-                            <View style={styles.actionIcon}>
-                                <Scissors size={24} color="#FF4F5B"/>
-                            </View>
-                            <Text style={styles.actionText}>Stitch</Text>
-                        </TouchableOpacity>
-
                         <TouchableOpacity
                             style={styles.actionButton}
                             onPress={onAddToFavoritesPress}
@@ -399,46 +271,6 @@ const styles = StyleSheet.create({
         right: 16,
         top: 16,
     },
-    userShareContainer: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        paddingHorizontal: 20,
-        paddingVertical: 16,
-    },
-    userShareOption: {
-        alignItems: 'center',
-    },
-    userAvatar: {
-        width: 48,
-        height: 48,
-        borderRadius: 24,
-        backgroundColor: '#2A2A2A',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    repostCircle: {
-        backgroundColor: '#FF4F5B',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    repostText: {
-        color: 'white',
-        fontSize: 24,
-        fontWeight: 'bold',
-    },
-    searchCircle: {
-        backgroundColor: '#2A2A2A',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    searchText: {
-        fontSize: 20,
-    },
-    userName: {
-        color: 'white',
-        marginTop: 4,
-        fontSize: 12,
-    },
     socialShareContainer: {
         flexDirection: 'row',
         justifyContent: 'space-around',
@@ -499,13 +331,6 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         marginBottom: 4,
-    },
-    duetIcon: {
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    duetText: {
-        fontSize: 20,
     },
     gifIcon: {
         justifyContent: 'center',

@@ -2,6 +2,9 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
   content: ["./app/**/*.{js,jsx,ts,tsx}"],
+  // NativeWind toggles dark mode via a class on web; Tailwind must be configured accordingly.
+  // This fixes: "Cannot manually set color scheme, as dark mode is type 'media'."
+  darkMode: "class",
   presets: [require("nativewind/preset")],
   theme: {
     extend: {

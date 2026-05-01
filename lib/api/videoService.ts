@@ -188,6 +188,19 @@ const VideoService = {
         return response.data;
     },
 
+    // Delete a comment from a video - Requires auth
+    deleteComment: async (videoId: string, commentId: string): Promise<ApiSuccessResponse> => {
+        const isAuth = await VideoService.isAuthenticated();
+        if (!isAuth) {
+            throw new Error('Authentication required to delete comments');
+        }
+
+        const response = await apiClient.delete<ApiSuccessResponse>(
+            `/videos/${videoId}/comment/${commentId}`
+        );
+        return response.data;
+    },
+
     // Create a new video from an upload - Requires auth
     createVideo: async (uploadId: string, title?: string, description?: string, soundId?: string, isPublic = true): Promise<ApiVideoResponse> => {
         const isAuth = await VideoService.isAuthenticated();
@@ -220,6 +233,17 @@ const VideoService = {
         }
 
         const response = await apiClient.patch<ApiVideoResponse>(`/videos/${id}`, data);
+        return response.data;
+    },
+
+    // Repost a video to the current user's profile/feed - Requires auth
+    repostVideo: async (id: string): Promise<ApiVideoResponse> => {
+        const isAuth = await VideoService.isAuthenticated();
+        if (!isAuth) {
+            throw new Error('Authentication required to repost videos');
+        }
+
+        const response = await apiClient.post<ApiVideoResponse>(`/videos/${id}/repost`, {});
         return response.data;
     },
 

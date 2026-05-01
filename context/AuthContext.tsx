@@ -173,6 +173,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const finalizeReturningUserSession = useCallback(async () => {
     await secureStorage.set(STORAGE_KEYS.ONBOARDING_COMPLETED, "true");
     await secureStorage.remove(STORAGE_KEYS.SIGNUP_FLOW);
+    await secureStorage.remove(STORAGE_KEYS.REGISTRATION_DATA);
     setHasCompletedOnboarding(true);
     setIsInSignupFlow(false);
   }, []);

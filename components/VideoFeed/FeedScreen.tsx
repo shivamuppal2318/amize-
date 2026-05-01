@@ -8,10 +8,12 @@ import {
   TouchableOpacity,
   StyleSheet,
   Platform,
+  Share as NativeShare,
   ViewToken,
   Modal,
   Image,
   Animated as RNAnimated,
+  Linking,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { RefreshControl } from "react-native";
@@ -49,6 +51,7 @@ import SearchResultsScreen from "@/components/VideoFeed/SearchResultsScreen";
 import { router } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
+import { SITE_URL } from "@/lib/settings/constants";
 
 const { width, height } = Dimensions.get("window");
 
@@ -308,6 +311,7 @@ const FeedScreen: React.FC = () => {
     refresh,
     changeFeedType,
     updateVideo,
+    removeVideo,
     loadSpecificVideo,
     jumpToVideo,
     canLoadMore,
@@ -592,6 +596,12 @@ const FeedScreen: React.FC = () => {
       }: {
         viewableItems: Array<ViewToken>;
       }) => {
+        // Avoid switching the focused video while the user is actively scrolling.
+        // For paged feeds, `onMomentumScrollEnd` provides a much more stable index.
+        if (scrollState.current.isScrolling) {
+          return;
+        }
+
         if (viewableItems.length > 0 && viewableItems[0].index !== null) {
           const newIndex = viewableItems[0].index;
           if (newIndex !== focusedIndex) {
@@ -704,16 +714,69 @@ const FeedScreen: React.FC = () => {
       const videoItem = videos.find((v) => v.id === videoId);
       if (!videoItem) return;
 
+      const shareUrl = `${SITE_URL}/videos/${videoId}`;
+      const shareMessage = [
+        `Check out this video on Amize.`,
+        videoItem.user?.username ? `Posted by @${videoItem.user.username}.` : "",
+        shareUrl,
+      ]
+        .filter(Boolean)
+        .join(" ");
+
       if (platform) {
         try {
-          updateVideo(videoId, { shareCount: videoItem.shareCount + 1 });
-          await shareVideo(
-            videoId,
-            (platform as any) || "copy_link",
-            (count) => {
-              updateVideo(videoId, { shareCount: count });
+          let shareCompleted = false;
+          const encodedMessage = encodeURIComponent(shareMessage);
+
+          if (
+            platform === "copy_link" &&
+            Platform.OS === "web" &&
+            typeof navigator !== "undefined" &&
+            navigator.clipboard?.writeText
+          ) {
+            await navigator.clipboard.writeText(shareUrl);
+            shareCompleted = true;
+          } else if (platform === "whatsapp") {
+            const nativeWhatsappUrl = `whatsapp://send?text=${encodedMessage}`;
+            const browserWhatsappUrl = `https://wa.me/?text=${encodedMessage}`;
+
+            if (Platform.OS === "web") {
+              await Linking.openURL(browserWhatsappUrl);
+              shareCompleted = true;
+            } else {
+              const canOpenNativeWhatsapp = await Linking.canOpenURL(
+                nativeWhatsappUrl
+              );
+
+              if (canOpenNativeWhatsapp) {
+                await Linking.openURL(nativeWhatsappUrl);
+              } else {
+                await Linking.openURL(browserWhatsappUrl);
+              }
+
+              shareCompleted = true;
             }
-          );
+          } else {
+            const shareResult = await NativeShare.share({
+              title: videoItem.title || "Amize video",
+              message: shareMessage,
+              url: shareUrl,
+            });
+            shareCompleted =
+              shareResult.action === NativeShare.sharedAction ||
+              Platform.OS === "web";
+          }
+
+          if (shareCompleted) {
+            updateVideo(videoId, { shareCount: videoItem.shareCount + 1 });
+            await shareVideo(
+              videoId,
+              (platform as any) || "copy_link",
+              (count) => {
+                updateVideo(videoId, { shareCount: count });
+              }
+            );
+          }
         } catch (error) {
           log(`❌ Error sharing video:`, error);
           updateVideo(videoId, { shareCount: videoItem.shareCount });
@@ -726,7 +789,7 @@ const FeedScreen: React.FC = () => {
         }
       }
     },
-    [videos, updateVideo, shareVideo, isAuthenticated]
+    [videos, updateVideo, shareVideo, isAuthenticated, log]
   );
 
   // Search handlers
@@ -789,6 +852,7 @@ const FeedScreen: React.FC = () => {
                 router.push(`/(tabs)/profile/${item.user.id}`)
               }
               onAuthRequired={() => {}}
+              onDeleted={() => removeVideo(item.id)}
               index={index}
             />
           ) : (
@@ -803,7 +867,7 @@ const FeedScreen: React.FC = () => {
         </View>
       );
     },
-    [focusedIndex, isPaused, handleLike, handleComment, handleShare]
+    [focusedIndex, isPaused, handleLike, handleComment, handleShare, removeVideo]
   );
 
   // Enhanced footer with debug info

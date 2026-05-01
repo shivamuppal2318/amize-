@@ -16,12 +16,12 @@ const StyledView = View
 const StyledSafeAreaView = SafeAreaView
 
 export default function OnboardingStep3() {
-    const { setOnboardingComplete } = useAuth();
+    const { setOnboardingComplete, isAuthenticated } = useAuth();
 
     const handleGetStarted = async () => {
         // Mark onboarding as complete using the context method
         await setOnboardingComplete();
-        router.push('/(auth)/get-started');
+        router.replace(isAuthenticated ? '/(tabs)' : '/get-started');
     };
 
     return (

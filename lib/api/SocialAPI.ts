@@ -23,7 +23,8 @@ export class SocialAPI {
      */
     static async followUser(userId: string): Promise<FollowResponse> {
         try {
-            const response = await apiClient.post(`/api/users/${userId}/follow`);
+            // baseURL already includes `/api` in most environments
+            const response = await apiClient.post(`/users/${userId}/follow`);
             return response.data;
         } catch (error) {
             console.error('Error following user:', error);
@@ -36,7 +37,7 @@ export class SocialAPI {
      */
     static async unfollowUser(userId: string): Promise<FollowResponse> {
         try {
-            const response = await apiClient.delete(`/api/users/${userId}/follow`);
+            const response = await apiClient.delete(`/users/${userId}/follow`);
             return response.data;
         } catch (error) {
             console.error('Error unfollowing user:', error);
@@ -92,7 +93,7 @@ export class SocialAPI {
      */
     static async searchUsers(query: string, page: number = 1, limit: number = 20) {
         try {
-            const response = await apiClient.get('/api/users/search', {
+            const response = await apiClient.get('/users/search', {
                 params: { q: query, page, limit }
             });
             return response.data;
@@ -107,7 +108,7 @@ export class SocialAPI {
      */
     static async getSuggestedUsers(limit: number = 10) {
         try {
-            const response = await apiClient.get('/api/users/suggested', {
+            const response = await apiClient.get('/users/suggested', {
                 params: { limit }
             });
             return response.data;
@@ -122,7 +123,7 @@ export class SocialAPI {
      */
     static async blockUser(userId: string) {
         try {
-            const response = await apiClient.post(`/api/users/${userId}/block`);
+            const response = await apiClient.post(`/users/${userId}/block`);
             return response.data;
         } catch (error) {
             console.error('Error blocking user:', error);
@@ -135,7 +136,7 @@ export class SocialAPI {
      */
     static async unblockUser(userId: string) {
         try {
-            const response = await apiClient.delete(`/api/users/${userId}/block`);
+            const response = await apiClient.delete(`/users/${userId}/block`);
             return response.data;
         } catch (error) {
             console.error('Error unblocking user:', error);

@@ -140,8 +140,11 @@ function RootLayoutNavigation() {
     if (inAccountSetupFlow) return;
 
     // RULE 2
+    // Do not block auth flows behind onboarding. Onboarding is optional for unauthenticated users.
     if (!hasCompletedOnboarding) {
-      if (!inOnboardingFlow) router.replace("/onboarding");
+      if (!inOnboardingFlow && !inAuthFlow && !inPasswordResetFlow && !inAccountSetupFlow) {
+        router.replace("/onboarding");
+      }
       return;
     }
 
@@ -158,8 +161,8 @@ function RootLayoutNavigation() {
 
     // RULE 4
     if (isAuthenticated && inAuthFlow && !isInSignupFlow) {
-      console.log('[LAYOUT DEBUG] RULE 4 TRIGGERED: auth → tabs');
-      router.replace("/");
+      console.log('[LAYOUT DEBUG] RULE 4 TRIGGERED: auth → feed');
+      router.replace("/(tabs)/index");
       return;
     }
 
@@ -170,8 +173,8 @@ function RootLayoutNavigation() {
       !inSupportedFlows &&
       !isInSignupFlow
     ) {
-      console.log('[LAYOUT DEBUG] RULE 5 TRIGGERED: unsupported → tabs');
-      router.replace("/");
+      console.log('[LAYOUT DEBUG] RULE 5 TRIGGERED: unsupported → feed');
+      router.replace("/(tabs)/index");
       return;
     }
 

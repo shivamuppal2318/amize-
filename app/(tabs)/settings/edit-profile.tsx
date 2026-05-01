@@ -8,6 +8,7 @@ import {
   ScrollView,
   ActivityIndicator,
   RefreshControl,
+  Platform,
 } from "react-native";
 import { router } from "expo-router";
 import {
@@ -165,16 +166,18 @@ export default function EditProfileScreen() {
       let result;
       if (source === "camera") {
         result = await ImagePicker.launchCameraAsync({
+          mediaTypes: ['images'],
           allowsEditing: true,
           aspect: [1, 1],
           quality: 0.8,
         });
       } else {
         result = await ImagePicker.launchImageLibraryAsync({
-          mediaTypes: "images",
+          mediaTypes: ['images'],
           allowsEditing: true,
           aspect: [1, 1],
           quality: 0.8,
+          ...(Platform.OS === "android" ? { legacy: true } : {}),
         });
       }
 

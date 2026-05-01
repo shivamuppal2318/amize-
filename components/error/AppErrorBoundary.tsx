@@ -23,6 +23,9 @@ export class AppErrorBoundary extends React.Component<
   }
 
   componentDidCatch(error: Error, info: React.ErrorInfo) {
+    // Helps pinpoint RN-web-only rendering errors like "Unexpected text node: ."
+    console.error("[AppErrorBoundary] Render error:", error);
+    console.error("[AppErrorBoundary] Component stack:", info.componentStack);
     captureException(error, {
       tags: { scope: "render-boundary" },
       extra: { componentStack: info.componentStack },

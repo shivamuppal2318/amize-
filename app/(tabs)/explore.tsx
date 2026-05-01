@@ -31,7 +31,6 @@ import MasonryGrid from '@/components/explore/MasonryGrid';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useDiscoveryTopics } from '@/hooks/useDiscoveryTopics';
 import { AdBanner } from '@/components/ads/AdBanner';
-import { mockMixedFeed } from '@/data/mockVideos';
 
 const ExploreScreen = () => {
     const insets = useSafeAreaInsets();
@@ -197,17 +196,17 @@ const ExploreScreen = () => {
 
     // Navigation handlers
     const handleVideoPress = useCallback((video: any) => {
-        const displayFeed = mixedFeed.length > 0 ? mixedFeed : mockMixedFeed;
-        const startIndex = Math.max(
-            0,
-            displayFeed.findIndex((item: any) => item?.id === video?.id)
-        );
+        if (!video?.id) {
+            return;
+        }
 
+        // FeedScreen supports loading a specific video via the `videoId` route param.
+        // Passing the whole mixed feed through params is fragile (large payload) and
+        // was not consumed by the tabs index route.
         router.push({
-            pathname: "/(tabs)",
+            pathname: "/(tabs)/index",
             params: {
-                videos: JSON.stringify(displayFeed),
-                startIndex: String(startIndex),
+                videoId: String(video.id),
                 fromExplore: "true",
             },
         });
@@ -418,13 +417,19 @@ const ExploreScreen = () => {
 
     // Render main content with memoization to reduce rerenders
     const renderContent = useMemo(() => {
-        const displayFeed = mixedFeed.length > 0 ? mixedFeed : mockMixedFeed;
+        const displayFeed = mixedFeed;
 
         if (displayFeed.length === 0) {
             return (
                 <View style={styles.loadingContainer}>
-                    <ActivityIndicator size="large" color="#FF5A5F" />
-                    <Text style={styles.loadingText}>Loading discovery feed...</Text>
+                    {mixedFeedLoading ? (
+                        <>
+                            <ActivityIndicator size="large" color="#FF5A5F" />
+                            <Text style={styles.loadingText}>Loading discovery feed...</Text>
+                        </>
+                    ) : (
+                        <Text style={styles.loadingText}>No discovery results are available right now.</Text>
+                    )}
                 </View>
             );
         }
@@ -436,7 +441,7 @@ const ExploreScreen = () => {
                 onRefresh={handleRefresh}
                 refreshing={refreshing}
                 loading={mixedFeedLoading}
-                hasMore={mixedFeed.length > 0 ? mixedFeedHasMore : false}
+                hasMore={mixedFeedHasMore}
                 onVideoPress={handleVideoPress}
                 onUserPress={handleUserPress}
                 onSoundPress={handleSoundPress}
