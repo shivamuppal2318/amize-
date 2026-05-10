@@ -210,7 +210,13 @@ export default function SignUpScreen() {
     };
 
     const handleSignIn = () => {
-        router.push('/sign-in');
+        completeSignupFlow()
+            .catch((error) => {
+                console.error('[SignUp] Failed to clear signup flow before sign-in:', error);
+            })
+            .finally(() => {
+                router.replace('/sign-in');
+            });
     };
 
     const handleFacebookSignup = () => {

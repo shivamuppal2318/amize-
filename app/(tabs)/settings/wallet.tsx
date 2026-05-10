@@ -2,6 +2,7 @@ import React, { useCallback, useContext, useEffect, useMemo, useState } from "re
 import axios from "axios";
 import {
   Alert,
+  Modal,
   SafeAreaView,
   ScrollView,
   StyleSheet,
@@ -15,6 +16,7 @@ import * as WebBrowser from "expo-web-browser";
 import {
   ArrowLeft,
   Coins,
+  CreditCard,
   Gift,
   Landmark,
   ReceiptText,
@@ -42,10 +44,6 @@ import {
   WalletTransaction,
   WithdrawalRequest,
 } from "@/lib/api/walletService";
-import {
-  buildLocalPaymentAttempts,
-  buildLocalWalletWithdrawals,
-} from "@/lib/admin/localPreview";
 import { isDemoMode } from "@/lib/release/releaseConfig";
 const minimumWithdrawal = 25;
 
@@ -214,6 +212,15 @@ const formatPaymentPurpose = (value: string) => {
 const formatPaymentAmount = (attempt: PaymentAttempt) =>
   `${attempt.currency} ${attempt.amount.toFixed(2)}`;
 
+const detectCardBrand = (cardNumber: string) => {
+  const sanitized = cardNumber.replace(/\D/g, "");
+  if (/^4/.test(sanitized)) return "Visa";
+  if (/^(5[1-5]|2[2-7])/.test(sanitized)) return "Mastercard";
+  if (/^3[47]/.test(sanitized)) return "AmEx";
+  if (/^6(?:011|5)/.test(sanitized)) return "Discover";
+  return "Card";
+};
+
 const isStripeConnectDestination = (method: string, destination: string) =>
   method.trim().toLowerCase() === "stripe connect" &&
   destination.trim().startsWith("acct_");
@@ -248,6 +255,16 @@ export default function WalletScreen() {
   const [withdrawalAmount, setWithdrawalAmount] = useState("");
   const [payoutMethod, setPayoutMethod] = useState(DEFAULT_WALLET_STATE.payoutMethod);
   const [payoutDestination, setPayoutDestination] = useState("");
+  const [selectedPackage, setSelectedPackage] = useState<(typeof coinPackages)[number] | null>(coinPackages[0]);
+  const [cardSheetVisible, setCardSheetVisible] = useState(false);
+  const [selectedTestMethodId, setSelectedTestMethodId] = useState(
+    defaultPaymentConfig.defaults.wallet_top_up
+  );
+  const [cardholderName, setCardholderName] = useState("");
+  const [cardNumber, setCardNumber] = useState("");
+  const [cardExpiry, setCardExpiry] = useState("");
+  const [cardCvv, setCardCvv] = useState("");
+  const [savedCardLabel, setSavedCardLabel] = useState<string | null>(null);
   const demoMode = isDemoMode();
   const showDemoBlocked = () => {
     Alert.alert(
@@ -283,6 +300,20 @@ export default function WalletScreen() {
       ),
     [walletState.transactions]
   );
+
+  const canSubmitCardTopUp = useMemo(() => {
+    const sanitizedCardNumber = cardNumber.replace(/\D/g, "");
+    const sanitizedExpiry = cardExpiry.replace(/\s/g, "");
+    const sanitizedCvv = cardCvv.replace(/\D/g, "");
+
+    return Boolean(
+      selectedPackage &&
+        cardholderName.trim().length >= 2 &&
+        sanitizedCardNumber.length >= 12 &&
+        /^\d{2}\/\d{2}$/.test(sanitizedExpiry) &&
+        sanitizedCvv.length >= 3
+    );
+  }, [cardCvv, cardExpiry, cardNumber, cardholderName, selectedPackage]);
 
   const syncWalletState = (nextState: WalletState) => {
     const normalizedState = normalizeWalletState(nextState);
@@ -327,22 +358,14 @@ export default function WalletScreen() {
       syncWalletState(DEFAULT_WALLET_STATE);
       setPaymentConfig(defaultPaymentConfig);
       setConnectStatus(defaultConnectStatus);
-
-      if (demoMode) {
-        setWithdrawals(buildLocalWalletWithdrawals());
-        setPaymentAttempts(buildLocalPaymentAttempts("wallet_top_up", 3));
-        setPreviewMode(true);
-        setLoadError(
-          "Wallet backend data is unavailable. This screen is showing local preview balances and actions."
-        );
-      } else {
-        setWithdrawals([]);
-        setPaymentAttempts([]);
-        setPreviewMode(false);
-        setLoadError(
-          "Wallet backend data is unavailable right now. Balances are hidden until live wallet data loads."
-        );
-      }
+      setWithdrawals([]);
+      setPaymentAttempts([]);
+      setPreviewMode(false);
+      setLoadError(
+        demoMode
+          ? "Wallet backend data is unavailable in this build. No fake balances or preview payout history are being shown."
+          : "Wallet backend data is unavailable right now. Balances are hidden until live wallet data loads."
+      );
     } finally {
       setLoading(false);
     }
@@ -351,6 +374,10 @@ export default function WalletScreen() {
   useEffect(() => {
     loadWalletState();
   }, [loadWalletState]);
+
+  useEffect(() => {
+    setSelectedTestMethodId(paymentConfig.defaults.wallet_top_up);
+  }, [paymentConfig.defaults.wallet_top_up]);
 
   const estimatedGiftValue = useMemo(() => {
     return Number(
@@ -455,7 +482,11 @@ export default function WalletScreen() {
     }
   };
 
-  const handleTopUp = async (coins: number, price: number) => {
+  const handleTopUp = async (
+    coins: number,
+    price: number,
+    paymentMethodId?: string
+  ) => {
     if (demoMode) {
       showDemoBlocked();
       return;
@@ -465,7 +496,7 @@ export default function WalletScreen() {
       const result = await WalletAPI.topUpCoins(
         coins,
         price,
-        paymentConfig.defaults.wallet_top_up
+        paymentMethodId || paymentConfig.defaults.wallet_top_up
       );
 
       if (!result.success) {
@@ -505,6 +536,45 @@ export default function WalletScreen() {
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const handleOpenCardSheet = () => {
+    if (!selectedPackage) {
+      Alert.alert("Select a package", "Choose a coin package first.");
+      return;
+    }
+
+    setCardSheetVisible(true);
+  };
+
+  const handleCardSheetClose = () => {
+    if (submitting) return;
+    setCardSheetVisible(false);
+  };
+
+  const handleCompleteCardTopUp = async () => {
+    if (!selectedPackage || !canSubmitCardTopUp) {
+      Alert.alert(
+        "Card details incomplete",
+        "Enter the cardholder name, card number, expiry, and CVV."
+      );
+      return;
+    }
+
+    await handleTopUp(
+      selectedPackage.coins,
+      selectedPackage.price,
+      selectedTestMethodId
+    );
+
+    const sanitizedCardNumber = cardNumber.replace(/\D/g, "");
+    if (sanitizedCardNumber.length >= 4) {
+      const brand = detectCardBrand(cardNumber);
+      const last4 = sanitizedCardNumber.slice(-4);
+      setSavedCardLabel(`${brand} ending in ${last4}`);
+    }
+
+    setCardSheetVisible(false);
   };
 
   const handleConvertGifts = async () => {
@@ -696,6 +766,17 @@ export default function WalletScreen() {
               Charges run through {paymentConfig.displayName}. Default wallet
               method: {paymentConfig.defaults.wallet_top_up || "not configured"}.
             </Text>
+            <View style={styles.cardModeBanner}>
+              <CreditCard size={18} color="#74A9D9" />
+              <View style={styles.cardModeCopy}>
+                <Text style={styles.cardModeTitle}>Card Checkout</Text>
+                <Text style={styles.cardModeText}>
+                  {paymentConfig.isMock
+                    ? "Test mode is active. The UI behaves like a live checkout, but payment outcomes follow the selected mock test method."
+                    : "Card checkout UI is enabled and routed through the configured payment provider."}
+                </Text>
+              </View>
+            </View>
             {paymentConfig.isMock ? (
               <Text style={styles.helperText}>
                 Test methods:{" "}
@@ -708,16 +789,41 @@ export default function WalletScreen() {
               {coinPackages.map((pkg) => (
                 <TouchableOpacity
                   key={pkg.coins}
-                  style={styles.packageCard}
+                  style={[
+                    styles.packageCard,
+                    selectedPackage?.coins === pkg.coins && styles.packageCardSelected,
+                  ]}
                   activeOpacity={0.85}
-                  onPress={() => handleTopUp(pkg.coins, pkg.price)}
-                  disabled={submitting || withdrawing || demoMode}
+                  onPress={() => setSelectedPackage(pkg)}
+                  disabled={submitting || withdrawing}
                 >
                   <Text style={styles.packageCoins}>{pkg.coins} coins</Text>
                   <Text style={styles.packagePrice}>{formatCash(pkg.price)}</Text>
                 </TouchableOpacity>
               ))}
             </View>
+            <View style={styles.checkoutSummary}>
+              <Text style={styles.checkoutSummaryText}>
+                {selectedPackage
+                  ? `Selected: ${selectedPackage.coins} coins for ${formatCash(selectedPackage.price)}`
+                  : "Select a coin package to continue"}
+              </Text>
+              {savedCardLabel ? (
+                <Text style={styles.savedCardText}>{savedCardLabel}</Text>
+              ) : null}
+            </View>
+            <Button
+              label={
+                selectedPackage
+                  ? `Pay ${formatCash(selectedPackage.price)} with Card`
+                  : "Select a Package"
+              }
+              onPress={handleOpenCardSheet}
+              variant="primary"
+              fullWidth
+              disabled={!selectedPackage || submitting || withdrawing || demoMode}
+              loading={submitting}
+            />
           </View>
 
           <View style={styles.section}>
@@ -1012,6 +1118,109 @@ export default function WalletScreen() {
             )}
           </View>
         </ScrollView>
+
+        <Modal
+          visible={cardSheetVisible}
+          transparent
+          animationType="slide"
+          onRequestClose={handleCardSheetClose}
+        >
+          <View style={styles.sheetBackdrop}>
+            <View style={styles.sheetCard}>
+              <View style={styles.sheetHeader}>
+                <Text style={styles.sheetTitle}>Card Checkout</Text>
+                <TouchableOpacity onPress={handleCardSheetClose} disabled={submitting}>
+                  <Text style={styles.linkText}>Close</Text>
+                </TouchableOpacity>
+              </View>
+
+              <Text style={styles.helperText}>
+                {selectedPackage
+                  ? `${selectedPackage.coins} coins • ${formatCash(selectedPackage.price)}`
+                  : "No package selected"}
+              </Text>
+
+              {paymentConfig.isMock ? (
+                <View style={styles.testModeCard}>
+                  <Text style={styles.testModeTitle}>Test Mode</Text>
+                  <Text style={styles.testModeText}>
+                    Pick the outcome you want this card payment to simulate.
+                  </Text>
+                  <View style={styles.testMethodWrap}>
+                    {paymentConfig.testPaymentMethods.map((method) => (
+                      <TouchableOpacity
+                        key={method.id}
+                        style={[
+                          styles.testMethodChip,
+                          selectedTestMethodId === method.id &&
+                            styles.testMethodChipSelected,
+                        ]}
+                        onPress={() => setSelectedTestMethodId(method.id)}
+                        disabled={submitting}
+                      >
+                        <Text style={styles.testMethodLabel}>{method.label}</Text>
+                        <Text style={styles.testMethodOutcome}>
+                          {method.outcome.replace("_", " ")}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+              ) : null}
+
+              <TextInput
+                value={cardholderName}
+                onChangeText={setCardholderName}
+                placeholder="Cardholder name"
+                placeholderTextColor="#6B7280"
+                style={styles.input}
+                editable={!submitting}
+              />
+              <TextInput
+                value={cardNumber}
+                onChangeText={setCardNumber}
+                placeholder="Card number"
+                placeholderTextColor="#6B7280"
+                keyboardType="number-pad"
+                style={styles.input}
+                editable={!submitting}
+              />
+              <View style={styles.cardRow}>
+                <TextInput
+                  value={cardExpiry}
+                  onChangeText={setCardExpiry}
+                  placeholder="MM/YY"
+                  placeholderTextColor="#6B7280"
+                  keyboardType="number-pad"
+                  style={[styles.input, styles.cardRowInput]}
+                  editable={!submitting}
+                />
+                <TextInput
+                  value={cardCvv}
+                  onChangeText={setCardCvv}
+                  placeholder="CVV"
+                  placeholderTextColor="#6B7280"
+                  keyboardType="number-pad"
+                  style={[styles.input, styles.cardRowInput]}
+                  editable={!submitting}
+                />
+              </View>
+
+              <Button
+                label={
+                  selectedPackage
+                    ? `Pay ${formatCash(selectedPackage.price)}`
+                    : "Pay with Card"
+                }
+                onPress={handleCompleteCardTopUp}
+                variant="primary"
+                fullWidth
+                disabled={!canSubmitCardTopUp || submitting || demoMode}
+                loading={submitting}
+              />
+            </View>
+          </View>
+        </Modal>
       </LinearGradient>
     </SafeAreaView>
   );
@@ -1157,6 +1366,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.06)",
   },
+  packageCardSelected: {
+    borderColor: "#74A9D9",
+    backgroundColor: "rgba(116,169,217,0.16)",
+  },
   packageCoins: {
     color: "#fff",
     fontSize: 15,
@@ -1168,6 +1381,127 @@ const styles = StyleSheet.create({
     fontSize: 13,
     marginTop: 8,
     fontFamily: "Figtree",
+  },
+  cardModeBanner: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 12,
+    borderRadius: 16,
+    padding: 14,
+    marginBottom: 12,
+    backgroundColor: "rgba(255,255,255,0.04)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.06)",
+  },
+  cardModeCopy: {
+    flex: 1,
+  },
+  cardModeTitle: {
+    color: "#fff",
+    fontSize: 15,
+    fontWeight: "700",
+    marginBottom: 4,
+    fontFamily: "Figtree",
+  },
+  cardModeText: {
+    color: "#CBD5E1",
+    lineHeight: 18,
+    fontFamily: "Figtree",
+  },
+  checkoutSummary: {
+    marginTop: 12,
+    marginBottom: 12,
+  },
+  checkoutSummaryText: {
+    color: "#E5E7EB",
+    fontSize: 14,
+    fontFamily: "Figtree",
+  },
+  savedCardText: {
+    color: "#74A9D9",
+    fontSize: 13,
+    marginTop: 6,
+    fontFamily: "Figtree",
+  },
+  sheetBackdrop: {
+    flex: 1,
+    justifyContent: "flex-end",
+    backgroundColor: "rgba(0,0,0,0.55)",
+  },
+  sheetCard: {
+    backgroundColor: "#111827",
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 20,
+    borderTopWidth: 1,
+    borderColor: "rgba(255,255,255,0.08)",
+  },
+  sheetHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  sheetTitle: {
+    color: "#fff",
+    fontSize: 20,
+    fontWeight: "700",
+    fontFamily: "Figtree",
+  },
+  testModeCard: {
+    borderRadius: 16,
+    padding: 14,
+    marginBottom: 14,
+    backgroundColor: "rgba(116,169,217,0.10)",
+    borderWidth: 1,
+    borderColor: "rgba(116,169,217,0.18)",
+  },
+  testModeTitle: {
+    color: "#fff",
+    fontSize: 15,
+    fontWeight: "700",
+    marginBottom: 4,
+    fontFamily: "Figtree",
+  },
+  testModeText: {
+    color: "#CBD5E1",
+    lineHeight: 18,
+    marginBottom: 10,
+    fontFamily: "Figtree",
+  },
+  testMethodWrap: {
+    gap: 10,
+  },
+  testMethodChip: {
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    backgroundColor: "rgba(255,255,255,0.05)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.08)",
+  },
+  testMethodChipSelected: {
+    borderColor: "#74A9D9",
+    backgroundColor: "rgba(116,169,217,0.18)",
+  },
+  testMethodLabel: {
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: "600",
+    fontFamily: "Figtree",
+  },
+  testMethodOutcome: {
+    color: "#9CA3AF",
+    fontSize: 12,
+    marginTop: 2,
+    fontFamily: "Figtree",
+  },
+  cardRow: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  cardRowInput: {
+    flex: 1,
   },
   giftsRow: {
     flexDirection: "row",

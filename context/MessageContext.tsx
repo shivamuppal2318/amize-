@@ -1,7 +1,6 @@
 // context/MessageContext.tsx - Updated with unified interfaces
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useRef } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { buildMockMessagingData } from '@/data/mockMessaging';
 import { socketManager } from '@/lib/socket/socketManager';
 import { useRealTimeMessages } from '@/hooks/useRealTimeMessages';
 import {
@@ -152,32 +151,7 @@ export const MessageProvider: React.FC<{children: ReactNode}> = ({ children }) =
 
     // Refs for tracking state
     const socketInitialized = useRef(false);
-
-    const applyMockMessagingData = useCallback((reason: string) => {
-        const mockData = buildMockMessagingData(user?.id);
-        setConversationsState(mockData.conversations);
-        setMessagesState(mockData.messages);
-        setError(null);
-        log('info', `Loaded mock conversations (${reason})`, {
-            count: mockData.conversations.length,
-        });
-    }, [user?.id]);
-
-    const mergeMockConversations = useCallback((serverConversations: Conversation[]) => {
-        const mockData = buildMockMessagingData(user?.id);
-        const existingIds = new Set(serverConversations.map((conv) => conv.id));
-        const mergedConversations = [
-            ...serverConversations,
-            ...mockData.conversations.filter((conv) => !existingIds.has(conv.id)),
-        ];
-
-        setMessagesState((prev) => ({
-            ...mockData.messages,
-            ...prev,
-        }));
-
-        return mergedConversations;
-    }, [user?.id]);
+    const lastUserIdRef = useRef<string | null>(null);
 
     // Subscribe to connection state changes
     useEffect(() => {
@@ -205,10 +179,20 @@ export const MessageProvider: React.FC<{children: ReactNode}> = ({ children }) =
     }, [isAuthenticated, user]);
 
     useEffect(() => {
-        if (!connectionStatus.isConnected && conversations.length === 0) {
-            applyMockMessagingData('offline');
+        const nextUserId = user?.id ?? null;
+
+        if (lastUserIdRef.current === nextUserId) {
+            return;
         }
-    }, [connectionStatus.isConnected, conversations.length, applyMockMessagingData]);
+
+        lastUserIdRef.current = nextUserId;
+        setConversationsState([]);
+        setMessagesState({});
+        setTypingUsers({});
+        setOnlineUsers(new Set());
+        setUserLastSeen({});
+        setError(null);
+    }, [user?.id]);
 
     // Enhanced state management functions
     const addMessage = useCallback((conversationId: string, message: Message) => {
@@ -558,15 +542,14 @@ export const MessageProvider: React.FC<{children: ReactNode}> = ({ children }) =
                 ConversationUtils.fromSocket(conv, user.id, onlineUsers)
             );
 
-            const mergedConversations = mergeMockConversations(localConversations);
-            setConversations(mergedConversations);
-            log('success', 'Updated local conversations', { count: mergedConversations.length });
+            setConversations(localConversations);
+            log('success', 'Updated local conversations', { count: localConversations.length });
         } catch (error) {
             log('error', 'Failed to refresh conversations', error);
             setError('Failed to load conversations');
-            applyMockMessagingData('refresh failed');
+            setConversations([]);
         }
-    }, [user, onlineUsers, setConversations, applyMockMessagingData, mergeMockConversations]);
+    }, [user, onlineUsers, setConversations]);
 
     // Send message with unified interface
     const sendMessage = useCallback(async (
@@ -696,19 +679,6 @@ export const MessageProvider: React.FC<{children: ReactNode}> = ({ children }) =
         }
 
         try {
-            // Mock/demo conversations are local-only and don't exist on the backend.
-            if (conversationId.startsWith('mock-')) {
-                const mockData = buildMockMessagingData(user?.id);
-                const fallbackMessages = mockData.messages[conversationId];
-                if (fallbackMessages) {
-                    setMessagesState(prev => ({
-                        ...prev,
-                        [conversationId]: fallbackMessages,
-                    }));
-                }
-                return;
-            }
-
             log('info', 'Refreshing messages for conversation', { conversationId });
             const { messages: socketMessages } = await socketManager.getMessages(conversationId);
             log('info', 'Got messages from server', { count: socketMessages.length });
@@ -725,14 +695,10 @@ export const MessageProvider: React.FC<{children: ReactNode}> = ({ children }) =
         } catch (error) {
             log('error', 'Failed to refresh messages', error);
             setError('Failed to load messages');
-            const mockData = buildMockMessagingData(user?.id);
-            const fallbackMessages = mockData.messages[conversationId];
-            if (fallbackMessages) {
-                setMessagesState(prev => ({
-                    ...prev,
-                    [conversationId]: fallbackMessages,
-                }));
-            }
+            setMessagesState(prev => ({
+                ...prev,
+                [conversationId]: [],
+            }));
         }
     }, [user]);
 

@@ -92,6 +92,7 @@ export interface User {
     instagramHandle?: string;
     facebookHandle?: string;
     twitterHandle?: string;
+    websiteUrl?: string;
     isPrivate: boolean;
     isBusinessAccount: boolean;
     language: string;
@@ -141,6 +142,8 @@ export interface ResendCodeResponse {
 export interface LoginResult {
     success: boolean;
     message?: string;
+    requiresVerification?: boolean;
+    verificationIdentifier?: string;
 }
 
 export interface RegisterResult {

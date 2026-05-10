@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   RefreshControl,
   Platform,
+  Switch,
 } from "react-native";
 import { router } from "expo-router";
 import {
@@ -18,16 +19,19 @@ import {
   Instagram,
   Facebook,
   Twitter,
+  Globe,
   Camera,
   Trash2,
   Save,
   Calendar,
   Users,
+  Mail,
 } from "lucide-react-native";
 import * as ImagePicker from "expo-image-picker";
 import { useAuth } from "@/hooks/useAuth";
 import { useProfileEditor } from "@/hooks/useProfileEditor";
 import { BioObject, ProfileUpdateData } from "@/lib/api/profileApi";
+import apiClient from "@/lib/api/client";
 import { ProfileAvatar } from "@/components/settings/ProfileAvatar";
 import { EditProfileItem } from "@/components/settings/EditProfileItem";
 import { EditFieldModal } from "@/components/profile/EditFieldModal";
@@ -66,12 +70,29 @@ export default function EditProfileScreen() {
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [photoModalVisible, setPhotoModalVisible] = useState(false);
   const [currentField, setCurrentField] = useState<EditField | null>(null);
+  const [likesPrivate, setLikesPrivate] = useState(false);
+  const [privacySaving, setPrivacySaving] = useState(false);
 
   useEffect(() => {
     if (!profile) {
       loadProfile();
     }
   }, [profile, loadProfile]);
+
+  useEffect(() => {
+    const loadPrivacySettings = async () => {
+      try {
+        const response = await apiClient.get("/settings/privacy");
+        if (response.data?.success) {
+          setLikesPrivate(Boolean(response.data.settings?.likesPrivate));
+        }
+      } catch (error) {
+        console.error("Error loading privacy settings:", error);
+      }
+    };
+
+    loadPrivacySettings();
+  }, []);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -125,6 +146,27 @@ export default function EditProfileScreen() {
     }
     setEditModalVisible(false);
     setCurrentField(null);
+  };
+
+  const handleToggleLikesPrivacy = async (value: boolean) => {
+    try {
+      setPrivacySaving(true);
+      setLikesPrivate(value);
+
+      const response = await apiClient.put("/settings/privacy", {
+        likesPrivate: value,
+      });
+
+      if (!response.data?.success) {
+        throw new Error(response.data?.message || "Failed to update privacy");
+      }
+    } catch (error) {
+      console.error("Error updating likes privacy:", error);
+      setLikesPrivate((current) => !current);
+      Alert.alert("Error", "Unable to update likes privacy right now.");
+    } finally {
+      setPrivacySaving(false);
+    }
   };
 
   const handlePickImage = async () => {
@@ -278,6 +320,15 @@ export default function EditProfileScreen() {
       maxLength: 30,
     },
     {
+      key: "email",
+      label: "Email",
+      icon: <Mail size={24} color="white" />,
+      value: formData.email || "",
+      placeholder: "Enter your email address",
+      keyboardType: "email-address",
+      maxLength: 120,
+    },
+    {
       key: "bio",
       label: "Bio",
       icon: <Shield size={24} color="white" />,
@@ -331,6 +382,15 @@ export default function EditProfileScreen() {
       value: formData.twitterHandle || "",
       placeholder: "Your Twitter handle",
       maxLength: 30,
+    },
+    {
+      key: "websiteUrl",
+      label: "Website",
+      icon: <Globe size={24} color="white" />,
+      value: formData.websiteUrl || "",
+      placeholder: "https://yourwebsite.com",
+      keyboardType: "default",
+      maxLength: 200,
     },
   ];
 
@@ -477,6 +537,37 @@ export default function EditProfileScreen() {
                 isLast={index === socialFields.length - 1}
               />
             ))}
+          </View>
+
+          <View className="px-6 mb-8">
+            <Text className="text-white text-2xl font-semibold mb-6">
+              Privacy
+            </Text>
+
+            <View
+              className="flex-row items-center justify-between rounded-2xl px-5 py-4"
+              style={{ backgroundColor: "rgba(255,255,255,0.06)" }}
+            >
+              <View className="flex-1 pr-4">
+                <Text className="text-white text-lg font-semibold mb-1">
+                  Private Likes
+                </Text>
+                <Text className="text-gray-400 text-sm">
+                  Hide your liked videos from other users on your profile.
+                </Text>
+              </View>
+
+              {privacySaving ? (
+                <ActivityIndicator size="small" color="#FF5A5F" />
+              ) : (
+                <Switch
+                  value={likesPrivate}
+                  onValueChange={handleToggleLikesPrivacy}
+                  trackColor={{ false: "#4B5563", true: "#FF5A5F" }}
+                  thumbColor="#ffffff"
+                />
+              )}
+            </View>
           </View>
 
           <View className="h-20" />

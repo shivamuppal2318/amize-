@@ -53,6 +53,7 @@ const MessagingSection: React.FC<MessagingSectionProps> = ({
     getTypingUsers,
     joinConversation,
     leaveConversation,
+    createConversation,
     isUserOnline,
   } = useMessages();
 
@@ -75,6 +76,22 @@ const MessagingSection: React.FC<MessagingSectionProps> = ({
         useNativeDriver: true,
       }),
     ]).start(() => setIsAnimating(false));
+  };
+
+  const handleUserPress = async (userId: string) => {
+    const existingConversation = conversations.find((conversation) =>
+      conversation.participants?.some((participant) => participant.id === userId)
+    );
+
+    if (existingConversation) {
+      handleConversationPress(existingConversation);
+      return;
+    }
+
+    const createdConversation = await createConversation(userId);
+    if (createdConversation) {
+      handleConversationPress(createdConversation);
+    }
   };
 
   useEffect(() => {
@@ -298,6 +315,7 @@ const MessagingSection: React.FC<MessagingSectionProps> = ({
               activeTab={activeTab}
               setActiveTab={setActiveTab}
               onConversationPress={handleConversationPress}
+              onUserPress={handleUserPress}
               isConnected={connectionStatus.isConnected}
               loading={loading}
               onRetry={handleRetryConnection}

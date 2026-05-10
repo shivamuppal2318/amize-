@@ -116,6 +116,14 @@ export default function useVideoFeed(options: UseVideoFeedOptions = {}) {
         };
     }, []);
 
+    const pinVideoToFront = useCallback((selectedVideo: VideoItemData) => {
+        setVideos((currentVideos) => [
+            selectedVideo,
+            ...currentVideos.filter((video) => video.id !== selectedVideo.id),
+        ]);
+        setFocusedIndex(0);
+    }, []);
+
     useEffect(() => {
         if (!demoMode) return;
         setApiVideos(mockApiVideos);
@@ -394,19 +402,12 @@ export default function useVideoFeed(options: UseVideoFeedOptions = {}) {
             setError(null);
             debouncedLog.current?.(`🎯 Jumping to video: ${video.id}`);
 
-            const existingIndex = videos.findIndex(v => v.id === video.id);
-
-            if (existingIndex !== -1) {
-                setFocusedIndex(existingIndex);
-            } else {
-                setVideos(prev => [video, ...prev]);
-                setFocusedIndex(0);
-            }
+            pinVideoToFront(video);
         } catch (err: any) {
             debouncedLog.current?.(`❌ Error jumping to video: ${err.message}`);
             setError('Failed to jump to video');
         }
-    }, [videos]);
+    }, [pinVideoToFront]);
 
     // Refresh with enhanced state management
     const refresh = useCallback(async () => {
@@ -514,6 +515,7 @@ export default function useVideoFeed(options: UseVideoFeedOptions = {}) {
 
                         // Load additional videos
                         await fetchVideos(feedType, null, false);
+                        pinVideoToFront(specificVideo);
                         return;
                     }
                 }

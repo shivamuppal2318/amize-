@@ -16,6 +16,7 @@ import { ChevronLeft, Mail, Lock } from "lucide-react-native";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { useAuth } from "@/hooks/useAuth";
+import { useRegistration } from "@/context/RegistrationContext";
 import {
   authProviderConfig,
   isFacebookConfigured,
@@ -83,6 +84,7 @@ export default function SignInScreen() {
     isInSignupFlow,
     completeSignupFlow,
   } = useAuth();
+  const { updateRegistrationData } = useRegistration();
   const demoMode = isDemoMode();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -352,10 +354,10 @@ export default function SignInScreen() {
     const nextErrors = { email: "", password: "" };
 
     if (!trimmedIdentifier) {
-      nextErrors.email = "Email, phone number, or username is required";
+      nextErrors.email = t("auth.signIn.identifierRequired");
     } else {
       if (!isEmailIdentifier && !isPhoneIdentifier && !isUsernameIdentifier) {
-        nextErrors.email = "Enter a valid email address, phone number, or username";
+        nextErrors.email = t("auth.signIn.identifierInvalid");
       }
     }
 
@@ -373,14 +375,20 @@ export default function SignInScreen() {
       const result = await loginWithGoogle(idToken);
 
       if (!result.success) {
-        Alert.alert("Login Failed", result.message || "Google sign-in failed");
+        Alert.alert(
+          t("auth.signIn.loginFailedTitle"),
+          result.message || t("auth.signIn.googleFailed")
+        );
         return;
       }
 
       router.replace("/(tabs)/index");
     } catch (e) {
       console.error("Google login failed:", e);
-      Alert.alert("Login Failed", "Google authentication failed");
+      Alert.alert(
+        t("auth.signIn.loginFailedTitle"),
+        t("auth.signIn.googleFailed")
+      );
     } finally {
       setGoogleLoading(false);
     }
@@ -392,14 +400,20 @@ export default function SignInScreen() {
       const result = await loginWithFacebook(accessToken);
 
       if (!result.success) {
-        Alert.alert("Login Failed", result.message || "Facebook sign-in failed");
+        Alert.alert(
+          t("auth.signIn.loginFailedTitle"),
+          result.message || t("auth.signIn.facebookFailed")
+        );
         return;
       }
 
       router.replace("/(tabs)/index");
     } catch (e) {
       console.error("Facebook login failed:", e);
-      Alert.alert("Login Failed", "Facebook authentication failed");
+      Alert.alert(
+        t("auth.signIn.loginFailedTitle"),
+        t("auth.signIn.facebookFailed")
+      );
     } finally {
       setFacebookLoading(false);
     }
@@ -408,8 +422,8 @@ export default function SignInScreen() {
   const handleAppleSignIn = async () => {
     if (!appleAvailable) {
       Alert.alert(
-        "Apple Login",
-        "Apple login is only available on supported Apple devices for this build."
+        t("auth.signIn.appleTitle"),
+        t("auth.signIn.appleUnavailable")
       );
       return;
     }
@@ -424,7 +438,10 @@ export default function SignInScreen() {
       });
 
       if (!credential.identityToken) {
-        Alert.alert("Apple Login", "Apple did not return an identity token.");
+        Alert.alert(
+          t("auth.signIn.appleTitle"),
+          t("auth.signIn.appleMissingToken")
+        );
         return;
       }
 
@@ -443,7 +460,10 @@ export default function SignInScreen() {
       });
 
       if (!result.success) {
-        Alert.alert("Login Failed", result.message || "Apple sign-in failed");
+        Alert.alert(
+          t("auth.signIn.loginFailedTitle"),
+          result.message || t("auth.signIn.appleFailed")
+        );
         return;
       }
 
@@ -454,7 +474,10 @@ export default function SignInScreen() {
       }
 
       console.error("Apple login failed:", error);
-      Alert.alert("Login Failed", "Apple authentication failed");
+      Alert.alert(
+        t("auth.signIn.loginFailedTitle"),
+        t("auth.signIn.appleFailed")
+      );
     } finally {
       setAppleLoading(false);
     }
@@ -476,9 +499,32 @@ export default function SignInScreen() {
         return;
       }
 
+      if (result.requiresVerification) {
+        const verificationIdentifier = (
+          result.verificationIdentifier || identifier
+        ).trim();
+
+        if (/\S+@\S+\.\S+/.test(verificationIdentifier)) {
+          updateRegistrationData({
+            email: verificationIdentifier.toLowerCase(),
+          });
+        } else {
+          updateRegistrationData({
+            phoneNumber: verificationIdentifier,
+          });
+        }
+
+        setAuthError(
+          result.message ||
+            t("auth.signIn.verificationRequired")
+        );
+        router.replace("/account-setup/verify");
+        return;
+      }
+
       setAuthError(result.message || "Unable to sign in right now.");
     } catch (e) {
-      setAuthError("Something went wrong while signing in.");
+      setAuthError(t("auth.signIn.genericFailure"));
     }
   };
 
@@ -497,8 +543,8 @@ export default function SignInScreen() {
   const handleFacebookPress = async () => {
     if (!isFacebookConfigured) {
       Alert.alert(
-        "Facebook Login",
-        "Facebook login is not configured for this build yet."
+        t("auth.signIn.facebookTitle"),
+        t("auth.signIn.facebookNotConfigured")
       );
       return;
     }
@@ -509,24 +555,24 @@ export default function SignInScreen() {
   const handleGooglePress = async () => {
     if (!googleConfiguredForPlatform) {
       Alert.alert(
-        "Google Login",
-        "Google login is not configured for this platform in this build yet."
+        t("auth.signIn.googleTitle"),
+        t("auth.signIn.googleNotConfigured")
       );
       return;
     }
 
     if (Platform.OS === "web" && !googleWebSignInUsable) {
       Alert.alert(
-        "Google Login",
-        "Google sign-in on phone browser preview requires localhost or https. Use the Android build for device testing."
+        t("auth.signIn.googleTitle"),
+        t("auth.signIn.googleWebUnsupported")
       );
       return;
     }
 
     if (!request) {
       Alert.alert(
-        "Google Login",
-        "Google sign-in is still initializing. Wait a moment and try again."
+        t("auth.signIn.googleTitle"),
+        t("auth.signIn.googleInitializing")
       );
       return;
     }
@@ -618,7 +664,7 @@ export default function SignInScreen() {
                       <View style={styles.googleInlineCopy}>
                         <Text style={styles.googleInlineTitle}>Continue with Google</Text>
                         <Text style={styles.googleInlineSubtitle}>
-                          Google, Facebook, X, and Apple through Clerk
+                          {t("auth.signIn.clerkSubtitle")}
                         </Text>
                       </View>
                     </TouchableOpacity>
@@ -647,7 +693,7 @@ export default function SignInScreen() {
                       <View style={styles.googleInlineCopy}>
                         <Text style={styles.googleInlineTitle}>Continue with Google</Text>
                         <Text style={styles.googleInlineSubtitle}>
-                          Fast sign-in with your Google account
+                          {t("auth.signIn.googleSubtitle")}
                         </Text>
                       </View>
                     </TouchableOpacity>
@@ -667,7 +713,9 @@ export default function SignInScreen() {
 
               {showGoogleButton && Platform.OS === "web" && (
                 <View style={styles.providerStatusCard}>
-                  <Text style={styles.providerStatusTitle}>Google web status</Text>
+                  <Text style={styles.providerStatusTitle}>
+                    {t("auth.signIn.googleWebStatusTitle")}
+                  </Text>
                   <Text style={styles.providerStatusText}>{googleStatusMessage}</Text>
                 </View>
               )}

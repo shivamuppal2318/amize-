@@ -377,6 +377,7 @@ export default function CameraScreen() {
             selectedSongId: selectedSongId,
             soundId: soundId,
             songTitle: songTitle,
+            filterName: filter,
           });
           setIsRecording(false);
           router.push("/post/edit");

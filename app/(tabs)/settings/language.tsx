@@ -12,6 +12,7 @@ export default function LanguageScreen() {
         suggestedLanguages,
         otherLanguages,
         isLoading,
+        updatingLanguageCode,
         error,
         updateLanguage
     } = useLanguage();
@@ -30,6 +31,7 @@ export default function LanguageScreen() {
     // Render a language option
     const renderLanguageOption = (language: Language) => {
         const isSelected = currentLanguage === language.code;
+        const isUpdating = updatingLanguageCode === language.code;
 
         return (
             <TouchableOpacity
@@ -38,21 +40,25 @@ export default function LanguageScreen() {
                 onPress={() => handleSelectLanguage(language.code)}
                 accessibilityRole="radio"
                 accessibilityState={{ checked: isSelected }}
-                disabled={isLoading}
+                disabled={isLoading || !!updatingLanguageCode}
             >
                 <Text className="text-white">
                     {language.name}
                 </Text>
 
-                <View className={`w-5 h-5 rounded-full border ${
-                    isSelected
-                        ? 'border-[#FF5A5F] bg-[#FF5A5F]'
-                        : 'border-white/30 bg-transparent'
-                } items-center justify-center`}>
-                    {isSelected && (
-                        <View className="w-2 h-2 rounded-full bg-white" />
-                    )}
-                </View>
+                {isUpdating ? (
+                    <ActivityIndicator size="small" color="#FF5A5F" />
+                ) : (
+                    <View className={`w-5 h-5 rounded-full border ${
+                        isSelected
+                            ? 'border-[#FF5A5F] bg-[#FF5A5F]'
+                            : 'border-white/30 bg-transparent'
+                    } items-center justify-center`}>
+                        {isSelected && (
+                            <View className="w-2 h-2 rounded-full bg-white" />
+                        )}
+                    </View>
+                )}
             </TouchableOpacity>
         );
     };

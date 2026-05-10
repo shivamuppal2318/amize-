@@ -48,7 +48,6 @@ const GridItem: React.FC<GridItemProps> = memo(({
     const staticPreviewOnly = Platform.OS === 'web';
     // State
     const [isLoading, setIsLoading] = useState(true);
-    const [isPlaying, setIsPlaying] = useState(false);
     const [videoReady, setVideoReady] = useState(false);
     const [mediaFailed, setMediaFailed] = useState(false);
 
@@ -84,7 +83,6 @@ const GridItem: React.FC<GridItemProps> = memo(({
         setMediaFailed(false);
         setIsLoading(true);
         setVideoReady(false);
-        setIsPlaying(false);
     }, [item.id]);
 
     // Format numbers for display (1K, 1M, etc.)
@@ -134,22 +132,6 @@ const GridItem: React.FC<GridItemProps> = memo(({
             onVideoPress(video);
         }, [video]);
 
-        // Preview video on press-in
-        const handlePressIn = useCallback(() => {
-            if (videoReady && !isPlaying) {
-                player.play();
-                setIsPlaying(true);
-            }
-        }, [videoReady, isPlaying, player]);
-
-        // Pause video on press-out
-        const handlePressOut = useCallback(() => {
-            if (videoReady && isPlaying) {
-                player.pause();
-                setIsPlaying(false);
-            }
-        }, [videoReady, isPlaying, player]);
-
         return (
             <Animated.View
                 style={[
@@ -160,8 +142,6 @@ const GridItem: React.FC<GridItemProps> = memo(({
                 <TouchableOpacity
                     style={styles.videoTouchable}
                     onPress={handleOpenVideo}
-                    onPressIn={handlePressIn}
-                    onPressOut={handlePressOut}
                     activeOpacity={0.95}
                 >
                     {/* Video Player */}

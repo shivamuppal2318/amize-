@@ -582,7 +582,7 @@ export default function ManageAccountsScreen() {
                     icon={<Mail size={20} color="#9CA3AF" />}
                     label="Email"
                     value={user.email}
-                    onPress={() => router.push('/settings/help-center/contact-us')}
+                    onPress={() => router.push('/(tabs)/settings/edit-profile')}
                 />
 
                 <AccountItem

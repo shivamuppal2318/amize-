@@ -10,6 +10,31 @@ const resolvePosterUrl = (apiVideo: ApiVideo) => {
     return getSafePosterUri(apiVideo.thumbnailUrl, apiVideo.id);
 };
 
+const parseRepostDescription = (description?: string | null) => {
+    const normalizedDescription = description || '';
+    const lines = normalizedDescription.split(/\r?\n/);
+    const repostLine = lines.find((line) => /^Reposted from @/i.test(line.trim()));
+
+    if (!repostLine) {
+        return {
+            repostedFrom: null as string | null,
+            cleanDescription: normalizedDescription,
+        };
+    }
+
+    const match = repostLine.trim().match(/^Reposted from @([A-Za-z0-9._-]+)/i);
+    const repostedFrom = match?.[1] || null;
+    const cleanDescription = lines
+        .filter((line) => line.trim() !== repostLine.trim())
+        .join('\n')
+        .trim();
+
+    return {
+        repostedFrom,
+        cleanDescription,
+    };
+};
+
 /**
  * Format a timestamp string to a relative time (e.g. "2 hours ago")
  */
@@ -64,6 +89,7 @@ export const adaptSoundForUI = (sound: ApiSound | null): { id: string; name: str
 export const adaptVideoForUI = (apiVideo: ApiVideo): VideoItemData => {
     const posterUrl = resolvePosterUrl(apiVideo);
     const videoUrl = resolveVideoUrl(apiVideo);
+    const { repostedFrom, cleanDescription } = parseRepostDescription(apiVideo.description);
 
     return {
         id: apiVideo.id,
@@ -82,13 +108,18 @@ export const adaptVideoForUI = (apiVideo: ApiVideo): VideoItemData => {
             poster: posterUrl,
             aspectRatio: 9/16  // Default vertical video aspect ratio
         },
-        description: apiVideo.description || '',
+        description: cleanDescription,
         likeCount: apiVideo.likesCount,
         commentCount: apiVideo.commentsCount,
         shareCount: apiVideo.sharesCount,
         bookmarkCount: 0,  // Not implemented in API yet
         timestamp: formatRelativeTime(apiVideo.createdAt),
-        music: adaptSoundForUI(apiVideo.sound)
+        music: adaptSoundForUI(apiVideo.sound),
+        repost: repostedFrom
+            ? {
+                originalUsername: repostedFrom,
+            }
+            : undefined,
     };
 };
 

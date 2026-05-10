@@ -1,4 +1,6 @@
 export type TranslationKey =
+  | "auth.common.providerGoogle"
+  | "auth.common.providerFacebook"
   | "auth.signUp.providerTitle"
   | "auth.signUp.providerNotConfigured"
   | "auth.signUp.preparingTitle"
@@ -40,18 +42,89 @@ export type TranslationKey =
   | "auth.getStarted.continueApple"
   | "auth.getStarted.signInPassword"
   | "auth.getStarted.signUp"
+  | "auth.getStarted.or"
+  | "auth.getStarted.googleSubtitle"
+  | "auth.getStarted.clerkSubtitle"
+  | "auth.getStarted.googleWebStatusTitle"
+  | "auth.getStarted.googleWebStatusReady"
+  | "auth.getStarted.googleWebStatusUnsupported"
+  | "auth.getStarted.googleWebStatusMissing"
   | "auth.signIn.title"
   | "auth.signIn.subtitle"
   | "auth.signIn.emailLabel"
   | "auth.signIn.emailPlaceholder"
   | "auth.signIn.passwordLabel"
   | "auth.signIn.passwordPlaceholder"
+  | "auth.signIn.identifierRequired"
+  | "auth.signIn.identifierInvalid"
+  | "auth.signIn.googleTitle"
+  | "auth.signIn.googleNotConfigured"
+  | "auth.signIn.googleWebUnsupported"
+  | "auth.signIn.googleInitializing"
+  | "auth.signIn.facebookTitle"
+  | "auth.signIn.facebookNotConfigured"
+  | "auth.signIn.appleTitle"
+  | "auth.signIn.appleUnavailable"
+  | "auth.signIn.appleMissingToken"
+  | "auth.signIn.loginFailedTitle"
+  | "auth.signIn.googleFailed"
+  | "auth.signIn.facebookFailed"
+  | "auth.signIn.appleFailed"
+  | "auth.signIn.verificationRequired"
+  | "auth.signIn.genericFailure"
+  | "auth.signIn.clerkSubtitle"
+  | "auth.signIn.googleSubtitle"
+  | "auth.signIn.googleWebStatusTitle"
   | "auth.signIn.forgotPassword"
   | "auth.signIn.signIn"
   | "auth.signIn.noAccount"
   | "auth.signIn.signUp"
   | "auth.signIn.localDemoTitle"
   | "auth.signIn.localDemoText"
+  | "onboarding.birthday.title"
+  | "onboarding.birthday.info"
+  | "onboarding.birthday.publicNote"
+  | "onboarding.birthday.step"
+  | "onboarding.birthday.month"
+  | "onboarding.birthday.day"
+  | "onboarding.birthday.year"
+  | "onboarding.birthday.continue"
+  | "onboarding.birthday.invalidTitle"
+  | "onboarding.birthday.invalidDate"
+  | "onboarding.birthday.invalidAge"
+  | "onboarding.birthday.requiredTitle"
+  | "onboarding.birthday.requiredMessage"
+  | "onboarding.profile.title"
+  | "onboarding.profile.info"
+  | "onboarding.profile.addPhoto"
+  | "onboarding.profile.step"
+  | "onboarding.profile.firstName"
+  | "onboarding.profile.firstNamePlaceholder"
+  | "onboarding.profile.firstNameError"
+  | "onboarding.profile.lastName"
+  | "onboarding.profile.lastNamePlaceholder"
+  | "onboarding.profile.lastNameError"
+  | "onboarding.profile.email"
+  | "onboarding.profile.emailPlaceholder"
+  | "onboarding.profile.emailError"
+  | "onboarding.profile.phone"
+  | "onboarding.profile.phonePlaceholder"
+  | "onboarding.profile.address"
+  | "onboarding.profile.addressPlaceholder"
+  | "onboarding.profile.ready"
+  | "onboarding.profile.continue"
+  | "onboarding.profile.incompleteTitle"
+  | "onboarding.profile.incompleteMessage"
+  | "onboarding.profile.registrationFailedTitle"
+  | "onboarding.profile.registrationFailedDefault"
+  | "onboarding.profile.errorTitle"
+  | "onboarding.profile.errorMessage"
+  | "onboarding.profile.requiredTitle"
+  | "onboarding.profile.requiredMessage"
+  | "onboarding.profile.permissionTitle"
+  | "onboarding.profile.permissionMessage"
+  | "onboarding.profile.photoErrorTitle"
+  | "onboarding.profile.photoErrorMessage"
   | "common.use"
   | "common.success"
   | "common.cancel"
@@ -113,6 +186,8 @@ type TranslationTable = Record<TranslationKey, string>;
 
 export const translations: Record<string, TranslationTable> = {
   en: {
+    "auth.common.providerGoogle": "Google",
+    "auth.common.providerFacebook": "Facebook",
     "auth.signUp.providerTitle": "Signup",
     "auth.signUp.providerNotConfigured":
       "{{provider}} signup is not configured for this build yet.",
@@ -162,12 +237,55 @@ export const translations: Record<string, TranslationTable> = {
     "auth.getStarted.continueApple": "Continue with Apple",
     "auth.getStarted.signInPassword": "Sign in with password",
     "auth.getStarted.signUp": "Sign up",
+    "auth.getStarted.or": "or",
+    "auth.getStarted.googleSubtitle":
+      "One tap sign-in with your Google account",
+    "auth.getStarted.clerkSubtitle":
+      "Google, Facebook, X, and Apple through Clerk",
+    "auth.getStarted.googleWebStatusTitle": "Google web status",
+    "auth.getStarted.googleWebStatusReady":
+      "Google sign-in is ready on this platform.",
+    "auth.getStarted.googleWebStatusUnsupported":
+      "Google sign-in on phone browser preview requires https or localhost. Use the Android app build for device testing.",
+    "auth.getStarted.googleWebStatusMissing":
+      "Google sign-in is not configured for this platform in this build.",
     "auth.signIn.title": "Amize Login",
     "auth.signIn.subtitle": "Sign in to continue to your account",
     "auth.signIn.emailLabel": "Email or Phone",
     "auth.signIn.emailPlaceholder": "Enter your email or phone number",
     "auth.signIn.passwordLabel": "Password",
     "auth.signIn.passwordPlaceholder": "Enter your password",
+    "auth.signIn.identifierRequired":
+      "Email, phone number, or username is required",
+    "auth.signIn.identifierInvalid":
+      "Enter a valid email address, phone number, or username",
+    "auth.signIn.googleTitle": "Google Login",
+    "auth.signIn.googleNotConfigured":
+      "Google login is not configured for this platform in this build yet.",
+    "auth.signIn.googleWebUnsupported":
+      "Google sign-in on phone browser preview requires localhost or https. Use the Android build for device testing.",
+    "auth.signIn.googleInitializing":
+      "Google sign-in is still initializing. Wait a moment and try again.",
+    "auth.signIn.facebookTitle": "Facebook Login",
+    "auth.signIn.facebookNotConfigured":
+      "Facebook login is not configured for this build yet.",
+    "auth.signIn.appleTitle": "Apple Login",
+    "auth.signIn.appleUnavailable":
+      "Apple login is only available on supported Apple devices for this build.",
+    "auth.signIn.appleMissingToken":
+      "Apple did not return an identity token.",
+    "auth.signIn.loginFailedTitle": "Login Failed",
+    "auth.signIn.googleFailed": "Google authentication failed",
+    "auth.signIn.facebookFailed": "Facebook authentication failed",
+    "auth.signIn.appleFailed": "Apple authentication failed",
+    "auth.signIn.verificationRequired":
+      "This account still needs verification. Complete verification to continue.",
+    "auth.signIn.genericFailure": "Something went wrong while signing in.",
+    "auth.signIn.clerkSubtitle":
+      "Google, Facebook, X, and Apple through Clerk",
+    "auth.signIn.googleSubtitle":
+      "Fast sign-in with your Google account",
+    "auth.signIn.googleWebStatusTitle": "Google web status",
     "auth.signIn.forgotPassword": "Forgot password?",
     "auth.signIn.signIn": "Sign In",
     "auth.signIn.noAccount": "Don't have an account?",
@@ -175,6 +293,60 @@ export const translations: Record<string, TranslationTable> = {
     "auth.signIn.localDemoTitle": "Local Demo Login",
     "auth.signIn.localDemoText":
       "Use these demo accounts without backend access.",
+    "onboarding.birthday.title": "When is Your Birthday?",
+    "onboarding.birthday.info": "Info",
+    "onboarding.birthday.publicNote":
+      "Your birthday will not be shown to the public",
+    "onboarding.birthday.step": "Step 3 of 4",
+    "onboarding.birthday.month": "Month",
+    "onboarding.birthday.day": "Day",
+    "onboarding.birthday.year": "Year",
+    "onboarding.birthday.continue": "Continue",
+    "onboarding.birthday.invalidTitle": "Invalid Birthday",
+    "onboarding.birthday.invalidDate": "Please select a valid date.",
+    "onboarding.birthday.invalidAge":
+      "You must be at least 13 years old to continue.",
+    "onboarding.birthday.requiredTitle": "Birthday Required",
+    "onboarding.birthday.requiredMessage":
+      "Enter your birthday before continuing. The app creates your account on the next step and needs this value.",
+    "onboarding.profile.title": "Fill Your Profile",
+    "onboarding.profile.info": "Info",
+    "onboarding.profile.addPhoto": "Tap to add photo",
+    "onboarding.profile.step": "Step 4 of 4",
+    "onboarding.profile.firstName": "First Name",
+    "onboarding.profile.firstNamePlaceholder": "Enter your first name",
+    "onboarding.profile.firstNameError": "Enter a valid first name",
+    "onboarding.profile.lastName": "Last Name",
+    "onboarding.profile.lastNamePlaceholder": "Enter your last name",
+    "onboarding.profile.lastNameError": "Enter a valid last name",
+    "onboarding.profile.email": "Email",
+    "onboarding.profile.emailPlaceholder": "Enter your email address",
+    "onboarding.profile.emailError": "Enter a valid email address",
+    "onboarding.profile.phone": "Phone Number",
+    "onboarding.profile.phonePlaceholder": "Enter your phone number",
+    "onboarding.profile.address": "Address",
+    "onboarding.profile.addressPlaceholder":
+      "Enter your address (optional)",
+    "onboarding.profile.ready": "Profile ready to continue",
+    "onboarding.profile.continue": "Continue",
+    "onboarding.profile.incompleteTitle": "Incomplete Profile",
+    "onboarding.profile.incompleteMessage":
+      "Enter your first name, last name, a valid email address, and a valid phone number to continue.",
+    "onboarding.profile.registrationFailedTitle": "Registration Failed",
+    "onboarding.profile.registrationFailedDefault":
+      "Unable to finish registration right now.",
+    "onboarding.profile.errorTitle": "Error",
+    "onboarding.profile.errorMessage":
+      "An unexpected error occurred. Please try again.",
+    "onboarding.profile.requiredTitle": "Profile Required",
+    "onboarding.profile.requiredMessage":
+      "Complete your profile and finish registration before continuing.",
+    "onboarding.profile.permissionTitle": "Permission Required",
+    "onboarding.profile.permissionMessage":
+      "Allow photo library access to add a profile picture.",
+    "onboarding.profile.photoErrorTitle": "Photo Error",
+    "onboarding.profile.photoErrorMessage":
+      "Unable to open the image picker right now. Please try again.",
     "common.use": "Use",
     "common.success": "Success",
     "common.cancel": "Cancel",
@@ -244,6 +416,8 @@ export const translations: Record<string, TranslationTable> = {
     "settings.version": "App Version 1.0.0",
   },
   hi: {
+    "auth.common.providerGoogle": "Google",
+    "auth.common.providerFacebook": "Facebook",
     "auth.signUp.providerTitle": "साइनअप",
     "auth.signUp.providerNotConfigured":
       "{{provider}} साइनअप अभी इस बिल्ड के लिए कॉन्फ़िगर नहीं है।",
@@ -293,12 +467,56 @@ export const translations: Record<string, TranslationTable> = {
     "auth.getStarted.continueApple": "Apple से जारी रखें",
     "auth.getStarted.signInPassword": "पासवर्ड से साइन इन करें",
     "auth.getStarted.signUp": "साइन अप",
+    "auth.getStarted.or": "या",
+    "auth.getStarted.googleSubtitle":
+      "अपने Google खाते से एक टैप में साइन इन करें",
+    "auth.getStarted.clerkSubtitle":
+      "Clerk के माध्यम से Google, Facebook, X और Apple",
+    "auth.getStarted.googleWebStatusTitle": "Google वेब स्थिति",
+    "auth.getStarted.googleWebStatusReady":
+      "इस प्लेटफ़ॉर्म पर Google साइन-इन तैयार है।",
+    "auth.getStarted.googleWebStatusUnsupported":
+      "फ़ोन ब्राउज़र प्रीव्यू पर Google साइन-इन के लिए https या localhost चाहिए। डिवाइस टेस्टिंग के लिए Android बिल्ड उपयोग करें।",
+    "auth.getStarted.googleWebStatusMissing":
+      "इस प्लेटफ़ॉर्म के लिए इस बिल्ड में Google साइन-इन कॉन्फ़िगर नहीं है।",
     "auth.signIn.title": "Amize लॉगिन",
     "auth.signIn.subtitle": "अपने खाते में जारी रखने के लिए साइन इन करें",
     "auth.signIn.emailLabel": "ईमेल या फ़ोन",
     "auth.signIn.emailPlaceholder": "अपना ईमेल या फ़ोन नंबर दर्ज करें",
     "auth.signIn.passwordLabel": "पासवर्ड",
     "auth.signIn.passwordPlaceholder": "अपना पासवर्ड दर्ज करें",
+    "auth.signIn.identifierRequired":
+      "ईमेल, फ़ोन नंबर, या यूज़रनेम आवश्यक है",
+    "auth.signIn.identifierInvalid":
+      "मान्य ईमेल, फ़ोन नंबर, या यूज़रनेम दर्ज करें",
+    "auth.signIn.googleTitle": "Google लॉगिन",
+    "auth.signIn.googleNotConfigured":
+      "इस प्लेटफ़ॉर्म के लिए इस बिल्ड में Google लॉगिन कॉन्फ़िगर नहीं है।",
+    "auth.signIn.googleWebUnsupported":
+      "फ़ोन ब्राउज़र प्रीव्यू पर Google साइन-इन के लिए localhost या https चाहिए। डिवाइस टेस्टिंग के लिए Android बिल्ड उपयोग करें।",
+    "auth.signIn.googleInitializing":
+      "Google साइन-इन अभी प्रारंभ हो रहा है। थोड़ी देर बाद फिर प्रयास करें।",
+    "auth.signIn.facebookTitle": "Facebook लॉगिन",
+    "auth.signIn.facebookNotConfigured":
+      "इस बिल्ड के लिए Facebook लॉगिन अभी कॉन्फ़िगर नहीं है।",
+    "auth.signIn.appleTitle": "Apple लॉगिन",
+    "auth.signIn.appleUnavailable":
+      "इस बिल्ड के लिए Apple लॉगिन केवल समर्थित Apple डिवाइस पर उपलब्ध है।",
+    "auth.signIn.appleMissingToken":
+      "Apple ने पहचान टोकन वापस नहीं किया।",
+    "auth.signIn.loginFailedTitle": "लॉगिन विफल",
+    "auth.signIn.googleFailed": "Google प्रमाणीकरण विफल हुआ",
+    "auth.signIn.facebookFailed": "Facebook प्रमाणीकरण विफल हुआ",
+    "auth.signIn.appleFailed": "Apple प्रमाणीकरण विफल हुआ",
+    "auth.signIn.verificationRequired":
+      "इस खाते को अभी भी सत्यापन की आवश्यकता है। आगे बढ़ने के लिए सत्यापन पूरा करें।",
+    "auth.signIn.genericFailure":
+      "साइन इन करते समय कुछ गलत हो गया।",
+    "auth.signIn.clerkSubtitle":
+      "Clerk के माध्यम से Google, Facebook, X और Apple",
+    "auth.signIn.googleSubtitle":
+      "अपने Google खाते से तेज़ साइन-इन",
+    "auth.signIn.googleWebStatusTitle": "Google वेब स्थिति",
     "auth.signIn.forgotPassword": "पासवर्ड भूल गए?",
     "auth.signIn.signIn": "साइन इन",
     "auth.signIn.noAccount": "अकाउंट नहीं है?",
@@ -306,6 +524,59 @@ export const translations: Record<string, TranslationTable> = {
     "auth.signIn.localDemoTitle": "लोकल डेमो लॉगिन",
     "auth.signIn.localDemoText":
       "इन डेमो अकाउंट से बिना बैकएंड के लॉगिन करें।",
+    "onboarding.birthday.title": "आपका जन्मदिन कब है?",
+    "onboarding.birthday.info": "जानकारी",
+    "onboarding.birthday.publicNote":
+      "आपका जन्मदिन सार्वजनिक रूप से नहीं दिखाया जाएगा",
+    "onboarding.birthday.step": "चरण 3 / 4",
+    "onboarding.birthday.month": "महीना",
+    "onboarding.birthday.day": "दिन",
+    "onboarding.birthday.year": "वर्ष",
+    "onboarding.birthday.continue": "जारी रखें",
+    "onboarding.birthday.invalidTitle": "अमान्य जन्मदिन",
+    "onboarding.birthday.invalidDate": "कृपया मान्य तिथि चुनें।",
+    "onboarding.birthday.invalidAge":
+      "जारी रखने के लिए आपकी आयु कम से कम 13 वर्ष होनी चाहिए।",
+    "onboarding.birthday.requiredTitle": "जन्मदिन आवश्यक है",
+    "onboarding.birthday.requiredMessage":
+      "जारी रखने से पहले अपना जन्मदिन दर्ज करें। अगले चरण में खाता बनाने के लिए यह आवश्यक है।",
+    "onboarding.profile.title": "अपनी प्रोफ़ाइल भरें",
+    "onboarding.profile.info": "जानकारी",
+    "onboarding.profile.addPhoto": "फ़ोटो जोड़ने के लिए टैप करें",
+    "onboarding.profile.step": "चरण 4 / 4",
+    "onboarding.profile.firstName": "पहला नाम",
+    "onboarding.profile.firstNamePlaceholder": "अपना पहला नाम दर्ज करें",
+    "onboarding.profile.firstNameError": "मान्य पहला नाम दर्ज करें",
+    "onboarding.profile.lastName": "अंतिम नाम",
+    "onboarding.profile.lastNamePlaceholder": "अपना अंतिम नाम दर्ज करें",
+    "onboarding.profile.lastNameError": "मान्य अंतिम नाम दर्ज करें",
+    "onboarding.profile.email": "ईमेल",
+    "onboarding.profile.emailPlaceholder": "अपना ईमेल पता दर्ज करें",
+    "onboarding.profile.emailError": "मान्य ईमेल पता दर्ज करें",
+    "onboarding.profile.phone": "फ़ोन नंबर",
+    "onboarding.profile.phonePlaceholder": "अपना फ़ोन नंबर दर्ज करें",
+    "onboarding.profile.address": "पता",
+    "onboarding.profile.addressPlaceholder": "अपना पता दर्ज करें (वैकल्पिक)",
+    "onboarding.profile.ready": "प्रोफ़ाइल आगे बढ़ने के लिए तैयार है",
+    "onboarding.profile.continue": "जारी रखें",
+    "onboarding.profile.incompleteTitle": "अधूरी प्रोफ़ाइल",
+    "onboarding.profile.incompleteMessage":
+      "जारी रखने के लिए अपना पहला नाम, अंतिम नाम, मान्य ईमेल पता और मान्य फ़ोन नंबर दर्ज करें।",
+    "onboarding.profile.registrationFailedTitle": "पंजीकरण विफल",
+    "onboarding.profile.registrationFailedDefault":
+      "अभी पंजीकरण पूरा नहीं हो सका।",
+    "onboarding.profile.errorTitle": "त्रुटि",
+    "onboarding.profile.errorMessage":
+      "एक अनपेक्षित त्रुटि हुई। कृपया फिर से प्रयास करें।",
+    "onboarding.profile.requiredTitle": "प्रोफ़ाइल आवश्यक है",
+    "onboarding.profile.requiredMessage":
+      "जारी रखने से पहले अपनी प्रोफ़ाइल पूरी करें और पंजीकरण समाप्त करें।",
+    "onboarding.profile.permissionTitle": "अनुमति आवश्यक है",
+    "onboarding.profile.permissionMessage":
+      "प्रोफ़ाइल फ़ोटो जोड़ने के लिए फ़ोटो लाइब्रेरी की अनुमति दें।",
+    "onboarding.profile.photoErrorTitle": "फ़ोटो त्रुटि",
+    "onboarding.profile.photoErrorMessage":
+      "अभी इमेज पिकर नहीं खुल सका। कृपया फिर से प्रयास करें।",
     "common.use": "उपयोग करें",
     "common.success": "सफलता",
     "common.cancel": "रद्द करें",
@@ -378,6 +649,8 @@ export const translations: Record<string, TranslationTable> = {
     "settings.version": "ऐप संस्करण 1.0.0",
   },
   es: {
+    "auth.common.providerGoogle": "Google",
+    "auth.common.providerFacebook": "Facebook",
     "auth.signUp.providerTitle": "Registro",
     "auth.signUp.providerNotConfigured":
       "El registro con {{provider}} aún no está configurado para esta compilación.",
@@ -427,12 +700,56 @@ export const translations: Record<string, TranslationTable> = {
     "auth.getStarted.continueApple": "Continuar con Apple",
     "auth.getStarted.signInPassword": "Iniciar sesión con contraseña",
     "auth.getStarted.signUp": "Registrarse",
+    "auth.getStarted.or": "o",
+    "auth.getStarted.googleSubtitle":
+      "Inicia sesión con un toque usando tu cuenta de Google",
+    "auth.getStarted.clerkSubtitle":
+      "Google, Facebook, X y Apple a través de Clerk",
+    "auth.getStarted.googleWebStatusTitle": "Estado web de Google",
+    "auth.getStarted.googleWebStatusReady":
+      "Google sign-in is ready on this platform.",
+    "auth.getStarted.googleWebStatusUnsupported":
+      "La vista previa del navegador del teléfono requiere https o localhost para Google. Usa la compilación Android para probar en el dispositivo.",
+    "auth.getStarted.googleWebStatusMissing":
+      "Google no está configurado para esta plataforma en esta compilación.",
     "auth.signIn.title": "Inicio de sesión",
     "auth.signIn.subtitle": "Inicia sesión para continuar",
     "auth.signIn.emailLabel": "Correo o teléfono",
     "auth.signIn.emailPlaceholder": "Ingresa tu correo o teléfono",
     "auth.signIn.passwordLabel": "Contraseña",
     "auth.signIn.passwordPlaceholder": "Ingresa tu contraseña",
+    "auth.signIn.identifierRequired":
+      "Se requiere correo, número de teléfono o nombre de usuario",
+    "auth.signIn.identifierInvalid":
+      "Ingresa un correo, teléfono o nombre de usuario válido",
+    "auth.signIn.googleTitle": "Inicio con Google",
+    "auth.signIn.googleNotConfigured":
+      "Google no está configurado para esta plataforma en esta compilación.",
+    "auth.signIn.googleWebUnsupported":
+      "La vista previa del navegador del teléfono requiere localhost o https para Google. Usa la compilación Android para probar en el dispositivo.",
+    "auth.signIn.googleInitializing":
+      "Google todavía se está inicializando. Espera un momento y vuelve a intentarlo.",
+    "auth.signIn.facebookTitle": "Inicio con Facebook",
+    "auth.signIn.facebookNotConfigured":
+      "Facebook aún no está configurado para esta compilación.",
+    "auth.signIn.appleTitle": "Inicio con Apple",
+    "auth.signIn.appleUnavailable":
+      "Apple solo está disponible en dispositivos Apple compatibles para esta compilación.",
+    "auth.signIn.appleMissingToken":
+      "Apple no devolvió un token de identidad.",
+    "auth.signIn.loginFailedTitle": "Inicio de sesión fallido",
+    "auth.signIn.googleFailed": "La autenticación con Google falló",
+    "auth.signIn.facebookFailed": "La autenticación con Facebook falló",
+    "auth.signIn.appleFailed": "La autenticación con Apple falló",
+    "auth.signIn.verificationRequired":
+      "Esta cuenta todavía necesita verificación. Complétala para continuar.",
+    "auth.signIn.genericFailure":
+      "Ocurrió un problema al iniciar sesión.",
+    "auth.signIn.clerkSubtitle":
+      "Google, Facebook, X y Apple a través de Clerk",
+    "auth.signIn.googleSubtitle":
+      "Inicio rápido con tu cuenta de Google",
+    "auth.signIn.googleWebStatusTitle": "Estado web de Google",
     "auth.signIn.forgotPassword": "¿Olvidaste tu contraseña?",
     "auth.signIn.signIn": "Iniciar sesión",
     "auth.signIn.noAccount": "¿No tienes cuenta?",
@@ -440,6 +757,60 @@ export const translations: Record<string, TranslationTable> = {
     "auth.signIn.localDemoTitle": "Inicio demo local",
     "auth.signIn.localDemoText":
       "Usa estas cuentas demo sin backend.",
+    "onboarding.birthday.title": "¿Cuándo es tu cumpleaños?",
+    "onboarding.birthday.info": "Info",
+    "onboarding.birthday.publicNote":
+      "Tu cumpleaños no se mostrará públicamente",
+    "onboarding.birthday.step": "Paso 3 de 4",
+    "onboarding.birthday.month": "Mes",
+    "onboarding.birthday.day": "Día",
+    "onboarding.birthday.year": "Año",
+    "onboarding.birthday.continue": "Continuar",
+    "onboarding.birthday.invalidTitle": "Cumpleaños inválido",
+    "onboarding.birthday.invalidDate": "Selecciona una fecha válida.",
+    "onboarding.birthday.invalidAge":
+      "Debes tener al menos 13 años para continuar.",
+    "onboarding.birthday.requiredTitle": "Se requiere cumpleaños",
+    "onboarding.birthday.requiredMessage":
+      "Ingresa tu cumpleaños antes de continuar. El siguiente paso necesita este valor para crear tu cuenta.",
+    "onboarding.profile.title": "Completa tu perfil",
+    "onboarding.profile.info": "Info",
+    "onboarding.profile.addPhoto": "Toca para agregar una foto",
+    "onboarding.profile.step": "Paso 4 de 4",
+    "onboarding.profile.firstName": "Nombre",
+    "onboarding.profile.firstNamePlaceholder": "Ingresa tu nombre",
+    "onboarding.profile.firstNameError": "Ingresa un nombre válido",
+    "onboarding.profile.lastName": "Apellido",
+    "onboarding.profile.lastNamePlaceholder": "Ingresa tu apellido",
+    "onboarding.profile.lastNameError": "Ingresa un apellido válido",
+    "onboarding.profile.email": "Correo",
+    "onboarding.profile.emailPlaceholder": "Ingresa tu correo electrónico",
+    "onboarding.profile.emailError": "Ingresa un correo electrónico válido",
+    "onboarding.profile.phone": "Número de teléfono",
+    "onboarding.profile.phonePlaceholder": "Ingresa tu número de teléfono",
+    "onboarding.profile.address": "Dirección",
+    "onboarding.profile.addressPlaceholder":
+      "Ingresa tu dirección (opcional)",
+    "onboarding.profile.ready": "Perfil listo para continuar",
+    "onboarding.profile.continue": "Continuar",
+    "onboarding.profile.incompleteTitle": "Perfil incompleto",
+    "onboarding.profile.incompleteMessage":
+      "Ingresa tu nombre, apellido, un correo válido y un número de teléfono válido para continuar.",
+    "onboarding.profile.registrationFailedTitle": "Registro fallido",
+    "onboarding.profile.registrationFailedDefault":
+      "No se pudo completar el registro en este momento.",
+    "onboarding.profile.errorTitle": "Error",
+    "onboarding.profile.errorMessage":
+      "Ocurrió un error inesperado. Inténtalo de nuevo.",
+    "onboarding.profile.requiredTitle": "Perfil requerido",
+    "onboarding.profile.requiredMessage":
+      "Completa tu perfil y termina el registro antes de continuar.",
+    "onboarding.profile.permissionTitle": "Permiso requerido",
+    "onboarding.profile.permissionMessage":
+      "Permite el acceso a la biblioteca para agregar una foto de perfil.",
+    "onboarding.profile.photoErrorTitle": "Error de foto",
+    "onboarding.profile.photoErrorMessage":
+      "No se pudo abrir el selector de imágenes en este momento. Inténtalo de nuevo.",
     "common.use": "Usar",
     "common.success": "Éxito",
     "common.cancel": "Cancelar",

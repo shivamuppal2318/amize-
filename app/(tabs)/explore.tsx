@@ -200,17 +200,14 @@ const ExploreScreen = () => {
             return;
         }
 
-        // FeedScreen supports loading a specific video via the `videoId` route param.
-        // Passing the whole mixed feed through params is fragile (large payload) and
-        // was not consumed by the tabs index route.
         router.push({
-            pathname: "/(tabs)/index",
+            pathname: "/(tabs)",
             params: {
                 videoId: String(video.id),
                 fromExplore: "true",
             },
         });
-    }, [mixedFeed]);
+    }, []);
 
     const handleUserPress = useCallback((user: any) => {
         router.push(`/(tabs)/profile/${user.id}`);
@@ -516,7 +513,7 @@ const ExploreScreen = () => {
                         </TouchableOpacity>
 <TouchableOpacity
                             style={styles.filterButton}
-                            onPress={() => router.push('/nearby')}
+                            onPress={() => router.push('/(tabs)/nearby')}
                             accessibilityLabel="View nearby"
                             accessibilityRole="button"
                         >

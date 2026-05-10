@@ -271,20 +271,6 @@ const FeedScreen: React.FC = () => {
     fromProfile?: string;
   }>();
 
-  const params = useRef({
-    videoId: routeParams.videoId,
-    userId: routeParams.userId,
-    fromProfile: routeParams.fromProfile,
-  });
-
-  useEffect(() => {
-    params.current = {
-      videoId: routeParams.videoId,
-      userId: routeParams.userId,
-      fromProfile: routeParams.fromProfile,
-    };
-  }, [routeParams.videoId, routeParams.userId, routeParams.fromProfile]);
-
   // Authentication and context
   const { isAuthenticated, user } = useAuth();
   const { authPrompt, requireAuth, hideAuthPrompt, handleLogin, handleSignup } =
@@ -322,7 +308,7 @@ const FeedScreen: React.FC = () => {
     initialFeedType: "forYou",
     pageSize: 5,
     preloadCount: 2,
-    initialVideoId: params.current.videoId,
+    initialVideoId: routeParams.videoId,
     loadMoreThreshold: 2, // Trigger when 2 items from end
     minLoadInterval: 3000, // 3 seconds minimum between loads
     maxRetries: 3,
@@ -341,6 +327,12 @@ const FeedScreen: React.FC = () => {
   const lastFocusedIndex = useRef<number>(-1);
   const navigationHandled = useRef(false);
   const personalizedRecoveryFeed = useRef<FeedType | null>(null);
+
+  useEffect(() => {
+    if (routeParams.videoId) {
+      navigationHandled.current = false;
+    }
+  }, [routeParams.videoId]);
 
   // Scroll state management
   const scrollState = useRef({
@@ -431,7 +423,7 @@ const FeedScreen: React.FC = () => {
   // Handle navigation to specific video with improved logic
   useEffect(() => {
     if (
-      !params.current.videoId ||
+      !routeParams.videoId ||
       videos.length === 0 ||
       navigationHandled.current
     ) {
@@ -440,11 +432,9 @@ const FeedScreen: React.FC = () => {
 
     const handleVideoNavigation = async () => {
       navigationHandled.current = true;
-      log(`🧭 Navigating to video: ${params.current.videoId}`);
+      log(`🧭 Navigating to video: ${routeParams.videoId}`);
 
-      const videoIndex = videos.findIndex(
-        (v) => v.id === params.current.videoId
-      );
+      const videoIndex = videos.findIndex((v) => v.id === routeParams.videoId);
 
       if (videoIndex !== -1) {
         log(`📍 Video found in feed at index: ${videoIndex}`);
@@ -468,7 +458,7 @@ const FeedScreen: React.FC = () => {
       } else {
         try {
           const specificVideo = await loadSpecificVideo(
-            params.current.videoId!
+            routeParams.videoId!
           );
           if (specificVideo) {
             await jumpToVideo(specificVideo);
@@ -853,6 +843,7 @@ const FeedScreen: React.FC = () => {
               }
               onAuthRequired={() => {}}
               onDeleted={() => removeVideo(item.id)}
+              onNotInterested={() => removeVideo(item.id)}
               index={index}
             />
           ) : (
@@ -937,9 +928,13 @@ const FeedScreen: React.FC = () => {
   const renderTabs = useCallback(
     () => (
       <View style={styles.tabContainer}>
-        <View style={styles.customTab}>
+        <TouchableOpacity
+          style={styles.customTab}
+          activeOpacity={0.7}
+          onPress={() => router.push("/post/media-select")}
+        >
           <SquarePlay size={20} color="white" />
-        </View>
+        </TouchableOpacity>
 
         <TouchableOpacity
           style={[styles.tab, { minWidth: 80, minHeight: 40 }]}

@@ -157,6 +157,50 @@ const ShareModal: React.FC<ShareModalProps> = ({visible, onClose, onRepostPress,
                             <Text style={styles.socialText}>WhatsApp</Text>
                         </TouchableOpacity>
 
+                        <TouchableOpacity
+                            style={styles.socialButton}
+                            onPress={() => handleSocialShareWithFeedback('instagram')}
+                            disabled={Boolean(sharingPlatform)}
+                        >
+                            <View style={[styles.socialIcon, styles.instagramBg]}>
+                                {sharingPlatform === 'instagram' ? (
+                                    <ActivityIndicator size="small" color="white" />
+                                ) : (
+                                    <InstagramIcon />
+                                )}
+                            </View>
+                            <Text style={styles.socialText}>Instagram</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                            style={styles.socialButton}
+                            onPress={() => handleSocialShareWithFeedback('twitter')}
+                            disabled={Boolean(sharingPlatform)}
+                        >
+                            <View style={[styles.socialIcon, styles.twitterBg]}>
+                                {sharingPlatform === 'twitter' ? (
+                                    <ActivityIndicator size="small" color="white" />
+                                ) : (
+                                    <TwitterIcon color="white" />
+                                )}
+                            </View>
+                            <Text style={styles.socialText}>X</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                            style={styles.socialButton}
+                            onPress={() => handleSocialShareWithFeedback('facebook')}
+                            disabled={Boolean(sharingPlatform)}
+                        >
+                            <View style={[styles.socialIcon, styles.facebookBg]}>
+                                {sharingPlatform === 'facebook' ? (
+                                    <ActivityIndicator size="small" color="white" />
+                                ) : (
+                                    <FacebookIcon color="white" />
+                                )}
+                            </View>
+                            <Text style={styles.socialText}>Facebook</Text>
+                        </TouchableOpacity>
                     </View>
 
                     {/* Action Buttons - First Row */}

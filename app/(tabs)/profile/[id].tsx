@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { memo, useState, useEffect, useCallback, useRef } from "react";
 import {
   Alert,
   View,
@@ -13,6 +13,8 @@ import {
   Animated,
   Easing,
   SafeAreaView,
+  Linking,
+  Share as NativeShare,
 } from "react-native";
 import { useLocalSearchParams, router } from "expo-router";
 import { useAuth } from "@/hooks/useAuth";
@@ -40,17 +42,21 @@ import {
   UserCheck,
   Calendar,
   MapPin,
+  Globe,
   Shield,
+  ArrowDownUp,
 } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import apiClient from "@/lib/api/client";
 import { getTokens } from "@/lib/auth/tokens";
 import VideoService from "@/lib/api/videoService";
+import { getSafePosterUri } from "@/utils/mediaHelpers";
+import { SITE_URL } from "@/lib/settings/constants";
 
 const { width } = Dimensions.get("window");
 const ITEM_WIDTH = (width - 18) / 3;
 
-type TabType = "videos" | "likes" | "saved" | "private";
+type TabType = "videos" | "reposts" | "likes" | "saved" | "private";
 
 interface BioObject {
   name: string;
@@ -70,6 +76,7 @@ interface User {
   adminPermissions?: string;
   isEligibleForCreator: boolean;
   location?: string;
+  websiteUrl?: string;
   joinedAt?: string;
   createdAt?: string;
   _count: {
@@ -77,6 +84,9 @@ interface User {
     following: number;
     followers: number;
   };
+  likesReceived?: number;
+  likesArePrivate?: boolean;
+  canViewLikes?: boolean;
 }
 
 export interface Video {
@@ -101,6 +111,196 @@ export interface Video {
   };
 }
 
+const REPOST_PREFIX = /^Reposted from @([A-Za-z0-9_.-]+)\s*/i;
+
+function isRepostVideo(video: Video) {
+  return Boolean(video.description && REPOST_PREFIX.test(video.description));
+}
+
+function formatGridNumber(value?: number) {
+  const safeValue = Number(value ?? 0);
+  if (safeValue >= 1000000) return `${(safeValue / 1000000).toFixed(1)}M`;
+  if (safeValue >= 1000) return `${(safeValue / 1000).toFixed(1)}K`;
+  return String(safeValue);
+}
+
+function formatGridDuration(seconds: number) {
+  const safeSeconds = Math.max(0, Number(seconds || 0));
+  const mins = Math.floor(safeSeconds / 60);
+  const secs = Math.round(safeSeconds % 60);
+  return `${mins}:${secs < 10 ? "0" : ""}${secs}`;
+}
+
+const ProfileGridItem = memo(
+  ({
+    item,
+    index,
+    isOwnProfile,
+    onDelete,
+    onPress,
+  }: {
+    item: Video;
+    index: number;
+    isOwnProfile: boolean;
+    onDelete: (video: Video) => void;
+    onPress: (video: Video) => void;
+  }) => {
+    const animatedScale = useRef(new Animated.Value(0.8)).current;
+    const animatedOpacity = useRef(new Animated.Value(0)).current;
+    const pressScale = useRef(new Animated.Value(1)).current;
+
+    useEffect(() => {
+      Animated.parallel([
+        Animated.timing(animatedScale, {
+          toValue: 1,
+          duration: 400,
+          delay: index * 50,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+        Animated.timing(animatedOpacity, {
+          toValue: 1,
+          duration: 400,
+          delay: index * 50,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }, [animatedOpacity, animatedScale, index]);
+
+    const handlePressIn = () => {
+      Animated.spring(pressScale, {
+        toValue: 0.95,
+        tension: 100,
+        friction: 5,
+        useNativeDriver: true,
+      }).start();
+    };
+
+    const handlePressOut = () => {
+      Animated.spring(pressScale, {
+        toValue: 1,
+        tension: 100,
+        friction: 5,
+        useNativeDriver: true,
+      }).start();
+    };
+
+    const handlePress = () => {
+      Animated.sequence([
+        Animated.spring(pressScale, {
+          toValue: 0.9,
+          tension: 100,
+          friction: 5,
+          useNativeDriver: true,
+        }),
+        Animated.spring(pressScale, {
+          toValue: 1,
+          tension: 100,
+          friction: 5,
+          useNativeDriver: true,
+        }),
+      ]).start(() => {
+        onPress(item);
+      });
+    };
+
+    return (
+      <Animated.View
+        style={[
+          styles.videoItem,
+          {
+            transform: [{ scale: animatedScale }, { scale: pressScale }],
+            opacity: animatedOpacity,
+          },
+        ]}
+      >
+        <TouchableOpacity
+          onPress={handlePress}
+          onLongPress={isOwnProfile ? () => onDelete(item) : undefined}
+          onPressIn={handlePressIn}
+          onPressOut={handlePressOut}
+          activeOpacity={0.9}
+          style={styles.videoTouchable}
+        >
+          <LinearGradient
+            colors={["#1E4A72", "#000000"]}
+            start={{ x: 0.5, y: 0 }}
+            end={{ x: 0.5, y: 1 }}
+            style={{ flex: 1 }}
+          >
+            <Image
+              source={{
+                uri: getSafePosterUri(
+                  item.thumbnailUrl || item.videoUrl,
+                  item.id
+                ),
+              }}
+              style={styles.videoThumbnail}
+              resizeMode="cover"
+            />
+
+            <LinearGradient
+              colors={["transparent", "rgba(0,0,0,0.8)"]}
+              style={styles.videoGradient}
+            />
+
+            <View style={styles.videoOverlay}>
+              <View style={styles.videoStats}>
+                <View style={styles.videoStat}>
+                  <Eye size={12} color="white" />
+                  <Text style={styles.videoStatText}>
+                    {formatGridNumber(item._count?.views)}
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.videoDuration}>
+                <Text style={styles.videoDurationText}>
+                  {formatGridDuration(item.duration)}
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.playButtonOverlay}>
+              <View
+                style={[
+                  styles.playButton,
+                  {
+                    backgroundColor: "#1E4A72",
+                  },
+                ]}
+              >
+                <Play size={16} color="white" fill="white" />
+              </View>
+
+              <Animated.View
+                style={[
+                  styles.pulseRing,
+                  {
+                    transform: [{ scale: pressScale }],
+                  },
+                ]}
+              />
+            </View>
+
+            {!item.isPublic && (
+              <View style={styles.privateIndicator}>
+                <EyeOff size={12} color="white" />
+              </View>
+            )}
+
+            <View style={styles.navigationHint}>
+              <Text style={styles.navigationHintText}>
+                {isOwnProfile ? "Tap to watch • Hold to delete" : "Tap to watch"}
+              </Text>
+            </View>
+          </LinearGradient>
+        </TouchableOpacity>
+      </Animated.View>
+    );
+  }
+);
+
 export default function ProfilePage() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { user: authUser, isAuthenticated } = useAuth();
@@ -117,6 +317,12 @@ export default function ProfilePage() {
   const [savedVideos, setSavedVideos] = useState<Video[]>([]);
   const [privateVideos, setPrivateVideos] = useState<Video[]>([]);
   const [loadingTab, setLoadingTab] = useState(false);
+  const repostVideos = videos.filter(isRepostVideo);
+  const originalVideos = videos.filter((video) => !isRepostVideo(video));
+  const canViewLikes = Boolean(user?.canViewLikes ?? isOwnProfile);
+  const tabOrder: TabType[] = canViewLikes
+    ? ["videos", "reposts", "likes"]
+    : ["videos", "reposts"];
   const canAccessAdmin =
     isOwnProfile &&
     (user?.role === "ADMIN" || user?.adminPermissions === "all");
@@ -175,9 +381,13 @@ export default function ProfilePage() {
           case "videos":
             await fetchUserVideos();
             break;
-          case "likes":
-            await fetchUserLikes();
-            break;
+      case "likes":
+        if (canViewLikes) {
+          await fetchUserLikes();
+        } else {
+          setLikes([]);
+        }
+        break;
           // case 'saved':
           //     await fetchSavedVideos();
           //     break;
@@ -195,10 +405,8 @@ export default function ProfilePage() {
   );
 
   const animateTabChange = useCallback(() => {
-    const tabIndex = ["videos", "likes"].indexOf(activeTab);
-    // const tabIndex = ['videos', 'likes', 'saved', 'private'].indexOf(activeTab);
-    // const visibleTabs = isOwnProfile ? 4 : 2;
-    const visibleTabs = 2;
+    const tabIndex = Math.max(0, tabOrder.indexOf(activeTab));
+    const visibleTabs = tabOrder.length;
     const indicatorPosition = (width / visibleTabs) * tabIndex;
 
     Animated.spring(tabIndicatorAnim, {
@@ -207,7 +415,7 @@ export default function ProfilePage() {
       friction: 8,
       useNativeDriver: true,
     }).start();
-  }, [activeTab, isOwnProfile, tabIndicatorAnim]);
+  }, [activeTab, tabIndicatorAnim, tabOrder]);
 
   // Load user profile and initial data
   useEffect(() => {
@@ -361,21 +569,60 @@ export default function ProfilePage() {
     }
   };
 
-  const handleVideoPress = useCallback(
-    (index: number) => {
-      if (!videos?.length) return;
+  const handleVideoPress = useCallback((videoId: string) => {
+    if (!videoId) return;
 
-      router.push({
-        pathname: "/(tabs)",
-        params: {
-          videos: JSON.stringify(videos),
-          startIndex: String(index),
-          fromProfile: "true",
+    router.push({
+      pathname: "/(tabs)",
+      params: {
+        videoId,
+        fromProfile: "true",
+      },
+    });
+  }, []);
+
+  const handleDeleteVideo = useCallback((video: Video) => {
+    Alert.alert(
+      "Delete post",
+      "This will permanently remove this post from your profile and feed.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await VideoService.deleteVideo(video.id);
+              setVideos((current) => current.filter((item) => item.id !== video.id));
+              setLikes((current) => current.filter((item) => item.id !== video.id));
+              setSavedVideos((current) => current.filter((item) => item.id !== video.id));
+              setPrivateVideos((current) => current.filter((item) => item.id !== video.id));
+              setUser((current) =>
+                current
+                  ? {
+                      ...current,
+                      _count: {
+                        ...current._count,
+                        videos: Math.max(0, current._count.videos - 1),
+                      },
+                    }
+                  : current
+              );
+              Alert.alert("Deleted", "The post was deleted successfully.");
+            } catch (error: any) {
+              console.error("Error deleting profile video:", error);
+              Alert.alert(
+                "Delete Failed",
+                error?.response?.data?.message ||
+                  error?.message ||
+                  "Unable to delete this post right now."
+              );
+            }
+          },
         },
-      });
-    },
-    [videos]
-  );
+      ]
+    );
+  }, []);
 
   const handleBack = () => {
     if (router.canGoBack()) {
@@ -397,6 +644,10 @@ export default function ProfilePage() {
     setActiveTab("videos");
   };
 
+  const handlePressLikesStat = () => {
+    setActiveTab("likes");
+  };
+
   const handleOpenConnections = (type: "followers" | "following") => {
     if (isMockProfile) {
       return;
@@ -408,6 +659,38 @@ export default function ProfilePage() {
     });
   };
 
+  const handleOpenWebsite = useCallback(async () => {
+    const websiteUrl = user?.websiteUrl?.trim();
+    if (!websiteUrl) return;
+
+    try {
+      await Linking.openURL(websiteUrl);
+    } catch {
+      Alert.alert("Unable to open link", "Please try again later.");
+    }
+  }, [user?.websiteUrl]);
+
+  const handleShareProfile = useCallback(async () => {
+    const profileId = user?.id ?? (id ? String(id) : "");
+    const username = user?.username || "creator";
+
+    if (!profileId) {
+      Alert.alert("Unable to share", "Profile link is unavailable right now.");
+      return;
+    }
+
+    const profileUrl = `${SITE_URL.replace(/\/+$/, "")}/profile/${profileId}`;
+
+    try {
+      await NativeShare.share({
+        message: `Check out @${username} on Amize ${profileUrl}`,
+        url: profileUrl,
+      });
+    } catch {
+      Alert.alert("Unable to share", "Please try again later.");
+    }
+  }, [id, user?.id, user?.username]);
+
   const handleMoreOptions = () => {
     const isOwn = Boolean(isOwnProfile);
     Alert.alert(
@@ -416,12 +699,14 @@ export default function ProfilePage() {
       [
         ...(isOwn
           ? [
+              { text: "Share profile", onPress: handleShareProfile },
               { text: "Settings", onPress: () => router.push("/settings") },
               ...(canAccessAdmin
                 ? [{ text: "Admin", onPress: () => router.push("/admin") }]
                 : []),
             ]
           : [
+              { text: "Share profile", onPress: handleShareProfile },
               {
                 text: "Report user",
                 onPress: () => Alert.alert("Reported", "Thanks — we’ll review this account."),
@@ -486,7 +771,9 @@ export default function ProfilePage() {
   const getActiveData = () => {
     switch (activeTab) {
       case "videos":
-        return videos;
+        return originalVideos;
+      case "reposts":
+        return repostVideos;
       case "likes":
         return likes;
       // case 'saved':
@@ -498,172 +785,14 @@ export default function ProfilePage() {
     }
   };
 
-  // Create separate VideoItem component to properly use hooks
-  const VideoItem = ({
-    item,
-    index,
-    onPress,
-  }: {
-    item: Video;
-    index: number;
-    onPress: (video: Video) => void;
-  }) => {
-    const animatedScale = useRef(new Animated.Value(0.8)).current;
-    const animatedOpacity = useRef(new Animated.Value(0)).current;
-    const pressScale = useRef(new Animated.Value(1)).current;
-
-    useEffect(() => {
-      Animated.parallel([
-        Animated.timing(animatedScale, {
-          toValue: 1,
-          duration: 400,
-          delay: index * 50,
-          easing: Easing.out(Easing.cubic),
-          useNativeDriver: true,
-        }),
-        Animated.timing(animatedOpacity, {
-          toValue: 1,
-          duration: 400,
-          delay: index * 50,
-          useNativeDriver: true,
-        }),
-      ]).start();
-    }, []);
-
-    const handlePressIn = () => {
-      Animated.spring(pressScale, {
-        toValue: 0.95,
-        tension: 100,
-        friction: 5,
-        useNativeDriver: true,
-      }).start();
-    };
-
-    const handlePressOut = () => {
-      Animated.spring(pressScale, {
-        toValue: 1,
-        tension: 100,
-        friction: 5,
-        useNativeDriver: true,
-      }).start();
-    };
-
-    const handlePress = () => {
-      Animated.sequence([
-        Animated.spring(pressScale, {
-          toValue: 0.9,
-          tension: 100,
-          friction: 5,
-          useNativeDriver: true,
-        }),
-        Animated.spring(pressScale, {
-          toValue: 1,
-          tension: 100,
-          friction: 5,
-          useNativeDriver: true,
-        }),
-      ]).start(() => {
-        onPress(item);
-      });
-    };
-
-    return (
-      <Animated.View
-        style={[
-          styles.videoItem,
-          {
-            transform: [{ scale: animatedScale }, { scale: pressScale }],
-            opacity: animatedOpacity,
-          },
-        ]}
-      >
-        <TouchableOpacity
-          onPress={handlePress}
-          onPressIn={handlePressIn}
-          onPressOut={handlePressOut}
-          activeOpacity={0.9}
-          style={styles.videoTouchable}
-        >
-          <LinearGradient
-            colors={["#1E4A72", "#000000"]}
-            start={{ x: 0.5, y: 0 }}
-            end={{ x: 0.5, y: 1 }}
-            style={{ flex: 1 }}
-          >
-            <Image
-              source={{
-                uri: item.thumbnailUrl || "https://via.placeholder.com/300x400",
-              }}
-              style={styles.videoThumbnail}
-              resizeMode="cover"
-            />
-
-            <LinearGradient
-              colors={["transparent", "rgba(0,0,0,0.8)"]}
-              style={styles.videoGradient}
-            />
-
-            <View style={styles.videoOverlay}>
-              <View style={styles.videoStats}>
-                <View style={styles.videoStat}>
-                  <Eye size={12} color="white" />
-                  <Text style={styles.videoStatText}>
-                    {formatNumber(item._count?.views)}
-                  </Text>
-                </View>
-              </View>
-
-              <View style={styles.videoDuration}>
-                <Text style={styles.videoDurationText}>
-                  {formatDuration(item.duration)}
-                </Text>
-              </View>
-            </View>
-
-            <View style={styles.playButtonOverlay}>
-              {/* <LinearGradient
-                            colors={['#FF5A5F', '#FF5A5F']}
-                            style={styles.playButton}
-                        > */}
-              <View
-                style={[
-                  styles.playButton,
-                  {
-                    backgroundColor: "#1E4A72",
-                  },
-                ]}
-              >
-                <Play size={16} color="white" fill="white" />
-              </View>
-              {/* </LinearGradient> */}
-
-              <Animated.View
-                style={[
-                  styles.pulseRing,
-                  {
-                    transform: [{ scale: pressScale }],
-                  },
-                ]}
-              />
-            </View>
-
-            {!item.isPublic && (
-              <View style={styles.privateIndicator}>
-                <EyeOff size={12} color="white" />
-              </View>
-            )}
-
-            <View style={styles.navigationHint}>
-              <Text style={styles.navigationHintText}>Tap to watch</Text>
-            </View>
-          </LinearGradient>
-        </TouchableOpacity>
-      </Animated.View>
-    );
-  };
-
   const renderVideoItem = ({ item, index }: { item: Video; index: number }) => (
-    <VideoItem item={item} index={index} onPress={() => handleVideoPress(index)} />
+    <ProfileGridItem
+      item={item}
+      index={index}
+      isOwnProfile={isOwnProfile}
+      onDelete={handleDeleteVideo}
+      onPress={(video) => handleVideoPress(video.id)}
+    />
   );
 
   const renderTabButton = (
@@ -715,6 +844,13 @@ export default function ProfilePage() {
           : `${user?.username} hasn't posted any posts yet. Check back later!`;
         icon = <Video size={64} color="#6B7280" />;
         break;
+      case "reposts":
+        message = isOwnProfile ? "No reposts yet" : `No reposts yet`;
+        description = isOwnProfile
+          ? "Videos you repost will appear here"
+          : `${user?.username}'s reposted videos will appear here`;
+        icon = <ArrowDownUp size={64} color="#6B7280" />;
+        break;
       case "likes":
         message = "No liked posts";
         description = isOwnProfile
@@ -739,7 +875,7 @@ export default function ProfilePage() {
         {icon}
         <Text style={styles.emptyStateTitle}>{message}</Text>
         <Text style={styles.emptyStateDescription}>{description}</Text>
-        {isOwnProfile && activeTab === "videos" && (
+        {isOwnProfile && (activeTab === "videos" || activeTab === "reposts") && (
           <TouchableOpacity
             style={styles.createVideoButton}
             onPress={() => router.push("/(tabs)/create")}
@@ -822,8 +958,6 @@ export default function ProfilePage() {
   }
 
   const activeData = getActiveData();
-  // const visibleTabs = isOwnProfile ? 4 : 2;
-  const visibleTabs = 2;
 
   return (
     <SafeAreaView style={styles.container}>
@@ -875,9 +1009,10 @@ export default function ProfilePage() {
         </View>
 
         <FlatList
+          key={activeTab}
           data={activeData}
           renderItem={renderVideoItem}
-          keyExtractor={(item, index) => `${item.id}-${index}`}
+          keyExtractor={(item) => item.id}
           numColumns={3}
           contentContainerStyle={styles.contentContainer}
           refreshControl={
@@ -950,6 +1085,18 @@ export default function ProfilePage() {
                         <Text style={styles.infoText}>{user.location}</Text>
                       </View>
                     )}
+                    {user.websiteUrl && (
+                      <TouchableOpacity
+                        style={styles.infoItem}
+                        onPress={handleOpenWebsite}
+                        activeOpacity={0.8}
+                      >
+                        <Globe size={14} color="#9CA3AF" />
+                        <Text style={[styles.infoText, styles.linkText]} numberOfLines={1}>
+                          {user.websiteUrl.replace(/^https?:\/\//i, "")}
+                        </Text>
+                      </TouchableOpacity>
+                    )}
                     <View style={styles.infoItem}>
                       <Calendar size={14} color="#9CA3AF" />
                       <Text style={styles.infoText}>
@@ -971,6 +1118,19 @@ export default function ProfilePage() {
                       </Text>
                       <Text style={styles.statLabel}>Videos</Text>
                     </TouchableOpacity>
+
+                    {canViewLikes ? (
+                      <TouchableOpacity
+                        style={styles.statButton}
+                        onPress={handlePressLikesStat}
+                        activeOpacity={0.8}
+                      >
+                        <Text style={styles.statNumber}>
+                          {formatNumber(user?.likesReceived)}
+                        </Text>
+                        <Text style={styles.statLabel}>Likes</Text>
+                      </TouchableOpacity>
+                    ) : null}
 
                     <TouchableOpacity
                       style={styles.statButton}
@@ -1073,13 +1233,23 @@ export default function ProfilePage() {
                     "Posts"
                   )}
                   {renderTabButton(
-                    "likes",
-                    <Heart
+                    "reposts",
+                    <ArrowDownUp
                       size={20}
-                      color={activeTab === "likes" ? "#fff" : "#6B7280"}
+                      color={activeTab === "reposts" ? "#fff" : "#6B7280"}
                     />,
-                    "Likes"
+                    "Reposts"
                   )}
+                  {canViewLikes
+                    ? renderTabButton(
+                        "likes",
+                        <Heart
+                          size={20}
+                          color={activeTab === "likes" ? "#fff" : "#6B7280"}
+                        />,
+                        "Likes"
+                      )
+                    : null}
                   {/** {isOwnProfile && renderTabButton('saved',
                                         <BookmarkPlus size={20} color={activeTab === 'saved' ? '#fff' : '#6B7280'} />,
                                         'Saved'
@@ -1094,7 +1264,7 @@ export default function ProfilePage() {
                   style={[
                     styles.tabIndicator,
                     {
-                      width: width / visibleTabs,
+                      width: width / tabOrder.length,
                       transform: [{ translateX: tabIndicatorAnim }],
                     },
                   ]}
@@ -1244,6 +1414,10 @@ const styles = StyleSheet.create({
     color: "#9CA3AF",
     fontSize: 14,
     fontFamily: "Figtree",
+  },
+  linkText: {
+    textDecorationLine: "underline",
+    maxWidth: 180,
   },
   statsContainer: {
     flexDirection: "row",

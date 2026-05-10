@@ -11,12 +11,14 @@ export interface ProfileUpdateData {
     firstName?: string;
     lastName?: string;
     username?: string;
+    email?: string;
     bio?: string | BioObject;
     gender?: string;
     dateOfBirth?: string;
     instagramHandle?: string;
     facebookHandle?: string;
     twitterHandle?: string;
+    websiteUrl?: string;
     profilePhotoUrl?: string;
 }
 
@@ -54,7 +56,7 @@ class ProfileAPI {
             return response.data;
         } catch (error: any) {
             if (error.response?.status === 409) {
-                throw new Error('Username already exists');
+                throw new Error(error.response?.data?.message || 'Username or email already exists');
             }
             throw new Error(error.response?.data?.message || 'Failed to update profile');
         }

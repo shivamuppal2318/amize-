@@ -43,12 +43,14 @@ export const useProfileEditor = (): UseProfileEditorReturn => {
             firstName: userData.firstName || '',
             lastName: userData.lastName || '',
             username: userData.username || '',
+            email: userData.email || '',
             bio: userData.bio || '',
             gender: userData.gender || '',
             dateOfBirth: userData.dateOfBirth ? new Date(userData.dateOfBirth).toISOString().split('T')[0] : '',
             instagramHandle: userData.instagramHandle || '',
             facebookHandle: userData.facebookHandle || '',
             twitterHandle: userData.twitterHandle || '',
+            websiteUrl: userData.websiteUrl || '',
         };
 
         setFormData(data);

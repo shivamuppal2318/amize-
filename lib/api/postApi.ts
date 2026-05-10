@@ -27,6 +27,7 @@ interface CreatePostData {
   title?: string;
   description?: string;
   soundId?: string;
+  videoFilter?: string;
   isPublic?: boolean;
 }
 
@@ -87,6 +88,7 @@ export const usePostApi = () => {
             title: data.title,
             description: data.description,
             soundId: data.soundId,
+            videoFilter: data.videoFilter,
             isPublic: data.isPublic !== undefined ? data.isPublic : true,
           },
           {

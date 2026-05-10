@@ -18,7 +18,7 @@ import { Input } from "@/components/ui/Input";
 import { useAuth } from "@/hooks/useAuth";
 import { useRegistration } from "@/context/RegistrationContext";
 import { LinearGradient } from "expo-linear-gradient";
-import { canBypassVerification } from "@/lib/release/releaseConfig";
+import { useI18n } from "@/hooks/useI18n";
 
 const buildStoredFullName = (
   firstName?: string,
@@ -51,9 +51,9 @@ const buildStoredFullName = (
 };
 
 export default function ProfileScreen() {
+  const { t } = useI18n();
   const {
     register,
-    verifyCode,
     completeSignupFlow,
     hasCompletedOnboarding,
     updateUser,
@@ -146,8 +146,8 @@ export default function ProfileScreen() {
   const handleContinue = async () => {
     if (!isFormValid) {
       Alert.alert(
-        "Incomplete Profile",
-        "Enter your first name, last name, a valid email address, and a valid phone number to continue."
+        t("onboarding.profile.incompleteTitle"),
+        t("onboarding.profile.incompleteMessage")
       );
       return;
     }
@@ -183,44 +183,21 @@ export default function ProfileScreen() {
 
       if (!result.success) {
         Alert.alert(
-          "Registration Failed",
-          result.message || "Unable to start account verification right now."
+          t("onboarding.profile.registrationFailedTitle"),
+          result.message || t("onboarding.profile.registrationFailedDefault")
         );
         return;
       }
 
-      // Internal/dev shortcut: skip OTP entirely when bypass is enabled.
-      // Backend already returns tokens for newly registered users, so we can
-      // proceed with onboarding and keep sign-in/Clerk flows intact.
-      if (canBypassVerification()) {
-        updateUser({ verified: true });
-        await completeSignupFlow();
-        clearRegistrationData();
-        router.replace(hasCompletedOnboarding ? "/(tabs)" : "/onboarding/step1");
-        return;
-      }
-
-      if (result.verificationCode) {
-        const verificationResult = await verifyCode(trimmedEmail, result.verificationCode);
-
-        if (!verificationResult.success) {
-          Alert.alert(
-            "Verification Failed",
-            verificationResult.message || "Unable to verify this account automatically. Enter the code manually on the next screen."
-          );
-          router.replace("/account-setup/verify");
-          return;
-        }
-
-        await completeSignupFlow();
-        clearRegistrationData();
-        router.replace(hasCompletedOnboarding ? "/(tabs)" : "/onboarding/step1");
-        return;
-      }
-
-      router.replace("/account-setup/verify");
+      updateUser({ verified: true });
+      await completeSignupFlow();
+      clearRegistrationData();
+      router.replace(hasCompletedOnboarding ? "/(tabs)" : "/onboarding/step1");
     } catch (error) {
-      Alert.alert("Error", "An unexpected error occurred. Please try again.");
+      Alert.alert(
+        t("onboarding.profile.errorTitle"),
+        t("onboarding.profile.errorMessage")
+      );
     } finally {
       setSubmitting(false);
     }
@@ -228,8 +205,8 @@ export default function ProfileScreen() {
 
   const handleSkip = () => {
     Alert.alert(
-      "Profile Required",
-      "Complete your profile and finish registration before continuing."
+      t("onboarding.profile.requiredTitle"),
+      t("onboarding.profile.requiredMessage")
     );
   };
 
@@ -240,8 +217,8 @@ export default function ProfileScreen() {
 
       if (permission.status !== "granted") {
         Alert.alert(
-          "Permission Required",
-          "Allow photo library access to add a profile picture."
+          t("onboarding.profile.permissionTitle"),
+          t("onboarding.profile.permissionMessage")
         );
         return;
       }
@@ -261,8 +238,8 @@ export default function ProfileScreen() {
       }
     } catch (error) {
       Alert.alert(
-        "Photo Error",
-        "Unable to open the image picker right now. Please try again."
+        t("onboarding.profile.photoErrorTitle"),
+        t("onboarding.profile.photoErrorMessage")
       );
     }
   };
@@ -310,7 +287,7 @@ export default function ProfileScreen() {
                     fontFamily: "Figtree",
                   }}
                 >
-                  Fill Your Profile
+                  {t("onboarding.profile.title")}
                 </Text>
 
                 <TouchableOpacity onPress={handleSkip}>
@@ -322,7 +299,7 @@ export default function ProfileScreen() {
                       fontFamily: "Figtree",
                     }}
                   >
-                    Info
+                    {t("onboarding.profile.info")}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -385,7 +362,7 @@ export default function ProfileScreen() {
                       fontFamily: "Figtree",
                     }}
                   >
-                    Tap to add photo
+                    {t("onboarding.profile.addPhoto")}
                   </Text>
                 </View>
 
@@ -412,40 +389,40 @@ export default function ProfileScreen() {
                       fontFamily: "Figtree",
                     }}
                   >
-                    Step 4 of 4
+                    {t("onboarding.profile.step")}
                   </Text>
                 </View>
 
                 <View style={{ width: "100%", maxWidth: 400 }}>
                   <Input
-                    label="First Name"
-                    placeholder="Enter your first name"
+                    label={t("onboarding.profile.firstName")}
+                    placeholder={t("onboarding.profile.firstNamePlaceholder")}
                     value={firstNameInput}
                     onChangeText={setFirstNameInput}
                     icon={<User size={20} color="#9CA3AF" />}
                     error={
                       firstNameInput.trim().length > 0 && firstName.length < 2
-                        ? "Enter a valid first name"
+                        ? t("onboarding.profile.firstNameError")
                         : ""
                     }
                   />
 
                   <Input
-                    label="Last Name"
-                    placeholder="Enter your last name"
+                    label={t("onboarding.profile.lastName")}
+                    placeholder={t("onboarding.profile.lastNamePlaceholder")}
                     value={lastNameInput}
                     onChangeText={setLastNameInput}
                     icon={<User size={20} color="#9CA3AF" />}
                     error={
                       lastNameInput.trim().length > 0 && lastName.length < 2
-                        ? "Enter a valid last name"
+                        ? t("onboarding.profile.lastNameError")
                         : ""
                     }
                   />
 
                   <Input
-                    label="Email"
-                    placeholder="Enter your email address"
+                    label={t("onboarding.profile.email")}
+                    placeholder={t("onboarding.profile.emailPlaceholder")}
                     value={email}
                     onChangeText={setEmail}
                     keyboardType="email-address"
@@ -453,14 +430,14 @@ export default function ProfileScreen() {
                     icon={<Mail size={20} color="#9CA3AF" />}
                     error={
                       email.trim().length > 0 && !isEmailValid
-                        ? "Enter a valid email address"
+                        ? t("onboarding.profile.emailError")
                         : ""
                     }
                   />
 
                   <Input
-                    label="Phone Number"
-                    placeholder="Enter your phone number"
+                    label={t("onboarding.profile.phone")}
+                    placeholder={t("onboarding.profile.phonePlaceholder")}
                     value={phoneNumber}
                     onChangeText={setPhoneNumber}
                     keyboardType="phone-pad"
@@ -468,8 +445,8 @@ export default function ProfileScreen() {
                   />
 
                   <Input
-                    label="Address"
-                    placeholder="Enter your address (optional)"
+                    label={t("onboarding.profile.address")}
+                    placeholder={t("onboarding.profile.addressPlaceholder")}
                     value={address}
                     onChangeText={setAddress}
                     icon={<MapPin size={20} color="#9CA3AF" />}
@@ -486,7 +463,7 @@ export default function ProfileScreen() {
                         fontFamily: "Figtree",
                       }}
                     >
-                      Profile ready to verify
+                      {t("onboarding.profile.ready")}
                     </Text>
                   </View>
                 )}
@@ -501,7 +478,7 @@ export default function ProfileScreen() {
                 }}
               >
                 <Button
-                  label="Continue to Verification"
+                  label={t("onboarding.profile.continue")}
                   onPress={handleContinue}
                   variant="primary"
                   fullWidth

@@ -49,6 +49,11 @@ export const EditFieldModal: React.FC<EditFieldModalProps> = ({
           return `${field.label} must be at least 2 characters`;
         }
         break;
+      case "email":
+        if (!/\S+@\S+\.\S+/.test(text.trim())) {
+          return "Please enter a valid email address";
+        }
+        break;
       case "dateOfBirth":
         if (text && !/^\d{4}-\d{2}-\d{2}$/.test(text)) {
           return "Please enter date in YYYY-MM-DD format";
@@ -69,6 +74,18 @@ export const EditFieldModal: React.FC<EditFieldModalProps> = ({
           return "Bio cannot exceed 160 characters";
         }
         break;
+      case "websiteUrl": {
+        if (!text.trim()) break;
+        const normalized = /^https?:\/\//i.test(text.trim())
+          ? text.trim()
+          : `https://${text.trim()}`;
+        try {
+          new URL(normalized);
+        } catch {
+          return "Please enter a valid website URL";
+        }
+        break;
+      }
     }
     return null;
   };
@@ -80,7 +97,15 @@ export const EditFieldModal: React.FC<EditFieldModalProps> = ({
       return;
     }
 
-    onSave(value.trim());
+    const trimmed = value.trim();
+    const normalizedValue =
+      field.key === "websiteUrl" && trimmed
+        ? /^https?:\/\//i.test(trimmed)
+          ? trimmed
+          : `https://${trimmed}`
+        : trimmed;
+
+    onSave(normalizedValue);
     Keyboard.dismiss();
   };
 
@@ -215,6 +240,20 @@ export const EditFieldModal: React.FC<EditFieldModalProps> = ({
             }}
           >
             Format: YYYY-MM-DD (e.g., 1990-01-15)
+          </Text>
+        )}
+
+        {field.key === "websiteUrl" && (
+          <Text
+            style={{
+              color: "#6B7280",
+              fontSize: 13,
+              marginTop: 8,
+              lineHeight: 18,
+              fontFamily: "Figtree",
+            }}
+          >
+            You can paste a full URL or just the domain name.
           </Text>
         )}
       </View>

@@ -28,6 +28,7 @@ interface UseLanguageResult {
     suggestedLanguages: Language[];
     otherLanguages: Language[];
     isLoading: boolean;
+    updatingLanguageCode: string | null;
     error: string | null;
     fetchLanguages: () => Promise<void>;
     updateLanguage: (language: string) => Promise<boolean>;
@@ -41,6 +42,7 @@ export function useLanguage(): UseLanguageResult {
     const [currentLanguage, setCurrentLanguage] = useState<string>('');
     const [availableLanguages, setAvailableLanguages] = useState<Language[]>([]);
     const [isLoading, setIsLoading] = useState<boolean>(true);
+    const [updatingLanguageCode, setUpdatingLanguageCode] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
 
     // Split languages into suggested and others
@@ -96,7 +98,7 @@ export function useLanguage(): UseLanguageResult {
         const normalizedCode = resolveLanguageCode(language);
         if (normalizedCode === currentLanguage) return true;
 
-        setIsLoading(true);
+        setUpdatingLanguageCode(normalizedCode);
         setError(null);
 
         try {
@@ -119,7 +121,7 @@ export function useLanguage(): UseLanguageResult {
             setError(null);
             return true;
         } finally {
-            setIsLoading(false);
+            setUpdatingLanguageCode(null);
         }
     }, [currentLanguage, setAppLanguage, updateLanguageApi]);
 
@@ -134,6 +136,7 @@ export function useLanguage(): UseLanguageResult {
         suggestedLanguages,
         otherLanguages,
         isLoading,
+        updatingLanguageCode,
         error,
         fetchLanguages,
         updateLanguage

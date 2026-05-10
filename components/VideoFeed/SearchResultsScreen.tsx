@@ -41,6 +41,8 @@ const SearchResultsScreen: React.FC<SearchResultsProps> = ({initialQuery = '', o
     const [query, setQuery] = useState(initialQuery);
     const [activeTab, setActiveTab] = useState<Tab>('Top');
     const [showClear, setShowClear] = useState(false);
+    const trimmedQuery = query.trim();
+    const canSearch = trimmedQuery.length >= 2;
 
     // Use our search hooks
     const {
@@ -78,35 +80,37 @@ const SearchResultsScreen: React.FC<SearchResultsProps> = ({initialQuery = '', o
 
     // Keep the hooks search query in sync with the local query
     useEffect(() => {
-        setHookSearchQuery(query);
-    }, [query, setHookSearchQuery]);
+        setHookSearchQuery(trimmedQuery);
+    }, [trimmedQuery, setHookSearchQuery]);
 
     // Organize search results when mixedFeed changes
     useEffect(() => {
-        if (mixedFeed && mixedFeed.length > 0) {
-            // Filter results by type
-            const videos = mixedFeed.filter(item => item.type === 'video');
-            const users = mixedFeed.filter(item => item.type === 'user');
-            const sounds = mixedFeed.filter(item => item.type === 'sound');
-
-            setVideoResults(videos);
-            setUserResults(users);
-            setSoundResults(sounds);
+        if (!canSearch) {
+            setVideoResults([]);
+            setUserResults([]);
+            setSoundResults([]);
+            return;
         }
-    }, [mixedFeed]);
+
+        if (!mixedFeed || mixedFeed.length === 0) {
+            setVideoResults([]);
+            setUserResults([]);
+            setSoundResults([]);
+            return;
+        }
+
+        const videos = mixedFeed.filter(item => item.type === 'video');
+        const users = mixedFeed.filter(item => item.type === 'user');
+        const sounds = mixedFeed.filter(item => item.type === 'sound');
+
+        setVideoResults(videos);
+        setUserResults(users);
+        setSoundResults(sounds);
+    }, [canSearch, mixedFeed]);
 
     useEffect(() => {
         setShowClear(query.length > 0);
-
-        // If query is not empty, search and save to history
-        if (query.length >= 2) {
-            // The hook will handle the debounced search
-            // When a user actively searches, add to history
-            if (query !== initialQuery) {
-                addToHistory(query);
-            }
-        }
-    }, [query, initialQuery, addToHistory]);
+    }, [query]);
 
     const handleTabPress = (tab: Tab) => {
         setActiveTab(tab);
@@ -125,9 +129,8 @@ const SearchResultsScreen: React.FC<SearchResultsProps> = ({initialQuery = '', o
     };
 
     const handleSearchSubmit = () => {
-        if (query.trim().length > 0) {
-            addToHistory(query);
-            // The hook already handles the search based on query changes
+        if (canSearch) {
+            addToHistory(trimmedQuery);
         }
     };
 
@@ -194,6 +197,12 @@ const SearchResultsScreen: React.FC<SearchResultsProps> = ({initialQuery = '', o
                             <Search size={16} color="#666666" />
                         </TouchableOpacity>
                     ))}
+
+                    {trimmedQuery.length === 1 && (
+                        <Text style={styles.searchHintText}>
+                            Type at least 2 characters to search videos, users, and sounds.
+                        </Text>
+                    )}
                 </View>
             </ScrollView>
             </LinearGradient>
@@ -560,7 +569,7 @@ const SearchResultsScreen: React.FC<SearchResultsProps> = ({initialQuery = '', o
 
     // Render content based on active tab
     const renderContent = () => {
-        if (query.length === 0) {
+        if (trimmedQuery.length < 2) {
             return renderSearchHistoryAndSuggestions();
         }
 
@@ -615,7 +624,7 @@ const SearchResultsScreen: React.FC<SearchResultsProps> = ({initialQuery = '', o
                 </View>
 
                 {/* Tabs */}
-                {query.length > 0 && (
+                {canSearch && (
                     <ScrollView
                         horizontal
                         showsHorizontalScrollIndicator={false}
@@ -797,6 +806,12 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
         marginTop: 24,
         marginBottom: 16,
+    },
+    searchHintText: {
+        color: '#AAAAAA',
+        fontSize: 13,
+        lineHeight: 18,
+        marginTop: 12,
     },
     suggestionItem: {
         flexDirection: 'row',

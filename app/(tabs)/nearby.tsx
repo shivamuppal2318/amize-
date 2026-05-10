@@ -41,6 +41,25 @@ export default function NearbyScreen() {
     const [nearbyItems, setNearbyItems] = useState<NearbyDiscoveryItem[]>([]);
     const [loadError, setLoadError] = useState<string | null>(null);
 
+    const handleNearbyItemPress = (item: NearbyDiscoveryItem) => {
+        if (!item?.targetId) {
+            return;
+        }
+
+        if (item.targetType === 'user') {
+            router.push(`/(tabs)/profile/${item.targetId}`);
+            return;
+        }
+
+        router.push({
+            pathname: '/(tabs)/index',
+            params: {
+                videoId: item.targetId,
+                fromNearby: 'true',
+            },
+        });
+    };
+
     const loadNearby = async () => {
         try {
             setLoading(true);
@@ -263,7 +282,11 @@ export default function NearbyScreen() {
                             keyExtractor={(item) => item.id}
                             contentContainerStyle={styles.listContent}
                             renderItem={({ item }) => (
-                                <View style={styles.card}>
+                                <TouchableOpacity
+                                    style={styles.card}
+                                    onPress={() => handleNearbyItemPress(item)}
+                                    activeOpacity={0.85}
+                                >
                                     <Image source={{ uri: item.imageUrl }} style={styles.cardImage} />
                                     <View style={styles.cardContent}>
                                         <View style={styles.typeBadge}>
@@ -275,7 +298,7 @@ export default function NearbyScreen() {
                                             {item.distanceKm.toFixed(1)} km away
                                         </Text>
                                     </View>
-                                </View>
+                                </TouchableOpacity>
                             )}
                         />
                     </>

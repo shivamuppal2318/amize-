@@ -61,6 +61,10 @@ interface VideoMusic {
   name: string;
 }
 
+interface VideoRepost {
+  originalUsername: string;
+}
+
 export interface VideoItemData {
   id: string;
   title: string;
@@ -73,6 +77,7 @@ export interface VideoItemData {
   bookmarkCount: number;
   timestamp: string;
   music: VideoMusic;
+  repost?: VideoRepost;
 }
 
 interface VideoItemProps {
@@ -88,6 +93,7 @@ interface VideoItemProps {
   onBuffered?: () => void;
   onAuthRequired?: (action: string) => void;
   onDeleted?: () => void;
+  onNotInterested?: () => void;
   index?: number;
 }
 
@@ -257,6 +263,13 @@ const VideoItemWeb: React.FC<VideoItemProps> = ({
         <Text style={styles.title} numberOfLines={1}>
           {item.title}
         </Text>
+        {item.repost?.originalUsername ? (
+          <View style={styles.repostBadge}>
+            <Text style={styles.repostText}>
+              Reposted from @{item.repost.originalUsername}
+            </Text>
+          </View>
+        ) : null}
         <Text style={styles.description} numberOfLines={3}>
           {item.description}
         </Text>
@@ -284,6 +297,7 @@ const VideoItemNative: React.FC<VideoItemProps> = ({
   onBuffered,
   onAuthRequired,
   onDeleted,
+  onNotInterested,
   index = -1,
 }) => {
   // Authentication and context
@@ -313,6 +327,8 @@ const VideoItemNative: React.FC<VideoItemProps> = ({
   const lastFocusChange = useRef(0);
   const statusChangeInProgress = useRef(false);
   const playerReady = useRef(false);
+  const lastTapAt = useRef(0);
+  const singleTapTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isOwnVideo = user?.id === item.user.id;
 
   // Static logging function to avoid recreation
@@ -368,6 +384,10 @@ const VideoItemNative: React.FC<VideoItemProps> = ({
     return () => {
       isMounted.current = false;
       statusChangeInProgress.current = false;
+      if (singleTapTimeout.current) {
+        clearTimeout(singleTapTimeout.current);
+        singleTapTimeout.current = null;
+      }
       log(`🗑️ Component unmounting`);
     };
   }, []);
@@ -567,6 +587,29 @@ const VideoItemNative: React.FC<VideoItemProps> = ({
     log(`💖 Like toggled: ${newLikedState}`);
   }, [isAuthenticated, isLiked, showAuthPrompt, onLike]);
 
+  const handleVideoSurfacePress = useCallback(() => {
+    const now = Date.now();
+    const isDoubleTap = now - lastTapAt.current < 260;
+    lastTapAt.current = now;
+
+    if (isDoubleTap) {
+      if (singleTapTimeout.current) {
+        clearTimeout(singleTapTimeout.current);
+        singleTapTimeout.current = null;
+      }
+
+      if (!isLiked) {
+        handleLikePress();
+      }
+      return;
+    }
+
+    singleTapTimeout.current = setTimeout(() => {
+      handleVideoPress();
+      singleTapTimeout.current = null;
+    }, 220);
+  }, [handleLikePress, handleVideoPress, isLiked]);
+
   const handleCommentPress = useCallback(() => {
     if (!isAuthenticated) {
       showAuthPrompt("comment");
@@ -628,7 +671,8 @@ const VideoItemNative: React.FC<VideoItemProps> = ({
   const handleNotInterestedPress = useCallback(() => {
     setShareModalVisible(false);
     log(`👎 Not interested`);
-  }, []);
+    onNotInterested?.();
+  }, [log, onNotInterested]);
 
   const handleAddToFavoritesPress = useCallback(() => {
     setShareModalVisible(false);
@@ -757,7 +801,7 @@ const VideoItemNative: React.FC<VideoItemProps> = ({
       {/* Video Component */}
       <TouchableOpacity
         activeOpacity={1}
-        onPress={handleVideoPress}
+        onPress={handleVideoSurfacePress}
         style={styles.videoContainer}
       >
         <VideoView
@@ -914,18 +958,24 @@ const VideoItemNative: React.FC<VideoItemProps> = ({
         </View>
 
         <Text style={styles.title}>{item.title}</Text>
+        {item.repost?.originalUsername ? (
+          <View style={styles.repostBadge}>
+            <Text style={styles.repostText}>
+              Reposted from @{item.repost.originalUsername}
+            </Text>
+          </View>
+        ) : null}
 
         <Text style={styles.description} numberOfLines={2}>
           {item.description}
         </Text>
 
-        {/* <TouchableOpacity style={styles.musicInfo} onPress={handleMusicPress}> */}
-        <View style={styles.musicInfo}>
+        <TouchableOpacity style={styles.musicInfo} onPress={handleMusicPress}>
           <Music size={15} color="white" />
           <Text style={styles.musicText} numberOfLines={1}>
             {item.music.name}
           </Text>
-        </View>
+        </TouchableOpacity>
       </View>
 
       {/* Modals */}
@@ -1192,6 +1242,25 @@ const styles = StyleSheet.create({
     textShadowColor: "rgba(0, 0, 0, 0.7)",
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 3,
+  },
+  repostBadge: {
+    alignSelf: "flex-start",
+    backgroundColor: "rgba(255, 90, 95, 0.16)",
+    borderWidth: 1,
+    borderColor: "rgba(255, 90, 95, 0.32)",
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    marginBottom: 8,
+  },
+  repostText: {
+    color: "#FFD0D2",
+    fontSize: 11,
+    fontWeight: "700",
+    fontFamily: "Figtree",
+    textShadowColor: "rgba(0, 0, 0, 0.55)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
   musicInfo: {
     flexDirection: "row",

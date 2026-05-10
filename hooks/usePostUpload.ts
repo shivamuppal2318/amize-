@@ -173,6 +173,7 @@ export function usePostUpload({
           title: draftPost.caption || undefined,
           description: draftPost.location || undefined,
           soundId,
+          videoFilter: mediaItems[0].filterName || "none",
           isPublic: draftPost.visibility === "public",
         };
   

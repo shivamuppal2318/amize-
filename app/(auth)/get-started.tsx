@@ -53,10 +53,10 @@ export default function GetStartedScreen() {
       showClerkLogin || showFacebookLogin || showGoogleLogin || showAppleLogin;
     const webGoogleStatusMessage =
         Platform.OS === 'web' && !isSecureWebAuthOrigin()
-        ? 'Google sign-in on phone browser preview requires https or localhost. Use the Android app build for device testing.'
+        ? t('auth.getStarted.googleWebStatusUnsupported')
         : hasCurrentPlatformGoogleConfig
-            ? 'Google sign-in is ready on this platform.'
-            : 'Google sign-in is not configured for this platform in this build.';
+            ? t('auth.getStarted.googleWebStatusReady')
+            : t('auth.getStarted.googleWebStatusMissing');
 
     useEffect(() => {
         // Only clear a stale signup-flow flag when the user is already authenticated.
@@ -209,7 +209,7 @@ export default function GetStartedScreen() {
                                             <View style={styles.googleCopy}>
                                                 <Text style={styles.googleTitle}>Continue with Google</Text>
                                                 <Text style={styles.googleSubtitle}>
-                                                    Google, Facebook, X, and Apple through Clerk
+                                                    {t('auth.getStarted.clerkSubtitle')}
                                                 </Text>
                                             </View>
                                         </TouchableOpacity>
@@ -264,7 +264,7 @@ export default function GetStartedScreen() {
                                                     {t('auth.getStarted.continueGoogle')}
                                                 </Text>
                                                 <Text style={styles.googleSubtitle}>
-                                                    One tap sign-in with your Google account
+                                                    {t('auth.getStarted.googleSubtitle')}
                                                 </Text>
                                             </View>
                                         </TouchableOpacity>
@@ -272,7 +272,7 @@ export default function GetStartedScreen() {
 
                                     {showGoogleLogin && Platform.OS === 'web' && (
                                         <View style={styles.statusCard}>
-                                            <Text style={styles.statusTitle}>Google web status</Text>
+                                            <Text style={styles.statusTitle}>{t('auth.getStarted.googleWebStatusTitle')}</Text>
                                             <Text style={styles.statusText}>{webGoogleStatusMessage}</Text>
                                         </View>
                                     )}
@@ -323,7 +323,7 @@ export default function GetStartedScreen() {
                                         fontFamily: 'Figtree',
                                         fontSize: 16
                                     }}>
-                                        or
+                                        {t('auth.getStarted.or')}
                                     </Text>
                                     <View style={{ flex: 1, height: 1, backgroundColor: '#1a1a2e' }} />
                                 </View>

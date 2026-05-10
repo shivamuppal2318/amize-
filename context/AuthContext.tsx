@@ -512,10 +512,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         return { success: false, message: response.message || "Login failed" };
       } catch (error: any) {
         console.error("[AuthContext] Login error:", error);
+        const requiresVerification = Boolean(
+          error?.response?.data?.requiresVerification
+        );
+        const verificationIdentifier =
+          error?.response?.data?.identifier ||
+          error?.response?.data?.email ||
+          undefined;
         return {
           success: false,
           message:
             error?.response?.data?.message || "Login failed. Please try again.",
+          requiresVerification,
+          verificationIdentifier,
         };
       } finally {
         setLoading(false);

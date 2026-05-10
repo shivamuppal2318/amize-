@@ -1,20 +1,39 @@
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
-  View,
   FlatList,
-  StyleSheet,
+  Image,
   Platform,
-  StatusBar,
   RefreshControl,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
+import { CheckCircle, Search, Users } from "lucide-react-native";
+import { LinearGradient } from "expo-linear-gradient";
+
+import apiClient from "@/lib/api/client";
 import { Conversation } from "@/types/messaging";
+
 import MessagesHeader from "./MessagesHeader";
 import SearchBar from "./SearchBar";
 import TabSelector from "./TabSelector";
 import ConversationItem from "./ConversationItem";
 import EmptyState from "./EmptyState";
 import { ANIMATION, COLORS, UI } from "./constants";
-import { LinearGradient } from "expo-linear-gradient";
+
+interface SearchUser {
+  id: string;
+  username: string;
+  fullName?: string;
+  profilePhotoUrl?: string;
+  creatorVerified?: boolean;
+  isOnline?: boolean;
+}
+
+type SearchResultItem =
+  | { type: "user"; id: string; user: SearchUser }
+  | { type: "conversation"; id: string; conversation: Conversation };
 
 interface ConversationsListProps {
   conversations: Conversation[];
@@ -23,11 +42,15 @@ interface ConversationsListProps {
   activeTab: string;
   setActiveTab: (tab: string) => void;
   onConversationPress: (conversation: Conversation) => void;
+  onUserPress: (userId: string) => void;
   isConnected: boolean;
   loading: boolean;
   onRetry: () => void;
   onRefresh: () => void;
 }
+
+const FALLBACK_AVATAR =
+  "https://cdn-icons-png.flaticon.com/512/219/219983.png";
 
 const ConversationsList: React.FC<ConversationsListProps> = ({
   conversations,
@@ -36,59 +59,196 @@ const ConversationsList: React.FC<ConversationsListProps> = ({
   activeTab,
   setActiveTab,
   onConversationPress,
+  onUserPress,
   isConnected,
   loading,
   onRetry,
   onRefresh,
 }) => {
-  // Filter and sort conversations based on search text and active tab
-  const filteredAndSortedConversations = useMemo(() => {
-    let filtered = conversations.filter((conv) => {
-      // Filter by search text
-      const matchesSearch =
-        searchText === "" ||
-        conv.name.toLowerCase().includes(searchText.toLowerCase()) ||
-        conv.lastMessage.toLowerCase().includes(searchText.toLowerCase());
+  const [users, setUsers] = useState<SearchUser[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
 
-      // Filter by tab
+  useEffect(() => {
+    let cancelled = false;
+
+    const runSearch = async () => {
+      const query = searchText.trim();
+      if (!query || activeTab !== "Chats") {
+        setUsers([]);
+        setSearchLoading(false);
+        return;
+      }
+
+      try {
+        setSearchLoading(true);
+        const response = await apiClient.get("/users/search", {
+          params: {
+            q: query,
+            limit: 10,
+          },
+        });
+
+        if (cancelled) {
+          return;
+        }
+
+        const nextUsers = response.data?.success
+          ? (response.data.users as SearchUser[])
+          : [];
+        setUsers(Array.isArray(nextUsers) ? nextUsers : []);
+      } catch (error) {
+        if (!cancelled) {
+          console.error("[ConversationsList] Error searching users:", error);
+          setUsers([]);
+        }
+      } finally {
+        if (!cancelled) {
+          setSearchLoading(false);
+        }
+      }
+    };
+
+    const timeoutId = setTimeout(runSearch, 300);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timeoutId);
+    };
+  }, [activeTab, searchText]);
+
+  const filteredAndSortedConversations = useMemo(() => {
+    const normalizedSearch = searchText.trim().toLowerCase();
+
+    const filtered = conversations.filter((conversation) => {
+      const matchesSearch =
+        !normalizedSearch ||
+        conversation.name.toLowerCase().includes(normalizedSearch) ||
+        conversation.lastMessage.toLowerCase().includes(normalizedSearch);
+
       const matchesTab =
         activeTab === "Chats"
-          ? conv.type === "direct" || !conv.type // Default to direct if no type
-          : conv.type === "group";
+          ? conversation.type === "direct" || !conversation.type
+          : conversation.type === "group";
 
       return matchesSearch && matchesTab;
     });
 
-    // Sort by last message timestamp (most recent first)
     return filtered.sort((a, b) => {
-      // Handle conversations with unread messages first
       if (a.unreadCount > 0 && b.unreadCount === 0) return -1;
       if (b.unreadCount > 0 && a.unreadCount === 0) return 1;
 
-      // Then sort by timestamp
       const aTime = new Date(a.timestamp || 0).getTime();
       const bTime = new Date(b.timestamp || 0).getTime();
       return bTime - aTime;
     });
-  }, [conversations, searchText, activeTab]);
+  }, [activeTab, conversations, searchText]);
 
-  const renderConversationItem = ({
+  const combinedResults = useMemo(() => {
+    if (!searchText.trim() || activeTab !== "Chats") {
+      return filteredAndSortedConversations.map((conversation) => ({
+        type: "conversation" as const,
+        id: `conversation-${conversation.id}`,
+        conversation,
+      }));
+    }
+
+    const userResults = users.map((user) => ({
+      type: "user" as const,
+      id: `user-${user.id}`,
+      user,
+    }));
+
+    const conversationResults = filteredAndSortedConversations.map(
+      (conversation) => ({
+        type: "conversation" as const,
+        id: `conversation-${conversation.id}`,
+        conversation,
+      })
+    );
+
+    return [...userResults, ...conversationResults];
+  }, [activeTab, filteredAndSortedConversations, searchText, users]);
+
+  const highlightText = (value: string, query: string) => {
+    if (!query.trim()) {
+      return value;
+    }
+
+    const parts = value.split(new RegExp(`(${query})`, "gi"));
+    return parts.map((part, index) =>
+      part.toLowerCase() === query.toLowerCase() ? (
+        <Text key={`${part}-${index}`} style={styles.highlightText}>
+          {part}
+        </Text>
+      ) : (
+        part
+      )
+    );
+  };
+
+  const renderUserItem = (user: SearchUser) => (
+    <TouchableOpacity
+      style={styles.userCard}
+      onPress={() => onUserPress(user.id)}
+      activeOpacity={0.8}
+    >
+      <LinearGradient
+        colors={["rgba(26, 26, 46, 0.7)", "rgba(26, 26, 46, 0.5)"]}
+        style={styles.userCardGradient}
+      >
+        <Image
+          source={{ uri: user.profilePhotoUrl || FALLBACK_AVATAR }}
+          style={styles.userAvatar}
+        />
+
+        <View style={styles.userTextBlock}>
+          <View style={styles.userNameRow}>
+            <Text style={styles.userName} numberOfLines={1}>
+              {highlightText(user.username, searchText)}
+            </Text>
+            {user.creatorVerified ? (
+              <CheckCircle size={14} color={COLORS.primary} />
+            ) : null}
+          </View>
+
+          <Text style={styles.userSubtitle} numberOfLines={1}>
+            {user.fullName
+              ? highlightText(user.fullName, searchText)
+              : "Start a new conversation"}
+          </Text>
+        </View>
+
+        <View style={styles.userMeta}>
+          {user.isOnline ? <View style={styles.onlineDot} /> : null}
+          <Text style={styles.userMetaText}>Message</Text>
+        </View>
+      </LinearGradient>
+    </TouchableOpacity>
+  );
+
+  const renderItem = ({
     item,
     index,
   }: {
-    item: Conversation;
+    item: SearchResultItem;
     index: number;
-  }) => (
-    <ConversationItem
-      item={item}
-      onPress={onConversationPress}
-      animationDelay={index * ANIMATION.CONVERSATION_ITEM_DELAY}
-      searchText={searchText} // Pass search text for highlighting
-    />
-  );
+  }) => {
+    if (item.type === "user") {
+      return renderUserItem(item.user);
+    }
+
+    return (
+      <ConversationItem
+        item={item.conversation}
+        onPress={onConversationPress}
+        animationDelay={index * ANIMATION.CONVERSATION_ITEM_DELAY}
+        searchText={searchText}
+      />
+    );
+  };
 
   const renderEmptyState = () => {
-    if (loading) return null;
+    if (loading || searchLoading) return null;
 
     if (!isConnected) {
       return (
@@ -97,17 +257,19 @@ const ConversationsList: React.FC<ConversationsListProps> = ({
           subtitle="Check your internet connection and try again"
           actionText="Retry"
           onAction={onRetry}
+          type="connection"
         />
       );
     }
 
-    if (searchText) {
+    if (searchText.trim()) {
       return (
         <EmptyState
           title="No Results"
-          subtitle={`No conversations found for "${searchText}"`}
+          subtitle={`No users or conversations found for "${searchText}"`}
           actionText="Clear Search"
           onAction={() => setSearchText("")}
+          type="search"
         />
       );
     }
@@ -117,6 +279,7 @@ const ConversationsList: React.FC<ConversationsListProps> = ({
         <EmptyState
           title="No Groups"
           subtitle="You haven't joined any groups yet"
+          type="groups"
         />
       );
     }
@@ -124,7 +287,7 @@ const ConversationsList: React.FC<ConversationsListProps> = ({
     return (
       <EmptyState
         title="No Conversations"
-        subtitle="Start a new conversation to begin messaging"
+        subtitle="Search for a user above or start a new conversation"
       />
     );
   };
@@ -142,14 +305,13 @@ const ConversationsList: React.FC<ConversationsListProps> = ({
         <TabSelector activeTab={activeTab} setActiveTab={setActiveTab} />
 
         <FlatList
-          data={filteredAndSortedConversations}
+          data={combinedResults}
           keyExtractor={(item) => item.id}
-          renderItem={renderConversationItem}
+          renderItem={renderItem}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={[
             styles.listContent,
-            filteredAndSortedConversations.length === 0 &&
-              styles.emptyListContent,
+            combinedResults.length === 0 && styles.emptyListContent,
           ]}
           refreshControl={
             <RefreshControl
@@ -163,12 +325,15 @@ const ConversationsList: React.FC<ConversationsListProps> = ({
           initialNumToRender={10}
           maxToRenderPerBatch={5}
           windowSize={10}
-          getItemLayout={(data, index) => ({
-            length: 72, // Approximate item height
-            offset: 72 * index,
-            index,
-          })}
-          removeClippedSubviews={true}
+          removeClippedSubviews
+          ListHeaderComponent={
+            searchLoading ? (
+              <View style={styles.searchingRow}>
+                <Search size={16} color={COLORS.textGray} />
+                <Text style={styles.searchingText}>Searching users...</Text>
+              </View>
+            ) : null
+          }
         />
       </LinearGradient>
     </View>
@@ -187,6 +352,85 @@ const styles = StyleSheet.create({
   emptyListContent: {
     flex: 1,
     justifyContent: "center",
+  },
+  searchingRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: Platform.OS === "web" ? UI.SPACING.LG : UI.SPACING.MD,
+    paddingBottom: UI.SPACING.SM,
+  },
+  searchingText: {
+    color: COLORS.textGray,
+    fontSize: 13,
+    fontFamily: UI.FONT_FAMILY,
+  },
+  userCard: {
+    marginHorizontal: Platform.OS === "web" ? UI.SPACING.LG : UI.SPACING.MD,
+    marginVertical: UI.SPACING.XS,
+    borderRadius: UI.BORDER_RADIUS.CARD,
+    overflow: "hidden",
+    ...UI.SHADOW.SMALL,
+  },
+  userCardGradient: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: UI.BORDER_RADIUS.CARD,
+    padding: Platform.OS === "web" ? UI.SPACING.LG : UI.SPACING.MD,
+  },
+  userAvatar: {
+    width: Platform.OS === "web" ? UI.AVATAR_SIZE_LARGE : 54,
+    height: Platform.OS === "web" ? UI.AVATAR_SIZE_LARGE : 54,
+    borderRadius: Platform.OS === "web" ? UI.AVATAR_SIZE_LARGE / 2 : 27,
+    marginRight: UI.SPACING.MD,
+    backgroundColor: COLORS.gray,
+  },
+  userTextBlock: {
+    flex: 1,
+  },
+  userNameRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginBottom: 4,
+  },
+  userName: {
+    flexShrink: 1,
+    color: COLORS.white,
+    fontSize: Platform.OS === "web" ? 18 : 17,
+    fontWeight: "600",
+    fontFamily: UI.FONT_FAMILY,
+  },
+  userSubtitle: {
+    color: COLORS.textGray,
+    fontSize: Platform.OS === "web" ? 15 : 14,
+    fontFamily: UI.FONT_FAMILY,
+  },
+  userMeta: {
+    alignItems: "flex-end",
+    marginLeft: UI.SPACING.SM,
+  },
+  userMetaText: {
+    color: COLORS.primary,
+    fontSize: 12,
+    fontWeight: "600",
+    fontFamily: UI.FONT_FAMILY,
+  },
+  onlineDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: COLORS.success,
+    marginBottom: 6,
+  },
+  highlightText: {
+    backgroundColor: COLORS.primary,
+    color: COLORS.white,
+    fontWeight: "700",
+    borderRadius: 2,
+    paddingHorizontal: 2,
   },
 });
 

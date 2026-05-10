@@ -14,6 +14,7 @@ import { useAuth } from "@/hooks/useAuth";
 // @ts-ignore
 import DefaultImage from "@/assets/images/figma/cake.png";
 import { useRegistration } from "@/context/RegistrationContext";
+import { useI18n } from "@/hooks/useI18n";
 
 const DEFAULT_IMAGE = DefaultImage;
 // @ts-ignore
@@ -52,6 +53,7 @@ const monthsShort = [
 ];
 
 export default function BirthdayScreen() {
+  const { t } = useI18n();
   const { updateUser, user } = useAuth();
   const { updateRegistrationData } = useRegistration();
 
@@ -104,14 +106,17 @@ export default function BirthdayScreen() {
     const birthday = new Date(selectedYear, selectedMonth, day);
 
     if (Number.isNaN(birthday.getTime())) {
-      Alert.alert("Invalid Birthday", "Please select a valid date.");
+      Alert.alert(
+        t("onboarding.birthday.invalidTitle"),
+        t("onboarding.birthday.invalidDate")
+      );
       return;
     }
 
     if (calculateAge(birthday) < 13) {
       Alert.alert(
-        "Invalid Birthday",
-        "You must be at least 13 years old to continue."
+        t("onboarding.birthday.invalidTitle"),
+        t("onboarding.birthday.invalidAge")
       );
       return;
     }
@@ -127,8 +132,8 @@ export default function BirthdayScreen() {
 
   const handleSkip = () => {
     Alert.alert(
-      "Birthday Required",
-      "Enter your birthday before continuing. The app creates your account on the next step and needs this value."
+      t("onboarding.birthday.requiredTitle"),
+      t("onboarding.birthday.requiredMessage")
     );
   };
 
@@ -207,7 +212,7 @@ export default function BirthdayScreen() {
                     fontFamily: "Figtree",
                   }}
                 >
-                  When is Your Birthday?
+                  {t("onboarding.birthday.title")}
                 </Text>
 
                 <TouchableOpacity onPress={handleSkip}>
@@ -219,7 +224,7 @@ export default function BirthdayScreen() {
                       fontFamily: "Figtree",
                     }}
                   >
-                    Info
+                    {t("onboarding.birthday.info")}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -260,7 +265,7 @@ export default function BirthdayScreen() {
                       lineHeight: 24,
                     }}
                   >
-                    Your birthday will not be shown to the public
+                    {t("onboarding.birthday.publicNote")}
                   </Text>
                 </View>
 
@@ -318,7 +323,7 @@ export default function BirthdayScreen() {
                       fontFamily: "Figtree",
                     }}
                   >
-                    Step 3 of 4
+                    {t("onboarding.birthday.step")}
                   </Text>
                 </View>
 
@@ -375,7 +380,7 @@ export default function BirthdayScreen() {
                           marginBottom: 8,
                         }}
                       >
-                        Month
+                        {t("onboarding.birthday.month")}
                       </Text>
                       <View
                         style={{
@@ -438,7 +443,7 @@ export default function BirthdayScreen() {
                           marginBottom: 8,
                         }}
                       >
-                        Day
+                        {t("onboarding.birthday.day")}
                       </Text>
                       <View
                         style={{
@@ -501,7 +506,7 @@ export default function BirthdayScreen() {
                           marginBottom: 8,
                         }}
                       >
-                        Year
+                        {t("onboarding.birthday.year")}
                       </Text>
                       <View
                         style={{
@@ -566,7 +571,7 @@ export default function BirthdayScreen() {
                 }}
               >
                 <Button
-                  label="Continue"
+                  label={t("onboarding.birthday.continue")}
                   onPress={handleContinue}
                   variant="primary"
                   fullWidth
